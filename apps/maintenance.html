@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="vi" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ Thống Đang Bảo Trì - Sẽ Sớm Trở Lại</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#eef2ff',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                        }
+                    },
+                    animation: {
+                        'spin-slow': 'spin 12s linear infinite',
+                        'spin-reverse-slow': 'spinReverse 9s linear infinite',
+                        'float': 'float 3s ease-in-out infinite',
+                        'pulse-glow': 'pulseGlow 2s ease-in-out infinite',
+                    },
+                    keyframes: {
+                        spinReverse: {
+                            '0%': { transform: 'rotate(360deg)' },
+                            '100%': { transform: 'rotate(0deg)' },
+                        },
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-8px)' },
+                        },
+                        pulseGlow: {
+                            '0%, 100%': { opacity: '0.4' },
+                            '50%': { opacity: '0.8' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <!-- Google Font: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Hiệu ứng nền lưới nhẹ */
+        .grid-pattern {
+            background-size: 32px 32px;
+            background-image: radial-gradient(circle, rgba(99, 102, 241, 0.12) 1px, transparent 1px);
+        }
+        .dark .grid-pattern {
+            background-image: radial-gradient(circle, rgba(129, 140, 248, 0.1) 1px, transparent 1px);
+        }
+    </style>
+</head>
+<body class="h-full bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 flex flex-col justify-between transition-colors duration-200 grid-pattern">
+
+    <!-- Header nhỏ: Chuyển đổi giao diện sáng/tối -->
+    <header class="w-full max-w-5xl mx-auto px-4 sm:px-6 pt-6 flex items-center justify-between">
+        <a href="index.html" class="flex items-center gap-2 text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 text-sm font-medium transition">
+            <i class="ph ph-arrow-left text-base"></i>
+            <span>Về cổng ứng dụng</span>
+        </a>
+
+        <button onclick="toggleTheme()" class="w-9 h-9 rounded-xl flex items-center justify-center border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition shadow-sm" title="Đổi giao diện">
+            <i id="themeIcon" class="ph ph-moon text-lg"></i>
+        </button>
+    </header>
+
+    <!-- Main Container -->
+    <main class="w-full max-w-2xl mx-auto px-4 py-8 flex-1 flex flex-col items-center justify-center text-center">
+        
+        <!-- Vector minh hoạ bảo trì chuyển động -->
+        <div class="relative w-44 h-44 mb-8 flex items-center justify-center animate-float">
+            <!-- Vòng tròn nền tỏa sáng -->
+            <div class="absolute inset-0 rounded-full bg-indigo-500/10 dark:bg-indigo-500/20 blur-2xl animate-pulse-glow"></div>
+            
+            <svg class="w-full h-full" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <!-- Bánh răng lớn (quay chậm xuôi chiều) -->
+                <g class="origin-center animate-spin-slow text-indigo-500 dark:text-indigo-400">
+                    <circle cx="100" cy="100" r="32" stroke="currentColor" stroke-width="8" stroke-dasharray="10 6" />
+                    <circle cx="100" cy="100" r="14" fill="currentColor" fill-opacity="0.2"/>
+                </g>
+
+                <!-- Bánh răng nhỏ (quay ngược chiều) -->
+                <g class="origin-[138px_65px] animate-spin-reverse-slow text-amber-500 dark:text-amber-400">
+                    <circle cx="138" cy="65" r="22" stroke="currentColor" stroke-width="6" stroke-dasharray="8 5" />
+                    <circle cx="138" cy="65" r="8" fill="currentColor" fill-opacity="0.2"/>
+                </g>
+
+                <!-- Bánh răng phụ góc dưới -->
+                <g class="origin-[65px_135px] animate-spin-reverse-slow text-teal-500 dark:text-teal-400">
+                    <circle cx="65" cy="135" r="18" stroke="currentColor" stroke-width="5" stroke-dasharray="7 4" />
+                </g>
+
+                <!-- Biểu tượng cờ lê / công cụ ở trung tâm -->
+                <g class="text-slate-800 dark:text-white drop-shadow-md">
+                    <path d="M92 90 L80 102 C77 105 77 110 80 113 L87 120 C90 123 95 123 98 120 L110 108" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M106 76 C103 73 97 73 93 77 L98 84 L93 89 L86 84 C82 88 82 94 85 97 C88 100 93 100 97 97 L114 80 C117 77 110 73 106 76 Z" fill="currentColor"/>
+                </g>
+            </svg>
+
+            <!-- Huy hiệu trạng thái nhấp nháy -->
+            <div class="absolute bottom-1 right-6 bg-amber-500/10 dark:bg-amber-400/20 text-amber-600 dark:text-amber-400 border border-amber-300 dark:border-amber-700/50 px-2.5 py-0.5 rounded-full text-xs font-bold flex items-center gap-1.5 shadow-sm">
+                <span class="w-2 h-2 rounded-full bg-amber-500 animate-ping"></span>
+                <span>Đang nâng cấp</span>
+            </div>
+        </div>
+
+        <!-- Tiêu đề & Thông điệp -->
+        <h1 class="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white mb-3">
+            Hệ Thống Đang Được Bảo Trì
+        </h1>
+        <p class="text-sm sm:text-base text-slate-600 dark:text-slate-300 max-w-lg mb-8 leading-relaxed">
+            Chúng mình đang tiến hành nâng cấp hạ tầng và cải thiện các tính năng để mang đến trải nghiệm tốt nhất. Ứng dụng sẽ sớm mở lại trong ít phút.
+        </p>
+
+        <!-- Khối Đếm Ngược Thời Gian (Countdown Timer) -->
+        <div class="w-full max-w-md bg-white/80 dark:bg-slate-900/80 backdrop-blur-md rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-lg shadow-indigo-500/5 mb-6">
+            <div class="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mb-3 px-1">
+                <span class="font-medium flex items-center gap-1">
+                    <i class="ph ph-clock-countdown text-indigo-500 text-sm"></i> Dự kiến hoàn tất sau:
+                </span>
+                <span class="text-indigo-600 dark:text-indigo-400 font-semibold" id="estTimeText">Khoảng 45 phút</span>
+            </div>
+
+            <!-- Các ô số đếm ngược -->
+            <div class="grid grid-cols-4 gap-2.5 text-center">
+                <div class="bg-slate-50 dark:bg-slate-800/80 rounded-xl p-2.5 border border-slate-100 dark:border-slate-700/60">
+                    <span id="cdDays" class="block text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white">00</span>
+                    <span class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Ngày</span>
+                </div>
+                <div class="bg-slate-50 dark:bg-slate-800/80 rounded-xl p-2.5 border border-slate-100 dark:border-slate-700/60">
+                    <span id="cdHours" class="block text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white">00</span>
+                    <span class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Giờ</span>
+                </div>
+                <div class="bg-slate-50 dark:bg-slate-800/80 rounded-xl p-2.5 border border-slate-100 dark:border-slate-700/60">
+                    <span id="cdMins" class="block text-xl sm:text-2xl font-extrabold text-indigo-600 dark:text-indigo-400">45</span>
+                    <span class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Phút</span>
+                </div>
+                <div class="bg-slate-50 dark:bg-slate-800/80 rounded-xl p-2.5 border border-slate-100 dark:border-slate-700/60">
+                    <span id="cdSecs" class="block text-xl sm:text-2xl font-extrabold text-indigo-600 dark:text-indigo-400">00</span>
+                    <span class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Giây</span>
+                </div>
+            </div>
+
+            <!-- Tiến độ hoàn thành giả lập -->
+            <div class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800">
+                <div class="flex items-center justify-between text-xs mb-1.5 font-medium">
+                    <span class="text-slate-500 dark:text-slate-400">Tiến độ cập nhật</span>
+                    <span class="text-indigo-600 dark:text-indigo-400 font-bold" id="progressPercent">75%</span>
+                </div>
+                <div class="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2 overflow-hidden">
+                    <div id="progressBar" class="bg-gradient-to-r from-indigo-500 to-violet-500 h-2 rounded-full transition-all duration-500" style="width: 75%"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Nhóm nút hành động -->
+        <div class="flex flex-wrap items-center justify-center gap-3 w-full max-w-md mb-8">
+            <button onclick="checkStatus()" id="reloadBtn" class="flex-1 min-w-[140px] px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white text-sm font-semibold transition flex items-center justify-center gap-2 shadow-md shadow-indigo-500/20">
+                <i class="ph ph-arrows-clockwise text-base" id="reloadIcon"></i>
+                <span id="reloadText">Kiểm tra lại</span>
+            </button>
+            <a href="index.html" class="flex-1 min-w-[140px] px-5 py-2.5 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-sm font-semibold transition flex items-center justify-center gap-2 shadow-sm">
+                <i class="ph ph-house text-base"></i>
+                <span>Trang chủ Hub</span>
+            </a>
+        </div>
+
+        <!-- Form Đăng ký nhận thông báo (Optional) -->
+        <div class="w-full max-w-md bg-transparent">
+            <form id="notifyForm" onsubmit="handleSubscribe(event)" class="relative flex items-center">
+                <div class="relative w-full">
+                    <i class="ph ph-envelope absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-base"></i>
+                    <input 
+                        type="email" 
+                        id="emailInput" 
+                        required 
+                        placeholder="Nhập email để nhận thông báo khi xong..." 
+                        class="w-full pl-10 pr-24 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs sm:text-sm text-slate-800 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm"
+                    >
+                    <button 
+                        type="submit" 
+                        class="absolute right-1.5 top-1/2 -translate-y-1/2 px-3.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 dark:bg-indigo-600 dark:hover:bg-indigo-500 text-white text-xs font-semibold transition"
+                    >
+                        Báo tôi
+                    </button>
+                </div>
+            </form>
+            <!-- Thông báo đăng ký thành công -->
+            <p id="subscribeSuccess" class="hidden text-xs text-emerald-600 dark:text-emerald-400 font-medium mt-2 flex items-center justify-center gap-1">
+                <i class="ph ph-check-circle text-sm"></i> Đã ghi nhận! Chúng mình sẽ báo qua email khi hoàn tất.
+            </p>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="w-full py-6 text-center text-xs text-slate-400 border-t border-slate-200/60 dark:border-slate-800/60">
+        <p>© 2026 MiniApps Hub • Cảm ơn bạn đã kiên nhẫn chờ đợi!</p>
+    </footer>
+
+    <!-- Logic JavaScript -->
+    <script>
+        // ==================== CẤU HÌNH THỜI GIAN ====================
+        // Thiết lập thời gian hoàn tất: Mặc định là 45 phút kể từ thời điểm mở trang
+        // Bạn có thể đổi số phút tùy ý:
+        const MAINTENANCE_MINUTES = 45;
+        let targetEndTime = new Date(Date.now() + MAINTENANCE_MINUTES * 60 * 1000);
+
+        // Khởi động đồng hồ đếm ngược
+        function updateCountdown() {
+            const now = new Date().getTime();
+            const distance = targetEndTime - now;
+
+            if (distance <= 0) {
+                document.getElementById('cdDays').innerText = "00";
+                document.getElementById('cdHours').innerText = "00";
+                document.getElementById('cdMins').innerText = "00";
+                document.getElementById('cdSecs').innerText = "00";
+                document.getElementById('progressPercent').innerText = "100%";
+                document.getElementById('progressBar').style.width = "100%";
+                document.getElementById('estTimeText').innerText = "Đã sẵn sàng!";
+                return;
+            }
+
+            const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+            document.getElementById('cdDays').innerText = String(days).padStart(2, '0');
+            document.getElementById('cdHours').innerText = String(hours).padStart(2, '0');
+            document.getElementById('cdMins').innerText = String(minutes).padStart(2, '0');
+            document.getElementById('cdSecs').innerText = String(seconds).padStart(2, '0');
+        }
+
+        setInterval(updateCountdown, 1000);
+        updateCountdown();
+
+        // Nút Kiểm tra lại tình trạng (Thử reload)
+        function checkStatus() {
+            const icon = document.getElementById('reloadIcon');
+            const text = document.getElementById('reloadText');
+            
+            icon.classList.add('animate-spin');
+            text.innerText = 'Đang kiểm tra...';
+
+            setTimeout(() => {
+                icon.classList.remove('animate-spin');
+                text.innerText = 'Kiểm tra lại';
+                // Tải lại trang để xem hệ thống đã mở chưa
+                window.location.reload();
+            }, 800);
+        }
+
+        // Xử lý gửi email thông báo (Lưu LocalStorage mô phỏng)
+        function handleSubscribe(e) {
+            e.preventDefault();
+            const emailInput = document.getElementById('emailInput');
+            const successMsg = document.getElementById('subscribeSuccess');
+            
+            if (emailInput.value) {
+                localStorage.setItem('subscribed_email', emailInput.value);
+                emailInput.value = '';
+                successMsg.classList.remove('hidden');
+                setTimeout(() => {
+                    successMsg.classList.add('hidden');
+                }, 4000);
+            }
+        }
+
+        // Chuyển đổi Dark / Light mode đồng bộ với trang Portal
+        function toggleTheme() {
+            const isDark = document.documentElement.classList.toggle('dark');
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+            updateThemeIcon(isDark);
+        }
+
+        function updateThemeIcon(isDark) {
+            const icon = document.getElementById('themeIcon');
+            icon.className = isDark ? 'ph ph-sun text-lg text-amber-400' : 'ph ph-moon text-lg';
+        }
+
+        // Khởi tạo trạng thái giao diện ban đầu
+        window.onload = function() {
+            if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+                updateThemeIcon(true);
+            } else {
+                document.documentElement.classList.remove('dark');
+                updateThemeIcon(false);
+            }
+        };
+    </script>
+</body>
+</html>
