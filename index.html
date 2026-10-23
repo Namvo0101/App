@@ -1,528 +1,472 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="vi" class="h-full">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Công cụ chuyển đổi Giây sang Ngày</title>
-  <!-- Tailwind CSS CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Font Awesome Icons -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <!-- Google Font: Inter -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-  <style>
-    body {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      -webkit-tap-highlight-color: transparent;
-    }
-    button, input, a {
-      touch-action: manipulation;
-    }
-    input {
-      font-size: 18px !important;
-    }
-    ::-webkit-scrollbar {
-      width: 6px;
-      height: 6px;
-    }
-    ::-webkit-scrollbar-track {
-      background: #f1f5f9;
-    }
-    ::-webkit-scrollbar-thumb {
-      background: #cbd5e1;
-      border-radius: 4px;
-    }
-  </style>
-</head>
-<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col antialiased selection:bg-indigo-500 selection:text-white">
-
-  <!-- Toast Thông báo -->
-  <div id="toast" class="fixed top-5 right-5 z-50 flex items-center gap-3 bg-slate-900 text-white px-5 py-3 rounded-xl shadow-2xl transition-all duration-300 transform translate-y-[-150%] opacity-0 pointer-events-none">
-    <i id="toastIcon" class="fa-solid fa-circle-check text-emerald-400 text-lg"></i>
-    <span id="toastMessage" class="text-sm font-medium">Đã sao chép!</span>
-  </div>
-
-  <!-- Header -->
-  <header class="bg-white/80 backdrop-blur-md border-b border-slate-200/80 sticky top-0 z-40">
-    <div class="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-lg shadow-indigo-200">
-          <i class="fa-solid fa-stopwatch text-lg"></i>
-        </div>
-        <div>
-          <h1 class="font-bold text-slate-900 leading-tight">Sec2Hours</h1>
-          <p id="appSubtitle" class="text-xs text-slate-500">Chuyển đổi Giây sang Giờ & Thời gian</p>
-        </div>
-      </div>
-      
-      <div class="flex items-center gap-2 sm:gap-3">
-        <div class="hidden sm:flex items-center gap-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 border border-indigo-100 px-3 py-1.5 rounded-full">
-          <i class="fa-regular fa-clock"></i>
-          <span id="badgeConversion">1 giờ = 3,600 giây</span>
-        </div>
-        
-        <!-- Nút chuyển ngôn ngữ VI / EN -->
-        <div class="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs font-semibold">
-          <button id="langViBtn" type="button" class="px-2.5 py-1 rounded-lg bg-white text-indigo-600 shadow-sm transition-all">VIE</button>
-          <button id="langEnBtn" type="button" class="px-2.5 py-1 rounded-lg text-slate-500 hover:text-slate-800 transition-all">ENG</button>
-        </div>
-      </div>
-    </div>
-  </header>
-
-  <!-- Khối nội dung chính -->
-  <main class="flex-grow max-w-4xl mx-auto w-full px-4 py-8 sm:py-12">
-    <!-- Tiêu đề giới thiệu -->
-    <div class="text-center mb-8">
-      <h2 id="mainTitle" class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-        Quy đổi số giây sang giờ lập tức
-      </h2>
-      <p id="mainDesc" class="mt-2 text-sm sm:text-base text-slate-600 max-w-lg mx-auto">
-        Nhập số giây bất kỳ để nhận ngay kết quả chuyển đổi ra số giờ chính xác và bảng phân tách thời gian chi tiết.
-      </p>
-    </div>
-
-    <!-- Hộp công cụ chuyển đổi -->
-    <div class="bg-white rounded-3xl shadow-xl shadow-slate-200/60 border border-slate-100 overflow-hidden">
-      <!-- Vùng nhập liệu -->
-      <div class="p-6 sm:p-8 border-b border-slate-100">
-        <label for="secondsInput" id="inputLabel" class="block text-sm font-semibold text-slate-700 mb-2">
-          Nhập số giây:
-        </label>
-        <div class="relative flex items-center">
-          <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
-            <i class="fa-solid fa-calculator text-lg"></i>
-          </div>
-          <input 
-            type="number" 
-            id="secondsInput" 
-            inputmode="decimal"
-            pattern="[0-9]*"
-            placeholder="Ví dụ: 3600, 86400, 1000000..." 
-            min="0"
-            step="any"
-            class="w-full pl-12 pr-28 py-4 bg-slate-50 hover:bg-slate-100/70 focus:bg-white border-2 border-transparent focus:border-indigo-600 rounded-2xl text-xl sm:text-2xl font-bold text-slate-900 transition-all outline-none"
-          >
-          <div class="absolute inset-y-0 right-2 flex items-center gap-1">
-            <button 
-              id="clearBtn" 
-              type="button" 
-              title="Xóa trắng" 
-              class="hidden px-2.5 py-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-200 transition-all text-sm font-medium">
-              <i class="fa-solid fa-xmark"></i>
-            </button>
-            <span id="inputUnitBadge" class="text-xs font-semibold px-2.5 py-1.5 bg-slate-200 text-slate-600 rounded-xl">giây</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Kết quả chính (Bây giờ quy đổi ra GIỜ) -->
-      <div class="p-6 sm:p-8 bg-gradient-to-br from-indigo-500/5 via-transparent to-purple-500/5">
-        <div class="bg-indigo-600 rounded-2xl text-white p-6 sm:p-8 shadow-xl shadow-indigo-600/25 relative overflow-hidden">
-          <div class="absolute -right-8 -bottom-8 w-40 h-40 bg-white/10 rounded-full blur-2xl pointer-events-none"></div>
-
-          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <span id="mainResultTitle" class="text-xs font-semibold tracking-wider uppercase text-indigo-200">Kết quả chính xác quy đổi ra giờ</span>
-              <div class="flex items-baseline gap-2 mt-1">
-                <span id="hoursDecimalResult" class="text-3xl sm:text-5xl font-black tracking-tight break-all">0</span>
-                <span id="mainUnitText" class="text-xl sm:text-2xl font-semibold text-indigo-200">giờ</span>
-              </div>
-            </div>
-            <button 
-              id="copyResultBtn"
-              type="button" 
-              class="self-start sm:self-auto flex items-center gap-2 bg-white/20 hover:bg-white/30 active:scale-95 text-white text-xs sm:text-sm font-semibold px-4 py-2.5 rounded-xl backdrop-blur-md transition-all">
-              <i class="fa-regular fa-copy"></i>
-              <span id="copyBtnText">Sao chép</span>
-            </button>
-          </div>
-
-          <!-- Diễn giải tỉ lệ -->
-          <p id="formulaExplanation" class="text-xs text-indigo-100/90 mt-4 pt-3 border-t border-indigo-400/30 flex items-center gap-2">
-            <i class="fa-solid fa-circle-info"></i>
-            <span>Công thức: Số giây ÷ 3,600 = Số giờ</span>
-          </p>
-        </div>
-
-        <!-- Phân tích chi tiết thành: Ngày, Giờ, Phút, Giây (ĐƯỢC GIỮ NGUYÊN) -->
-        <div class="mt-8">
-          <h3 id="breakdownTitle" class="text-sm font-bold text-slate-800 uppercase tracking-wider mb-4 flex items-center gap-2">
-            <i class="fa-solid fa-layer-group text-indigo-600"></i>
-            <span>Phân bổ thời gian (Ngày : Giờ : Phút : Giây)</span>
-          </h3>
-          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-            <!-- Box Ngày -->
-            <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm text-center">
-              <span id="boxLabelDays" class="text-xs font-semibold text-slate-400 uppercase">Ngày</span>
-              <p id="partDays" class="text-2xl sm:text-3xl font-extrabold text-slate-800 mt-1">0</p>
-              <span class="text-[11px] text-slate-400">Days</span>
-            </div>
-
-            <!-- Box Giờ -->
-            <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm text-center">
-              <span id="boxLabelHours" class="text-xs font-semibold text-slate-400 uppercase">Giờ</span>
-              <p id="partHours" class="text-2xl sm:text-3xl font-extrabold text-slate-800 mt-1">0</p>
-              <span class="text-[11px] text-slate-400">Hours</span>
-            </div>
-
-            <!-- Box Phút -->
-            <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm text-center">
-              <span id="boxLabelMinutes" class="text-xs font-semibold text-slate-400 uppercase">Phút</span>
-              <p id="partMinutes" class="text-2xl sm:text-3xl font-extrabold text-slate-800 mt-1">0</p>
-              <span class="text-[11px] text-slate-400">Minutes</span>
-            </div>
-
-            <!-- Box Giây -->
-            <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm text-center">
-              <span id="boxLabelSeconds" class="text-xs font-semibold text-slate-400 uppercase">Giây dư</span>
-              <p id="partSeconds" class="text-2xl sm:text-3xl font-extrabold text-slate-800 mt-1">0</p>
-              <span class="text-[11px] text-slate-400">Seconds</span>
-            </div>
-          </div>
-
-          <!-- Dạng đọc tự nhiên -->
-          <div class="mt-4 p-4 rounded-2xl bg-slate-100/80 border border-slate-200 flex items-center justify-between gap-3">
-            <div class="flex items-center gap-2 overflow-hidden">
-              <span class="text-slate-400 text-sm"><i class="fa-solid fa-comment-dots"></i></span>
-              <span class="text-xs sm:text-sm font-medium text-slate-700 truncate" id="humanReadableText">
-                0 ngày, 0 giờ, 0 phút, 0 giây
-              </span>
-            </div>
-            <button id="copyHumanTextBtn" type="button" class="text-xs font-semibold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 shrink-0 px-2.5 py-1.5 rounded-lg hover:bg-white transition-all">
-              <i class="fa-regular fa-copy"></i>
-              <span id="copyHumanBtnText">Sao chép chuỗi</span>
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </main>
-
-  <!-- Footer -->
-  <footer class="mt-auto border-t border-slate-200/80 bg-white py-6 text-center text-xs text-slate-500">
-    <p id="footerText">© NamVo Time Transfer.</p>
-  </footer>
-
-  <!-- Logic JavaScript -->
-  <script>
-    // Bộ từ điển song ngữ
-    const translations = {
-      vi: {
-        appSubtitle: "Chuyển đổi Giây sang Giờ & Thời gian",
-        badgeConversion: "1 giờ = 3,600 giây",
-        mainTitle: "Quy đổi số giây sang giờ lập tức",
-        mainDesc: "Nhập số giây bất kỳ để nhận ngay kết quả chuyển đổi ra số giờ chính xác và bảng phân tách thời gian chi tiết.",
-        inputLabel: "Nhập số giây:",
-        inputPlaceholder: "Ví dụ: 3600, 86400, 1000000...",
-        inputUnitBadge: "giây",
-        mainResultTitle: "Kết quả chính xác quy đổi ra giờ",
-        mainUnitText: "giờ",
-        copyBtnText: "Sao chép",
-        formulaFormula: "Công thức: Số giây ÷ 3,600 = Số giờ",
-        breakdownTitle: "Phân bổ thời gian (Ngày : Giờ : Phút : Giây)",
-        boxLabelDays: "Ngày",
-        boxLabelHours: "Giờ",
-        boxLabelMinutes: "Phút",
-        boxLabelSeconds: "Giây dư",
-        copyHumanBtnText: "Sao chép chuỗi",
-        footerText: "© NamVo Time Transfer.",
-        toastCopied: "Đã sao chép vào bộ nhớ đệm!",
-        toastManual: "Vui lòng chọn và chép thủ công.",
-        toastError: "Lỗi khi sao chép.",
-        dayUnit: "ngày",
-        hourUnit: "giờ",
-        minUnit: "phút",
-        secUnit: "giây"
-      },
-      en: {
-        appSubtitle: "Convert Seconds to Hours & Detailed Time",
-        badgeConversion: "1 hour = 3,600 seconds",
-        mainTitle: "Convert Seconds to Hours Instantly",
-        mainDesc: "Enter any number of seconds to get the exact hours along with a detailed days, hours, minutes, and seconds breakdown.",
-        inputLabel: "Enter number of seconds:",
-        inputPlaceholder: "E.g. 3600, 86400, 1000000...",
-        inputUnitBadge: "seconds",
-        mainResultTitle: "Exact Result Converted to Hours",
-        mainUnitText: "hours",
-        copyBtnText: "Copy",
-        formulaFormula: "Formula: Seconds ÷ 3,600 = Hours",
-        breakdownTitle: "Time Breakdown (Days : Hours : Minutes : Seconds)",
-        boxLabelDays: "Days",
-        boxLabelHours: "Hours",
-        boxLabelMinutes: "Minutes",
-        boxLabelSeconds: "Remaining Sec",
-        copyHumanBtnText: "Copy String",
-        footerText: "© NamVo Time Transfer.",
-        toastCopied: "Copied to clipboard!",
-        toastManual: "Please copy manually.",
-        toastError: "Error while copying.",
-        dayUnit: "days",
-        hourUnit: "hours",
-        minUnit: "minutes",
-        secUnit: "seconds"
-      }
-    };
-
-    let currentLang = 'vi';
-
-    // Tham chiếu các phần tử DOM
-    const secondsInput = document.getElementById('secondsInput');
-    const clearBtn = document.getElementById('clearBtn');
-    const hoursDecimalResult = document.getElementById('hoursDecimalResult');
-    const partDays = document.getElementById('partDays');
-    const partHours = document.getElementById('partHours');
-    const partMinutes = document.getElementById('partMinutes');
-    const partSeconds = document.getElementById('partSeconds');
-    const humanReadableText = document.getElementById('humanReadableText');
-    const copyResultBtn = document.getElementById('copyResultBtn');
-    const copyHumanTextBtn = document.getElementById('copyHumanTextBtn');
-    const formulaExplanation = document.getElementById('formulaExplanation');
-    const toast = document.getElementById('toast');
-    const toastMessage = document.getElementById('toastMessage');
-
-    // Các phần tử đa ngôn ngữ
-    const langViBtn = document.getElementById('langViBtn');
-    const langEnBtn = document.getElementById('langEnBtn');
-    const appSubtitle = document.getElementById('appSubtitle');
-    const badgeConversion = document.getElementById('badgeConversion');
-    const mainTitle = document.getElementById('mainTitle');
-    const mainDesc = document.getElementById('mainDesc');
-    const inputLabel = document.getElementById('inputLabel');
-    const inputUnitBadge = document.getElementById('inputUnitBadge');
-    const mainResultTitle = document.getElementById('mainResultTitle');
-    const mainUnitText = document.getElementById('mainUnitText');
-    const copyBtnText = document.getElementById('copyBtnText');
-    const breakdownTitle = document.getElementById('breakdownTitle');
-    const boxLabelDays = document.getElementById('boxLabelDays');
-    const boxLabelHours = document.getElementById('boxLabelHours');
-    const boxLabelMinutes = document.getElementById('boxLabelMinutes');
-    const boxLabelSeconds = document.getElementById('boxLabelSeconds');
-    const copyHumanBtnText = document.getElementById('copyHumanBtnText');
-    const footerText = document.getElementById('footerText');
-
-    const SECONDS_IN_DAY = 86400;
-    const SECONDS_IN_HOUR = 3600;
-    const SECONDS_IN_MINUTE = 60;
-
-    let toastTimeout = null;
-
-    function showToast(msg) {
-      toastMessage.textContent = msg;
-      toast.classList.remove('translate-y-[-150%]', 'opacity-0');
-      toast.classList.add('translate-y-0', 'opacity-100');
-
-      if (toastTimeout) clearTimeout(toastTimeout);
-      toastTimeout = setTimeout(() => {
-        toast.classList.add('translate-y-[-150%]', 'opacity-0');
-        toast.classList.remove('translate-y-0', 'opacity-100');
-      }, 2500);
-    }
-
-    async function copyToClipboard(text, successMessage) {
-      if (!text) return;
-      const dict = translations[currentLang];
-
-      if (navigator.clipboard && window.isSecureContext) {
-        try {
-          await navigator.clipboard.writeText(text);
-          showToast(successMessage || dict.toastCopied);
-          return;
-        } catch (err) {}
-      }
-
-      const tempTextArea = document.createElement('textarea');
-      tempTextArea.value = text;
-      tempTextArea.setAttribute('readonly', '');
-      tempTextArea.style.position = 'absolute';
-      tempTextArea.style.left = '-9999px';
-      tempTextArea.style.fontSize = '16pt';
-      document.body.appendChild(tempTextArea);
-
-      const range = document.createRange();
-      range.selectNodeContents(tempTextArea);
-      const selection = window.getSelection();
-      selection.removeAllRanges();
-      selection.addRange(range);
-      tempTextArea.setSelectionRange(0, 999999);
-
-      try {
-        const successful = document.execCommand('copy');
-        if (successful) {
-          showToast(successMessage || dict.toastCopied);
-        } else {
-          showToast(dict.toastManual);
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trung Tâm Ứng Dụng - Web Portal</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#eef2ff',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                        }
+                    }
+                }
+            }
         }
-      } catch (err) {
-        showToast(dict.toastError);
-      }
-      document.body.removeChild(tempTextArea);
-    }
+    </script>
+    <!-- Phosphor Icons (cho icon vector nhẹ và đẹp) -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <!-- Google Font: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Hiệu ứng chuyển động mượt */
+        .app-card {
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .app-card:hover {
+            transform: translateY(-4px);
+        }
+        /* Ẩn scrollbar nhưng vẫn cuộn được */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body class="h-full bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 flex flex-col transition-colors duration-200">
 
-    function formatNumber(num, maxDecimals = 4) {
-      if (isNaN(num)) return '0';
-      const locale = currentLang === 'vi' ? 'vi-VN' : 'en-US';
-      try {
-        return new Intl.NumberFormat(locale, {
-          maximumFractionDigits: maxDecimals
-        }).format(num);
-      } catch(e) {
-        return Number(num).toFixed(maxDecimals);
-      }
-    }
+    <!-- ==================== HEADER ==================== -->
+    <header class="sticky top-0 z-20 backdrop-blur-md bg-white/80 dark:bg-slate-900/80 border-b border-slate-200 dark:border-slate-800">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+            <!-- Logo & Title -->
+            <div class="flex items-center gap-3 cursor-pointer" onclick="closeViewer()">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center text-white shadow-md shadow-indigo-500/20">
+                    <i class="ph ph-squares-four text-2xl"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg leading-tight tracking-tight text-slate-900 dark:text-white">MiniApps Hub</h1>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">GitHub Pages App Directory</p>
+                </div>
+            </div>
 
-    function setLanguage(lang) {
-      currentLang = lang;
-      const dict = translations[lang];
+            <!-- Công cụ: Chế độ mở & Đổi theme Dark/Light -->
+            <div class="flex items-center gap-2 sm:gap-3">
+                <!-- Dropdown chọn cách mở ứng dụng -->
+                <div class="hidden sm:flex items-center text-xs bg-slate-100 dark:bg-slate-800 p-1 rounded-lg border border-slate-200 dark:border-slate-700">
+                    <span class="px-2 text-slate-500 dark:text-slate-400 font-medium">Mở bằng:</span>
+                    <button id="modeModalBtn" onclick="setOpenMode('modal')" class="px-2.5 py-1 rounded-md transition font-medium bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm">
+                        Xem ngay (Viewer)
+                    </button>
+                    <button id="modeTabBtn" onclick="setOpenMode('tab')" class="px-2.5 py-1 rounded-md transition font-medium text-slate-600 dark:text-slate-300 hover:text-indigo-600">
+                        Tab mới
+                    </button>
+                </div>
 
-      if (lang === 'vi') {
-        langViBtn.className = "px-2.5 py-1 rounded-lg bg-white text-indigo-600 shadow-sm transition-all";
-        langEnBtn.className = "px-2.5 py-1 rounded-lg text-slate-500 hover:text-slate-800 transition-all";
-      } else {
-        langEnBtn.className = "px-2.5 py-1 rounded-lg bg-white text-indigo-600 shadow-sm transition-all";
-        langViBtn.className = "px-2.5 py-1 rounded-lg text-slate-500 hover:text-slate-800 transition-all";
-      }
+                <!-- Nút chuyển chế độ sáng / tối -->
+                <button onclick="toggleDarkMode()" class="w-9 h-9 rounded-lg flex items-center justify-center border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition" title="Đổi giao diện">
+                    <i id="themeIcon" class="ph ph-moon text-lg"></i>
+                </button>
+            </div>
+        </div>
+    </header>
 
-      appSubtitle.textContent = dict.appSubtitle;
-      badgeConversion.textContent = dict.badgeConversion;
-      mainTitle.textContent = dict.mainTitle;
-      mainDesc.textContent = dict.mainDesc;
-      inputLabel.textContent = dict.inputLabel;
-      secondsInput.placeholder = dict.inputPlaceholder;
-      inputUnitBadge.textContent = dict.inputUnitBadge;
+    <!-- ==================== MAIN CONTENT (PORTAL HUB) ==================== -->
+    <main id="portalView" class="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 flex flex-col gap-6">
+        
+        <!-- Hero Section & Tìm kiếm -->
+        <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 pb-2 border-b border-slate-200 dark:border-slate-800">
+            <div>
+                <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+                    Khám phá & Khởi chạy Ứng dụng
+                </h2>
+                <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                    Chọn một ứng dụng bên dưới để bắt đầu tương tác trực tiếp trên trình duyệt.
+                </p>
+            </div>
 
-      mainResultTitle.textContent = dict.mainResultTitle;
-      mainUnitText.textContent = dict.mainUnitText;
-      copyBtnText.textContent = dict.copyBtnText;
-      breakdownTitle.innerHTML = `<i class="fa-solid fa-layer-group text-indigo-600"></i><span>${dict.breakdownTitle}</span>`;
-      boxLabelDays.textContent = dict.boxLabelDays;
-      boxLabelHours.textContent = dict.boxLabelHours;
-      boxLabelMinutes.textContent = dict.boxLabelMinutes;
-      boxLabelSeconds.textContent = dict.boxLabelSeconds;
-      copyHumanBtnText.textContent = dict.copyHumanBtnText;
+            <!-- Ô tìm kiếm -->
+            <div class="relative w-full md:w-80">
+                <i class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg"></i>
+                <input 
+                    type="text" 
+                    id="searchInput" 
+                    placeholder="Tìm tên ứng dụng hoặc tính năng..." 
+                    oninput="filterApps()"
+                    class="w-full pl-10 pr-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm"
+                >
+            </div>
+        </div>
 
-      footerText.textContent = dict.footerText;
-      calculate();
-    }
+        <!-- Bộ lọc phân loại (Categories) -->
+        <div class="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1" id="categoryFilters">
+            <!-- Render động bằng JS -->
+        </div>
 
-    function calculate() {
-      const dict = translations[currentLang];
-      const rawVal = secondsInput.value ? secondsInput.value.trim() : '';
+        <!-- Lưới danh sách ứng dụng -->
+        <div id="appsGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+            <!-- Render động các app tại đây -->
+        </div>
 
-      if (rawVal.length > 0) {
-        clearBtn.classList.remove('hidden');
-      } else {
-        clearBtn.classList.add('hidden');
-      }
+        <!-- Trạng thái không tìm thấy -->
+        <div id="noResults" class="hidden text-center py-16">
+            <div class="w-16 h-16 mx-auto mb-3 text-slate-300 dark:text-slate-600">
+                <i class="ph ph-folder-open text-6xl"></i>
+            </div>
+            <h3 class="text-lg font-semibold text-slate-700 dark:text-slate-300">Không tìm thấy ứng dụng phù hợp</h3>
+            <p class="text-sm text-slate-400 mt-1">Hãy thử tìm với từ khoá khác hoặc chọn lại phân loại.</p>
+        </div>
+    </main>
 
-      if (rawVal === '' || isNaN(rawVal)) {
-        hoursDecimalResult.textContent = '0';
-        partDays.textContent = '0';
-        partHours.textContent = '0';
-        partMinutes.textContent = '0';
-        partSeconds.textContent = '0';
-        humanReadableText.textContent = `0 ${dict.dayUnit}, 0 ${dict.hourUnit}, 0 ${dict.minUnit}, 0 ${dict.secUnit}`;
-        formulaExplanation.innerHTML = `<i class="fa-solid fa-circle-info"></i><span>${dict.formulaFormula}</span>`;
-        return;
-      }
+    <!-- ==================== APP RUNNER / VIEWER MODAL ==================== -->
+    <!-- Hiển thị ứng dụng bên trong iframe toàn màn hình mà không cần rời trang -->
+    <section id="appRunner" class="fixed inset-0 z-50 bg-slate-900/90 backdrop-blur-sm hidden flex-col">
+        <!-- Control Bar phía trên iframe -->
+        <div class="h-14 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-4 flex items-center justify-between select-none shadow">
+            <div class="flex items-center gap-3">
+                <button onclick="closeViewer()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-xs font-semibold transition">
+                    <i class="ph ph-arrow-left text-base"></i>
+                    <span>Trở về Trang chủ</span>
+                </button>
+                <div class="h-4 w-px bg-slate-300 dark:bg-slate-600"></div>
+                <div class="flex items-center gap-2">
+                    <span id="activeAppIcon" class="text-lg"></span>
+                    <h3 id="activeAppTitle" class="font-bold text-sm text-slate-900 dark:text-white truncate max-w-[200px] sm:max-w-xs">Tên ứng dụng</h3>
+                </div>
+            </div>
 
-      let totalSeconds = parseFloat(rawVal);
-      if (totalSeconds < 0) totalSeconds = 0;
+            <!-- Các nút thao tác nhanh -->
+            <div class="flex items-center gap-2">
+                <!-- Tải lại app -->
+                <button onclick="reloadViewer()" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 text-base" title="Tải lại ứng dụng">
+                    <i class="ph ph-arrows-clockwise"></i>
+                </button>
+                <!-- Mở trong tab mới độc lập -->
+                <a id="activeAppExternalLink" href="#" target="_blank" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 text-base" title="Mở trang riêng">
+                    <i class="ph ph-arrow-square-out"></i>
+                </a>
+                <!-- Nút Fullscreen -->
+                <button onclick="toggleFullscreen()" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 text-base" title="Toàn màn hình">
+                    <i id="fullscreenIcon" class="ph ph-corners-out"></i>
+                </button>
+            </div>
+        </div>
 
-      // 1. KẾT QUẢ CHÍNH: Quy đổi ra SỐ GIỜ (Hours)
-      const decimalHours = totalSeconds / SECONDS_IN_HOUR;
-      hoursDecimalResult.textContent = formatNumber(decimalHours, 4);
+        <!-- Khung nhúng ứng dụng (iFrame) -->
+        <div class="flex-1 w-full h-full relative bg-white">
+            <iframe id="appFrame" class="w-full h-full border-0 block" src="" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+        </div>
+    </section>
 
-      // 2. PHÂN BỔ THỜI GIAN: Ngày : Giờ : Phút : Giây (GIỮ NGUYÊN)
-      const wholeSeconds = Math.floor(totalSeconds);
-      const fractionalPart = (totalSeconds - wholeSeconds);
+    <!-- ==================== FOOTER ==================== -->
+    <footer class="mt-auto border-t border-slate-200 dark:border-slate-800 py-6 text-center text-xs text-slate-400">
+        <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+            <p>© 2026 MiniApps Hub. Lưu trữ miễn phí trên GitHub Pages.</p>
+            <p>Để thêm ứng dụng: Đặt file <code class="text-indigo-500">.html</code> vào thư mục và khai báo vào danh sách.</p>
+        </div>
+    </footer>
 
-      const d = Math.floor(wholeSeconds / SECONDS_IN_DAY);
-      const remAfterDays = wholeSeconds % SECONDS_IN_DAY;
+    <!-- ==================== LOGIC JAVASCRIPT ==================== -->
+    <script>
+        /**
+         * DANH SÁCH CÁC ỨNG DỤNG CỦA BẠN:
+         */
+        const APPS_DATA = [
+            {
+                id: 'calc',
+                name: 'Máy Tính Khoa Học',
+                description: 'Ứng dụng tính toán cơ bản & nâng cao với giao diện tối giản.',
+                category: 'Công cụ',
+                path: 'apps/calculator.html',
+                icon: 'ph-calculator',
+                color: 'from-amber-500 to-orange-500', // <-- ĐỔI MÀU TẠI ĐÂY
+                badge: 'Hot'
+            },
+            {
+                id: 'draw',
+                name: 'Bảng Vẽ Phác Thảo',
+                description: 'Bảng vẽ kỹ thuật số HTML5 Canvas hỗ trợ tải ảnh về máy.',
+                category: 'Đồ họa',
+                path: 'apps/drawing-board.html',
+                icon: 'ph-paint-brush',
+                color: 'from-pink-500 to-rose-500' // <-- ĐỔI MÀU TẠI ĐÂY
+            },
+            {
+                id: 'timer',
+                name: 'Đồng Hồ Pomodoro',
+                description: 'Quản lý thời gian học tập và làm việc theo chu kỳ 25 phút.',
+                category: 'Công việc',
+                path: 'apps/pomodoro.html',
+                icon: 'ph-timer',
+                color: 'from-emerald-500 to-teal-500' // <-- ĐỔI MÀU TẠI ĐÂY
+            },
+            {
+                id: 'draw',
+                name: 'Bảng Vẽ Phác Thảo',
+                description: 'Bảng vẽ kỹ thuật số HTML5 Canvas hỗ trợ tải ảnh về máy.',
+                category: 'Đồ họa',
+                path: 'apps/drawing-board.html',
+                icon: 'ph-paint-brush',
+                color: 'from-pink-500 to-rose-500'
+            },
+            {
+                id: 'timer',
+                name: 'Đồng Hồ Pomodoro',
+                description: 'Quản lý thời gian học tập và làm việc theo chu kỳ 25 phút.',
+                category: 'Công việc',
+                path: 'apps/pomodoro.html',
+                icon: 'ph-timer',
+                color: 'from-emerald-500 to-teal-500'
+            },
+            {
+                id: 'todo',
+                name: 'Sổ Tay Ghi Chú',
+                description: 'Lưu trữ danh sách công việc hàng ngày có lưu trữ LocalStorage.',
+                category: 'Công việc',
+                path: 'apps/todo-list.html',
+                icon: 'ph-check-square-offset',
+                color: 'from-blue-500 to-cyan-500'
+            },
+            {
+                id: 'game',
+                name: 'Trò Chơi 2048',
+                description: 'Trò chơi trí tuệ giải đố toán học ghép các con số.',
+                category: 'Trò chơi',
+                path: 'apps/game-2048.html',
+                icon: 'ph-game-controller',
+                color: 'from-purple-500 to-indigo-500'
+            },
+            {
+                id: 'qrcode',
+                name: 'Tạo Mã QR',
+                description: 'Công cụ chuyển đổi đường dẫn và văn bản thành mã quét QR.',
+                category: 'Công cụ',
+                path: 'apps/qr-generator.html',
+                icon: 'ph-qr-code',
+                color: 'from-violet-500 to-fuchsia-500'
+            }
+        ];
 
-      const h = Math.floor(remAfterDays / SECONDS_IN_HOUR);
-      const remAfterHours = remAfterDays % SECONDS_IN_HOUR;
+        // Biến trạng thái
+        let currentFilter = 'All';
+        let openMode = localStorage.getItem('app_open_mode') || 'modal'; // 'modal' hoặc 'tab'
 
-      const m = Math.floor(remAfterHours / SECONDS_IN_MINUTE);
-      let s = remAfterHours % SECONDS_IN_MINUTE;
+        // 1. Khởi tạo & Render danh mục
+        function initCategories() {
+            const categories = ['All', ...new Set(APPS_DATA.map(app => app.category))];
+            const filterContainer = document.getElementById('categoryFilters');
+            
+            filterContainer.innerHTML = categories.map(cat => `
+                <button 
+                    onclick="setCategory('${cat}')" 
+                    id="btn-cat-${cat}"
+                    class="px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors duration-150 ${
+                        cat === currentFilter 
+                            ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-500/20' 
+                            : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'
+                    }">
+                    ${cat === 'All' ? 'Tất cả ứng dụng' : cat}
+                </button>
+            `).join('');
+        }
 
-      if (fractionalPart > 0) {
-        s = parseFloat((s + fractionalPart).toFixed(2));
-      }
+        // 2. Render danh sách thẻ ứng dụng
+        function renderApps(list) {
+            const grid = document.getElementById('appsGrid');
+            const noResults = document.getElementById('noResults');
 
-      partDays.textContent = formatNumber(d, 0);
-      partHours.textContent = formatNumber(h, 0);
-      partMinutes.textContent = formatNumber(m, 0);
-      partSeconds.textContent = typeof s === 'number' ? formatNumber(s, 2) : s;
+            if (!list || list.length === 0) {
+                grid.innerHTML = '';
+                noResults.classList.remove('hidden');
+                return;
+            }
+            noResults.classList.add('hidden');
 
-      // 3. Chuỗi ngôn ngữ tự nhiên
-      const parts = [];
-      if (d > 0) parts.push(`${formatNumber(d, 0)} ${dict.dayUnit}`);
-      if (h > 0) parts.push(`${h} ${dict.hourUnit}`);
-      if (m > 0) parts.push(`${m} ${dict.minUnit}`);
-      if (s > 0 || parts.length === 0) parts.push(`${typeof s === 'number' ? formatNumber(s, 2) : s} ${dict.secUnit}`);
+            grid.innerHTML = list.map(app => `
+                <div class="app-card group relative bg-white dark:bg-slate-800/90 rounded-2xl p-5 border border-slate-200 dark:border-slate-700/80 shadow-sm hover:shadow-xl hover:border-indigo-400 dark:hover:border-indigo-500 flex flex-col justify-between cursor-pointer" onclick="handleLaunchApp('${app.id}')">
+                    <div>
+                        <!-- Icon và Huy hiệu -->
+                        <div class="flex items-start justify-between mb-4">
+                            <div class="w-12 h-12 rounded-xl bg-gradient-to-br ${app.color} flex items-center justify-center text-white text-2xl shadow-md">
+                                ${app.icon.startsWith('ph-') ? `<i class="ph ${app.icon}"></i>` : `<span>${app.icon}</span>`}
+                            </div>
+                            <div class="flex items-center gap-1.5">
+                                ${app.badge ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">${app.badge}</span>` : ''}
+                                <span class="px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400">
+                                    ${app.category}
+                                </span>
+                            </div>
+                        </div>
 
-      humanReadableText.textContent = parts.join(', ');
+                        <!-- Tiêu đề & Mô tả -->
+                        <h4 class="font-bold text-slate-900 dark:text-white text-base group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                            ${app.name}
+                        </h4>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2 leading-relaxed">
+                            ${app.description}
+                        </p>
+                    </div>
 
-      // Cập nhật công thức chi tiết
-      if (currentLang === 'vi') {
-        formulaExplanation.innerHTML = `
-          <i class="fa-solid fa-check"></i>
-          <span>${formatNumber(totalSeconds, 2)} giây ÷ 3,600 = <strong>${formatNumber(decimalHours, 4)} giờ</strong></span>
-        `;
-      } else {
-        formulaExplanation.innerHTML = `
-          <i class="fa-solid fa-check"></i>
-          <span>${formatNumber(totalSeconds, 2)} seconds ÷ 3,600 = <strong>${formatNumber(decimalHours, 4)} hours</strong></span>
-        `;
-      }
-    }
+                    <!-- Nút bấm dưới thẻ -->
+                    <div class="mt-5 pt-3 border-t border-slate-100 dark:border-slate-700 flex items-center justify-between text-xs text-indigo-600 dark:text-indigo-400 font-semibold">
+                        <span>Chạy ứng dụng</span>
+                        <div class="w-6 h-6 rounded-full bg-indigo-50 dark:bg-indigo-950 flex items-center justify-center group-hover:translate-x-1 transition-transform">
+                            <i class="ph ph-arrow-right"></i>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
 
-    ['input', 'keyup', 'change', 'paste'].forEach(evt => {
-      secondsInput.addEventListener(evt, calculate);
-    });
+        // 3. Xử lý mở ứng dụng
+        function handleLaunchApp(appId) {
+            const app = APPS_DATA.find(a => a.id === appId);
+            if (!app) return;
 
-    clearBtn.addEventListener('click', (e) => {
-      e.preventDefault();
-      secondsInput.value = '';
-      calculate();
-      secondsInput.focus();
-    });
+            if (openMode === 'tab') {
+                // Mở trực tiếp trong tab mới
+                window.open(app.path, '_blank');
+            } else {
+                // Mở bằng Viewer iFrame ngay trên trang
+                openViewer(app);
+            }
+        }
 
-    // Sao chép số giờ thập phân
-    copyResultBtn.addEventListener('click', (e) => {
-      e.preventDefault();
-      const dict = translations[currentLang];
-      const resultText = hoursDecimalResult.textContent;
-      copyToClipboard(`${resultText} ${dict.mainUnitText}`, `${dict.copyBtnText}: ${resultText} ${dict.mainUnitText}`);
-    });
+        // 4. Các hàm điều khiển Runner Viewer
+        function openViewer(app) {
+            const runner = document.getElementById('appRunner');
+            const frame = document.getElementById('appFrame');
+            const title = document.getElementById('activeAppTitle');
+            const icon = document.getElementById('activeAppIcon');
+            const extLink = document.getElementById('activeAppExternalLink');
 
-    // Sao chép chuỗi tự nhiên
-    copyHumanTextBtn.addEventListener('click', (e) => {
-      e.preventDefault();
-      const dict = translations[currentLang];
-      const text = humanReadableText.textContent.trim();
-      copyToClipboard(text, dict.toastCopied);
-    });
+            title.innerText = app.name;
+            icon.innerHTML = app.icon.startsWith('ph-') 
+                ? `<i class="ph ${app.icon} text-indigo-500"></i>` 
+                : `<span class="text-xl">${app.icon}</span>`;
+            extLink.href = app.path;
+            frame.src = app.path;
 
-    // Nút chuyển ngôn ngữ
-    langViBtn.addEventListener('click', () => setLanguage('vi'));
-    langEnBtn.addEventListener('click', () => setLanguage('en'));
+            runner.classList.remove('hidden');
+            runner.classList.add('flex');
+            document.body.style.overflow = 'hidden'; // Ngăn cuộn trang phía sau
+        }
 
-    function init() {
-      if (!secondsInput.value) {
-        secondsInput.value = '36000';
-      }
-      setLanguage('vi');
-    }
+        function closeViewer() {
+            const runner = document.getElementById('appRunner');
+            const frame = document.getElementById('appFrame');
+            
+            frame.src = 'about:blank'; // Giải phóng bộ nhớ ứng dụng
+            runner.classList.add('hidden');
+            runner.classList.remove('flex');
+            document.body.style.overflow = 'auto';
+        }
 
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', init);
-    } else {
-      init();
-    }
-  </script>
+        function reloadViewer() {
+            const frame = document.getElementById('appFrame');
+            frame.contentWindow.location.reload();
+        }
+
+        function toggleFullscreen() {
+            const frameContainer = document.getElementById('appRunner');
+            const icon = document.getElementById('fullscreenIcon');
+            if (!document.fullscreenElement) {
+                frameContainer.requestFullscreen().catch(err => console.log(err));
+                icon.className = 'ph ph-corners-in';
+            } else {
+                document.exitFullscreen();
+                icon.className = 'ph ph-corners-out';
+            }
+        }
+
+        // 5. Tìm kiếm & Lọc dữ liệu
+        function filterApps() {
+            const query = document.getElementById('searchInput').value.toLowerCase().trim();
+            const filtered = APPS_DATA.filter(app => {
+                const matchCategory = currentFilter === 'All' || app.category === currentFilter;
+                const matchQuery = app.name.toLowerCase().includes(query) || 
+                                   app.description.toLowerCase().includes(query) ||
+                                   app.category.toLowerCase().includes(query);
+                return matchCategory && matchQuery;
+            });
+            renderApps(filtered);
+        }
+
+        function setCategory(cat) {
+            currentFilter = cat;
+            initCategories(); // Cập nhật màu nút active
+            filterApps();
+        }
+
+        // 6. Cấu hình chế độ mở App (Modal vs Tab)
+        function setOpenMode(mode) {
+            openMode = mode;
+            localStorage.setItem('app_open_mode', mode);
+            updateModeButtons();
+        }
+
+        function updateModeButtons() {
+            const modalBtn = document.getElementById('modeModalBtn');
+            const tabBtn = document.getElementById('modeTabBtn');
+
+            if (openMode === 'modal') {
+                modalBtn.className = 'px-2.5 py-1 rounded-md transition font-medium bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm';
+                tabBtn.className = 'px-2.5 py-1 rounded-md transition font-medium text-slate-600 dark:text-slate-300 hover:text-indigo-600';
+            } else {
+                tabBtn.className = 'px-2.5 py-1 rounded-md transition font-medium bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm';
+                modalBtn.className = 'px-2.5 py-1 rounded-md transition font-medium text-slate-600 dark:text-slate-300 hover:text-indigo-600';
+            }
+        }
+
+        // 7. Dark Mode Controller
+        function toggleDarkMode() {
+            const isDark = document.documentElement.classList.toggle('dark');
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+            updateThemeIcon(isDark);
+        }
+
+        function updateThemeIcon(isDark) {
+            const icon = document.getElementById('themeIcon');
+            icon.className = isDark ? 'ph ph-sun text-lg text-amber-400' : 'ph ph-moon text-lg';
+        }
+
+        // Khởi động khi tải trang
+        window.onload = function() {
+            // Khởi tạo Dark mode theo hệ thống hoặc đã lưu
+            if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+                updateThemeIcon(true);
+            } else {
+                document.documentElement.classList.remove('dark');
+                updateThemeIcon(false);
+            }
+
+            updateModeButtons();
+            initCategories();
+            renderApps(APPS_DATA);
+
+            // Bắt phím Escape để thoát màn hình xem app
+            window.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') closeViewer();
+            });
+        };
+    </script>
 </body>
 </html>
