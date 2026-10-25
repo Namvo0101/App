@@ -1,0 +1,1865 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Nav Record Stock</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    /* Cross-browser date picker indicator styling */
+    input[type="date"]::-webkit-calendar-picker-indicator {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      width: 100%; height: 100%;
+      opacity: 0; cursor: pointer;
+    }
+    input[type="date"] { position: relative; }
+
+    /* Prevent mobile input auto-zoom on iOS devices */
+    @media (max-width: 640px) {
+      .mobile-input-safe {
+        font-size: 16px !important;
+      }
+    }
+
+    /* Smooth touch scrolling for tables on mobile screens */
+    .touch-scroll {
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: thin;
+    }
+    .touch-scroll::-webkit-scrollbar {
+      height: 4px;
+    }
+    .touch-scroll::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    .touch-scroll::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+
+    @media print {
+      body * { visibility: hidden; }
+      #print-area, #print-area * { visibility: visible; }
+      #print-area { position: absolute; left: 0; top: 0; width: 100%; }
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen font-sans antialiased pb-16 sm:pb-20 selection:bg-indigo-100 selection:text-indigo-900">
+
+  <!-- Header: Mobile-optimized sticky navigation -->
+  <header class="bg-white/95 backdrop-blur-md border-b border-slate-200 sticky top-0 z-30 shadow-2xs">
+    <div class="max-w-5xl mx-auto px-3.5 sm:px-4 py-2.5 sm:py-3.5 flex items-center justify-between gap-2">
+      <div class="flex items-center gap-2.5 min-w-0">
+        <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-xs shrink-0">
+          <i data-lucide="line-chart" class="w-4 h-4 sm:w-5 sm:h-5"></i>
+        </div>
+        <div class="min-w-0">
+          <h1 class="text-sm sm:text-base font-bold text-slate-900 leading-tight truncate">Nav Record Stock</h1>
+          <p class="text-[10px] sm:text-xs text-slate-500 truncate" data-i18n="appSubtitle">US Stock Market 20-Day Trading Cycle (NYSE / NASDAQ)</p>
+        </div>
+      </div>
+
+      <!-- Right controls: Touch-friendly language switch -->
+      <div class="flex items-center gap-2 shrink-0">
+        <div class="flex items-center bg-slate-100 p-0.5 sm:p-1 rounded-lg border border-slate-200 text-xs font-semibold">
+          <button id="lang-en" class="px-2 sm:px-2.5 py-1 rounded-md transition-all bg-white text-indigo-600 shadow-2xs cursor-pointer active:scale-95">EN</button>
+          <button id="lang-vi" class="px-2 sm:px-2.5 py-1 rounded-md transition-all text-slate-600 hover:text-slate-900 cursor-pointer active:scale-95">VI</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Container -->
+  <main class="max-w-5xl mx-auto px-3 sm:px-4 mt-3 sm:mt-6 space-y-4 sm:space-y-6">
+
+    <!-- TASK 1 PANEL -->
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-2xs p-3.5 sm:p-6 transition-all duration-300">
+      
+      <!-- Panel Header -->
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 sm:pb-4 border-b border-slate-100">
+        <div>
+          <h2 id="task1-title" class="text-sm sm:text-lg font-bold text-slate-900 flex items-center gap-2">
+            <span id="cycle-quarter-title">Stock Price Cycle: Q4 - 2026</span>
+          </h2>
+          <p class="text-[11px] sm:text-xs text-slate-500 mt-0.5" data-i18n="targetDateSub">Default: 15th day of the mid-quarter month</p>
+        </div>
+        <div class="self-start sm:self-auto">
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            NYSE / NASDAQ
+          </span>
+        </div>
+      </div>
+
+      <!-- Target Date Input Bar (Full Touch Friendly on Mobile) -->
+      <div class="mt-3 sm:mt-4">
+        <div class="relative w-full border border-slate-300 hover:border-indigo-400 focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-100 rounded-xl transition-all bg-white shadow-2xs">
+          <div class="absolute inset-y-0 left-0 pl-3 sm:pl-3.5 flex items-center pointer-events-none text-slate-400">
+            <i data-lucide="calendar" class="w-4 h-4"></i>
+          </div>
+          <input 
+            type="date" 
+            id="target-date-input" 
+            class="mobile-input-safe w-full py-2.5 sm:py-2.5 pl-9 pr-3 text-xs sm:text-sm font-semibold text-slate-800 text-center bg-transparent focus:outline-none cursor-pointer"
+          />
+        </div>
+      </div>
+
+      <!-- Collapsible Task 1 Details (Default hidden) -->
+      <div id="task1-collapsible-body" class="hidden mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-slate-100 space-y-3 sm:space-y-4">
+        
+        <!-- Controls: Quarter Pills & Today & Reset (Mobile Grid) -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+          <!-- Quarter Pill Buttons (Responsive 4-column grid on mobile) -->
+          <div class="grid grid-cols-4 sm:flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs font-semibold gap-1 sm:gap-0">
+            <button class="btn-quarter text-center py-1.5 sm:py-1 sm:px-3 rounded-lg transition-colors text-slate-600 hover:text-slate-900 active:scale-95" data-quarter="1">Q1</button>
+            <button class="btn-quarter text-center py-1.5 sm:py-1 sm:px-3 rounded-lg transition-colors text-slate-600 hover:text-slate-900 active:scale-95" data-quarter="2">Q2</button>
+            <button class="btn-quarter text-center py-1.5 sm:py-1 sm:px-3 rounded-lg transition-colors text-slate-600 hover:text-slate-900 active:scale-95" data-quarter="3">Q3</button>
+            <button class="btn-quarter text-center py-1.5 sm:py-1 sm:px-3 rounded-lg transition-colors text-slate-600 hover:text-slate-900 active:scale-95" data-quarter="4">Q4</button>
+          </div>
+
+          <!-- Quick Action Buttons -->
+          <div class="flex items-center justify-end gap-2">
+            <button id="btn-today" class="flex-1 sm:flex-none text-center px-3.5 py-1.5 text-xs font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors border border-indigo-200 active:scale-95" data-i18n="btnToday">
+              Today
+            </button>
+            <button id="btn-reset-default" class="p-1.5 text-slate-500 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer active:scale-95 shrink-0" title="Reset to Quarter Mid-Date">
+              <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Target Date Context Info -->
+        <div class="bg-slate-50 rounded-xl p-2.5 sm:p-3 border border-slate-200/80 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div class="flex items-center gap-2 text-slate-600 min-w-0">
+            <i data-lucide="info" class="w-4 h-4 text-slate-400 shrink-0"></i>
+            <span class="truncate"><span data-i18n="selectedTarget">Selected Date:</span> <strong id="dispTargetWeekday" class="text-slate-800 font-semibold">--</strong>, <span id="dispTargetDate" class="font-mono text-slate-800 font-semibold">--</span></span>
+          </div>
+          <div id="targetStatusBadgeContainer" class="self-start sm:self-auto shrink-0"></div>
+        </div>
+
+        <!-- Cycle Days Distribution Panel -->
+        <div class="bg-indigo-50/40 rounded-xl p-3 sm:p-4 border border-indigo-100/80 space-y-2.5 sm:space-y-3">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-indigo-900 flex items-center gap-1.5" data-i18n="cycleDistributionTitle">
+            <i data-lucide="calendar-range" class="w-4 h-4 text-indigo-600 shrink-0"></i>
+            Cycle Days Distribution
+          </h3>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+            <!-- Start Date -->
+            <div class="bg-white p-2.5 sm:p-3 rounded-lg border border-slate-200/80 shadow-2xs flex items-center justify-between">
+              <div>
+                <span class="text-[9px] sm:text-[10px] uppercase font-bold text-indigo-600 tracking-wider block" data-i18n="startDateLabel">Start Date</span>
+                <span id="dispStartDate" class="text-xs sm:text-sm font-bold font-mono text-slate-900">--</span>
+              </div>
+              <span id="dispStartWeekday" class="text-[11px] sm:text-xs font-medium text-slate-500">--</span>
+            </div>
+
+            <!-- End Date -->
+            <div class="bg-white p-2.5 sm:p-3 rounded-lg border border-slate-200/80 shadow-2xs flex items-center justify-between">
+              <div>
+                <span class="text-[9px] sm:text-[10px] uppercase font-bold text-emerald-600 tracking-wider block" data-i18n="endDateLabel">End Date</span>
+                <span id="dispEndDate" class="text-xs sm:text-sm font-bold font-mono text-slate-900">--</span>
+              </div>
+              <span id="dispEndWeekday" class="text-[11px] sm:text-xs font-medium text-slate-500">--</span>
+            </div>
+          </div>
+
+          <!-- Cycle Stats -->
+          <div class="grid grid-cols-3 gap-1.5 sm:gap-2 pt-0.5 text-center">
+            <div class="bg-white/80 p-1.5 sm:p-2 rounded-lg border border-slate-200 text-xs">
+              <span class="text-[9px] sm:text-[10px] text-slate-500 block truncate" data-i18n="statTradingDays">Trading Days</span>
+              <strong class="text-slate-900 text-xs sm:text-sm font-bold">20</strong>
+            </div>
+            <div class="bg-white/80 p-1.5 sm:p-2 rounded-lg border border-slate-200 text-xs">
+              <span class="text-[9px] sm:text-[10px] text-slate-500 block truncate" data-i18n="statWeekendDays">Weekend Days</span>
+              <strong id="dispWeekendCount" class="text-slate-900 text-xs sm:text-sm font-bold">--</strong>
+            </div>
+            <div class="bg-white/80 p-1.5 sm:p-2 rounded-lg border border-slate-200 text-xs">
+              <span class="text-[9px] sm:text-[10px] text-slate-500 block truncate" data-i18n="statHolidays">Holidays</span>
+              <strong id="dispHolidayCount" class="text-slate-900 text-xs sm:text-sm font-bold">--</strong>
+            </div>
+          </div>
+
+          <!-- Skipped Holidays List -->
+          <div id="skippedHolidaysContainer" class="hidden text-xs bg-amber-50/70 p-2.5 rounded-lg border border-amber-200 text-amber-800 space-y-1">
+            <div class="font-semibold flex items-center gap-1">
+              <i data-lucide="alert-circle" class="w-3.5 h-3.5 text-amber-600 shrink-0"></i>
+              <span data-i18n="skippedHolidaysTitle">US Market Holidays Skipped:</span>
+            </div>
+            <ul id="skippedHolidaysList" class="list-disc list-inside space-y-0.5 text-[11px] text-amber-900 pl-1"></ul>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Task 1 Footer Action Bar: Apply Cycle & Toggle Details -->
+      <div class="mt-3 sm:mt-4 pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+        <div class="text-[10px] sm:text-[11px] text-slate-400 flex items-center gap-1 min-w-0">
+          <i data-lucide="shield-check" class="w-3.5 h-3.5 text-slate-400 shrink-0"></i>
+          <span class="truncate">SEC/FINRA Holiday Calendar</span>
+        </div>
+
+        <div class="flex items-center gap-2 shrink-0">
+          <!-- Apply Cycle Button -->
+          <button id="btn-apply-cycle" class="inline-flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 shadow-xs transition-all cursor-pointer active:scale-95">
+            <i data-lucide="check" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i>
+            <span data-i18n="btnApplyCycle">Apply Cycle</span>
+          </button>
+
+          <!-- Toggle Button (Icon only) -->
+          <button id="btn-toggle-task1" class="w-8 h-8 flex items-center justify-center rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors cursor-pointer active:scale-95" title="Toggle Details">
+            <div id="toggleIconContainer">
+              <i data-lucide="chevron-down" class="w-4 h-4"></i>
+            </div>
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- TASK 2 PANEL (Activated upon cycle apply) -->
+    <div id="task2-panel" class="hidden bg-white rounded-2xl border border-slate-200 shadow-2xs p-3.5 sm:p-6 transition-all duration-300">
+      
+      <!-- Task 2 Header: Mobile flex-col responsive -->
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 sm:pb-4 border-b border-slate-100">
+        <div>
+          <div class="flex items-center gap-2 flex-wrap">
+            <h2 id="task2-title" class="text-sm sm:text-lg font-bold text-slate-900 leading-tight"></h2>
+            <span id="finalized-badge" class="hidden px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-semibold bg-emerald-100 text-emerald-800 border border-emerald-300">
+              <i data-lucide="lock" class="w-3 h-3 inline mr-1"></i><span data-i18n="badgeFinalized">Finalized</span>
+            </span>
+          </div>
+          <p class="text-[11px] sm:text-xs text-slate-500 mt-0.5" data-i18n="task2Subtitle">Daily price input and automatic percentage change tracking</p>
+        </div>
+
+        <!-- Action Buttons: Touch-friendly targets -->
+        <div class="grid grid-cols-2 sm:flex sm:items-center gap-2 pt-1 sm:pt-0">
+          <!-- Finalize Cycle Button -->
+          <button id="btn-finalize-cycle" class="w-full sm:w-auto px-2.5 sm:px-3 py-1.5 text-xs font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-300 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95">
+            <i data-lucide="lock" class="w-3.5 h-3.5 shrink-0"></i>
+            <span id="txt-finalize-btn" class="truncate" data-i18n="btnFinalizeCycle">Finalize Cycle</span>
+          </button>
+
+          <!-- Export Task 2 PDF Button -->
+          <button id="btn-export-pdf-task2" class="w-full sm:w-auto px-2.5 sm:px-3 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95" title="Export PDF Report">
+            <i data-lucide="file-text" class="w-3.5 h-3.5 shrink-0"></i>
+            <span class="truncate" data-i18n="btnExportPdf">Export PDF</span>
+          </button>
+
+          <!-- Save Data to History Button -->
+          <button id="btn-save-history" class="w-full sm:w-auto px-3 py-1.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-2xs transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95">
+            <i data-lucide="save" class="w-3.5 h-3.5 shrink-0"></i>
+            <span class="truncate" data-i18n="btnSaveHistory">Save Data</span>
+          </button>
+
+          <!-- Clear Table Button -->
+          <button id="btn-clear-task2" class="w-full sm:w-auto px-2 py-1.5 text-xs font-medium text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 rounded-xl transition-all border border-rose-200 flex items-center justify-center gap-1 cursor-pointer active:scale-95" title="Clear Table">
+            <i data-lucide="trash-2" class="w-3.5 h-3.5 shrink-0"></i>
+            <span class="truncate" data-i18n="btnClearAll">Clear</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Task 2 Summary Statistics: Mobile responsive grid with full-width Avg Price -->
+      <div class="grid grid-cols-2 md:grid-cols-5 gap-2 sm:gap-3 my-3.5 sm:my-5">
+        
+        <!-- 1. Initial Price -->
+        <div class="bg-slate-50/80 p-2 sm:p-3 rounded-xl border border-slate-200 text-center">
+          <span class="text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider text-slate-500 block truncate" data-i18n="firstPriceLabel">Initial Price</span>
+          <strong id="statFirstPrice" class="text-xs sm:text-sm font-bold text-slate-800 font-mono mt-0.5 sm:mt-1 block">--</strong>
+        </div>
+
+        <!-- 2. Latest Price -->
+        <div class="bg-slate-50/80 p-2 sm:p-3 rounded-xl border border-slate-200 text-center">
+          <span class="text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider text-slate-500 block truncate" data-i18n="latestPriceLabel">Latest Price</span>
+          <strong id="statLatestPrice" class="text-xs sm:text-sm font-bold text-slate-800 font-mono mt-0.5 sm:mt-1 block">--</strong>
+        </div>
+
+        <!-- 3. CURRENT AVG PRICE (Centered & Highlighted, Full width on Mobile) -->
+        <div class="col-span-2 md:col-span-1 bg-gradient-to-b from-indigo-50 to-indigo-100/50 p-2.5 sm:p-3.5 rounded-xl border-2 border-indigo-400/60 shadow-2xs text-center flex flex-col justify-center items-center order-first md:order-none">
+          <span class="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-indigo-900 block" data-i18n="avgPriceLabel">Current Avg Price</span>
+          <div class="flex items-baseline justify-center gap-1 mt-0.5 sm:mt-1">
+            <strong id="statAvgPrice" class="text-base sm:text-lg font-black text-indigo-700 font-mono">--</strong>
+          </div>
+        </div>
+
+        <!-- 4. Period Change -->
+        <div class="bg-slate-50/80 p-2 sm:p-3 rounded-xl border border-slate-200 text-center">
+          <span class="text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider text-slate-500 block truncate" data-i18n="totalChangeLabel">Period Change</span>
+          <strong id="statTotalChange" class="text-xs sm:text-sm font-bold text-slate-800 font-mono mt-0.5 sm:mt-1 block">--</strong>
+        </div>
+
+        <!-- 5. Active Sessions -->
+        <div class="bg-slate-50/80 p-2 sm:p-3 rounded-xl border border-slate-200 text-center">
+          <span class="text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider text-slate-500 block truncate" data-i18n="activeSessionsLabel">Active Sessions</span>
+          <strong id="statActiveSessions" class="text-xs sm:text-sm font-bold text-slate-800 font-mono mt-0.5 sm:mt-1 block">0 / 20</strong>
+        </div>
+
+      </div>
+
+      <!-- Task 2 Table Container: Smooth horizontal touch scroll on mobile -->
+      <div class="overflow-x-auto touch-scroll rounded-xl border border-slate-200 -mx-1 sm:mx-0">
+        <table class="w-full text-left text-xs text-slate-700 min-w-[560px] sm:min-w-full">
+          <thead class="bg-slate-100/80 text-[10px] sm:text-[11px] font-semibold text-slate-600 uppercase tracking-wider border-b border-slate-200">
+            <tr>
+              <th scope="col" class="py-2.5 sm:py-3 px-3 sm:px-4 w-14 sm:w-16" data-i18n="thSession">Session</th>
+              <th scope="col" class="py-2.5 sm:py-3 px-3 sm:px-4 w-28 sm:w-32" data-i18n="thDate">Date</th>
+              <th scope="col" class="py-2.5 sm:py-3 px-3 sm:px-4 w-24 sm:w-28" data-i18n="thWeekday">Day</th>
+              <th scope="col" class="py-2.5 sm:py-3 px-3 sm:px-4 min-w-[130px] sm:min-w-[150px]" data-i18n="thPrice">Closing Price ($)</th>
+              <th scope="col" class="py-2.5 sm:py-3 px-3 sm:px-4 min-w-[120px] sm:min-w-[130px]" data-i18n="thChange">Change (%)</th>
+              <th scope="col" class="py-2.5 sm:py-3 px-3 sm:px-4 text-right w-16 sm:w-20" data-i18n="thAction">Action</th>
+            </tr>
+          </thead>
+          <tbody id="task2-table-body" class="divide-y divide-slate-100"></tbody>
+        </table>
+      </div>
+
+    </div>
+
+    <!-- CALCULATION HISTORY PANEL -->
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-2xs p-3.5 sm:p-6 transition-all duration-300">
+      <div class="flex items-center justify-between pb-3 sm:pb-4 border-b border-slate-100 gap-2">
+        <div class="min-w-0">
+          <h2 class="text-sm sm:text-lg font-bold text-slate-900 flex items-center gap-2">
+            <i data-lucide="history" class="w-4 h-4 sm:w-5 sm:h-5 text-indigo-600 shrink-0"></i>
+            <span class="truncate" data-i18n="historyTitle">Calculation History</span>
+          </h2>
+          <p class="text-[10px] sm:text-xs text-slate-500 mt-0.5 truncate" data-i18n="historySubtitle">Archived stock price cycles sorted chronologically (newest first)</p>
+        </div>
+        <div class="flex items-center gap-1.5 shrink-0">
+          <span id="history-source-badge" class="hidden sm:inline-flex px-2 py-0.5 text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-md">
+            Official
+          </span>
+          <span id="history-count-badge" class="px-2 sm:px-2.5 py-0.5 sm:py-1 text-[11px] sm:text-xs font-semibold bg-slate-100 text-slate-700 rounded-full border border-slate-200">
+            0 records
+          </span>
+        </div>
+      </div>
+
+      <!-- History Records Container -->
+      <div id="history-container" class="mt-3 sm:mt-4 space-y-2.5 sm:space-y-3">
+        <div id="history-empty" class="text-center py-6 sm:py-8 text-slate-400 text-xs">
+          <i data-lucide="inbox" class="w-7 h-7 sm:w-8 sm:h-8 mx-auto mb-2 text-slate-300"></i>
+          <span data-i18n="historyEmpty">No saved cycles yet. Click "Save Data" in Task 2 to archive a completed cycle.</span>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="max-w-5xl mx-auto px-4 mt-8 sm:mt-12 mb-4 text-center">
+    <div class="pt-4 sm:pt-6 border-t border-slate-200/80 flex flex-col sm:flex-row items-center justify-between gap-1.5 sm:gap-2 text-xs text-slate-500">
+      <div class="flex items-center gap-1.5 font-medium text-slate-600">
+        <span class="text-slate-400 font-sans">&copy;</span>
+        <span class="font-semibold text-slate-800">NamVo</span>
+        <span class="text-slate-300">•</span>
+        <span class="text-slate-400">All rights reserved</span>
+      </div>
+      <div class="text-[10px] sm:text-[11px] text-slate-400">
+        <span>Nav Record Stock • US Stock Market 20-Day Trading Cycle (NYSE / NASDAQ)</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Duplicate Quarter Warning Modal Popup -->
+  <div id="duplicate-modal" class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs hidden transition-all duration-300">
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-xl max-w-sm sm:max-w-md w-full p-4 sm:p-6 space-y-3.5 sm:space-y-4 transform scale-95 transition-all">
+      <div class="flex items-start gap-3">
+        <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center shrink-0">
+          <i data-lucide="alert-triangle" class="w-5 h-5"></i>
+        </div>
+        <div class="space-y-1 min-w-0">
+          <h3 id="modal-warning-title" class="text-sm sm:text-base font-bold text-slate-900 leading-tight" data-i18n="modalDuplicateTitle">
+            Quarter Data Already Exists!
+          </h3>
+          <p id="modal-warning-desc" class="text-xs text-slate-600 leading-relaxed"></p>
+        </div>
+      </div>
+
+      <div class="bg-amber-50/70 border border-amber-200/80 rounded-xl p-3 text-xs text-amber-800 space-y-1">
+        <div class="flex items-center justify-between font-mono font-bold">
+          <span id="modal-existing-quarter">--</span>
+          <span id="modal-existing-range">--</span>
+        </div>
+        <div class="flex items-center justify-between text-[11px] text-amber-900/80">
+          <span data-i18n="modalAvgRecorded">Saved Average Price:</span>
+          <strong id="modal-existing-avg" class="font-mono text-amber-900">--</strong>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="flex items-center justify-end gap-2 pt-1 sm:pt-2">
+        <button id="btn-modal-close" class="flex-1 sm:flex-none px-3.5 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all cursor-pointer active:scale-95" data-i18n="btnModalClose">
+          Close
+        </button>
+        <button id="btn-modal-view-existing" class="flex-1 sm:flex-none px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 rounded-xl shadow-2xs transition-all cursor-pointer flex items-center justify-center gap-1.5 active:scale-95" data-i18n="btnModalViewHistory">
+          <i data-lucide="eye" class="w-3.5 h-3.5"></i>
+          <span data-i18n="btnModalViewHistory">View Archived Data</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notification Toast -->
+  <div id="toast" class="fixed bottom-4 inset-x-4 sm:inset-x-auto sm:right-5 sm:bottom-5 z-50 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none">
+    <div class="bg-slate-900/95 text-white text-xs font-medium px-4 py-2.5 rounded-xl shadow-lg flex items-center justify-center sm:justify-start gap-2 border border-slate-700/50 backdrop-blur-md">
+      <i data-lucide="info" class="w-4 h-4 text-indigo-400 shrink-0"></i>
+      <span id="toast-message" class="truncate">Notification</span>
+    </div>
+  </div>
+
+  <script>
+    // -------------------------------------------------------------
+    // Global Static Seed (Fallback if history_data.json is not served via http)
+    // -------------------------------------------------------------
+    window.STATIC_EMBEDDED_HISTORY = [];
+
+    // Core State
+    let currentLang = 'en';
+    let task1Result = null;
+    let task2Sessions = [];
+    let isTask1Collapsed = true;
+    let isTask2Finalized = false;
+    let userLocalHistory = [];
+    let staticJsonHistory = [];
+    let mergedHistory = [];
+    let openHistoryDetailId = null;
+    let pendingExistingRecord = null;
+
+    // DOM Elements
+    const targetDateInput = document.getElementById('target-date-input');
+    const quarterBtns = document.querySelectorAll('.btn-quarter');
+    const btnToday = document.getElementById('btn-today');
+    const btnResetDefault = document.getElementById('btn-reset-default');
+    const btnToggleTask1 = document.getElementById('btn-toggle-task1');
+    const toggleIconContainer = document.getElementById('toggleIconContainer');
+    const task1CollapsibleBody = document.getElementById('task1-collapsible-body');
+    const btnApplyCycle = document.getElementById('btn-apply-cycle');
+
+    const task2Panel = document.getElementById('task2-panel');
+    const task2Title = document.getElementById('task2-title');
+    const finalizedBadge = document.getElementById('finalized-badge');
+    const btnFinalizeCycle = document.getElementById('btn-finalize-cycle');
+    const txtFinalizeBtn = document.getElementById('txt-finalize-btn');
+    const btnExportPdfTask2 = document.getElementById('btn-export-pdf-task2');
+    const btnSaveHistory = document.getElementById('btn-save-history');
+    const btnClearTask2 = document.getElementById('btn-clear-task2');
+    const task2TableBody = document.getElementById('task2-table-body');
+
+    const statFirstPrice = document.getElementById('statFirstPrice');
+    const statLatestPrice = document.getElementById('statLatestPrice');
+    const statAvgPrice = document.getElementById('statAvgPrice');
+    const statTotalChange = document.getElementById('statTotalChange');
+    const statActiveSessions = document.getElementById('statActiveSessions');
+
+    const historyContainer = document.getElementById('history-container');
+    const historyCountBadge = document.getElementById('history-count-badge');
+    const historySourceBadge = document.getElementById('history-source-badge');
+
+    const duplicateModal = document.getElementById('duplicate-modal');
+    const modalWarningTitle = document.getElementById('modal-warning-title');
+    const modalWarningDesc = document.getElementById('modal-warning-desc');
+    const modalExistingQuarter = document.getElementById('modal-existing-quarter');
+    const modalExistingRange = document.getElementById('modal-existing-range');
+    const modalExistingAvg = document.getElementById('modal-existing-avg');
+    const btnModalClose = document.getElementById('btn-modal-close');
+    const btnModalViewExisting = document.getElementById('btn-modal-view-existing');
+
+    const toast = document.getElementById('toast');
+    const toastMessage = document.getElementById('toast-message');
+
+    // Multilingual Translations
+    const translations = {
+      en: {
+        appSubtitle: "US Stock Market 20-Day Trading Cycle (NYSE / NASDAQ)",
+        targetDateSub: "Default: 15th day of the mid-quarter month",
+        btnToday: "Today",
+        selectedTarget: "Selected Date:",
+        cycleDistributionTitle: "Cycle Days Distribution",
+        startDateLabel: "Start Date",
+        endDateLabel: "End Date",
+        statTradingDays: "Trading Days",
+        statWeekendDays: "Weekend Days",
+        statHolidays: "Holidays",
+        skippedHolidaysTitle: "US Market Holidays Skipped:",
+        btnApplyCycle: "Apply Cycle",
+        task2Subtitle: "Daily price input and automatic percentage change tracking",
+        btnFinalizeCycle: "Finalize Cycle",
+        btnUnfinalizeCycle: "Unlock Cycle",
+        badgeFinalized: "Finalized",
+        btnExportPdf: "Export PDF",
+        btnSaveHistory: "Save Data",
+        btnClearAll: "Clear",
+        firstPriceLabel: "Initial Price",
+        latestPriceLabel: "Latest Price",
+        avgPriceLabel: "Current Avg Price",
+        totalChangeLabel: "Period Change",
+        activeSessionsLabel: "Active Sessions",
+        thSession: "Session",
+        thDate: "Date",
+        thWeekday: "Day",
+        thPrice: "Closing Price ($)",
+        thChange: "Change (%)",
+        thAction: "Action",
+        historyTitle: "Calculation History",
+        historySubtitle: "Archived stock price cycles sorted chronologically (newest first)",
+        historyEmpty: "No saved cycles yet. Click \"Save Data\" in Task 2 to archive a completed cycle.",
+        modalDuplicateTitle: "Quarter Data Already Exists!",
+        modalDuplicateDesc: "Data for {quarterYear} has already been saved to History. Creation of duplicate records is disabled. You can inspect the archived records or select a different date.",
+        modalAvgRecorded: "Saved Average Price:",
+        btnModalClose: "Close",
+        btnModalViewHistory: "View Archived Data",
+        pdfExporting: "Preparing document for PDF export / print...",
+        cycleConfirmed: "Cycle confirmed! 20 trading sessions loaded into Task 2.",
+        cycleFinalizedMsg: "Cycle has been finalized and locked.",
+        cycleUnlockedMsg: "Cycle unlocked for editing.",
+        cycleSavedMsg: "Cycle data successfully saved to History!",
+        cycleUpdatedInHistoryMsg: "Existing history record updated successfully!",
+        badgeStatic: "Official"
+      },
+      vi: {
+        appSubtitle: "Chu kỳ 20 phiên giao dịch chứng khoán Mỹ (NYSE / NASDAQ)",
+        targetDateSub: "Mặc định: Ngày 15 của tháng giữa quý",
+        btnToday: "Hôm nay",
+        selectedTarget: "Ngày đã chọn:",
+        cycleDistributionTitle: "Phân bổ số ngày trong chu kỳ",
+        startDateLabel: "Ngày bắt đầu",
+        endDateLabel: "Ngày kết thúc",
+        statTradingDays: "Số ngày GD",
+        statWeekendDays: "Ngày cuối tuần",
+        statHolidays: "Ngày nghỉ lễ",
+        skippedHolidaysTitle: "Các ngày nghỉ lễ sàn Mỹ đã bỏ qua:",
+        btnApplyCycle: "Áp dụng chu kỳ",
+        task2Subtitle: "Nhập giá đóng cửa mỗi ngày và tự động tính phần trăm biến động",
+        btnFinalizeCycle: "Chốt chu kỳ",
+        btnUnfinalizeCycle: "Mở khóa chu kỳ",
+        badgeFinalized: "Đã chốt",
+        btnExportPdf: "Xuất PDF",
+        btnSaveHistory: "Lưu dữ liệu",
+        btnClearAll: "Xóa toàn bộ",
+        firstPriceLabel: "Giá đầu kỳ",
+        latestPriceLabel: "Giá gần nhất",
+        avgPriceLabel: "Giá trung bình hiện tại",
+        totalChangeLabel: "Tổng biến động",
+        activeSessionsLabel: "Phiên có giá",
+        thSession: "Phiên",
+        thDate: "Ngày",
+        thWeekday: "Thứ",
+        thPrice: "Giá đóng cửa ($)",
+        thChange: "Biến động (%)",
+        thAction: "Thao tác",
+        historyTitle: "Lịch sử tính giá cổ phiếu",
+        historySubtitle: "Danh sách các chu kỳ đã lưu (sắp xếp từ mới nhất đến cũ nhất)",
+        historyEmpty: "Chưa có chu kỳ nào được lưu. Bấm \"Lưu dữ liệu\" ở Task 2 để lưu trữ vào đây.",
+        modalDuplicateTitle: "Dữ liệu quý đã tồn tại!",
+        modalDuplicateDesc: "Dữ liệu của {quarterYear} đã được lưu trữ trong Lịch sử. Hệ thống không cho phép tạo trùng lặp. Vui lòng xem lại dữ liệu cũ hoặc chọn mốc thời gian khác.",
+        modalAvgRecorded: "Giá trung bình đã lưu:",
+        btnModalClose: "Đóng",
+        btnModalViewHistory: "Xem dữ liệu lịch sử",
+        pdfExporting: "Đang mở tài liệu để in / lưu PDF...",
+        cycleConfirmed: "Đã áp dụng chu kỳ! 20 phiên giao dịch đã được nạp vào Task 2.",
+        cycleFinalizedMsg: "Đã chốt chu kỳ tính giá! Tất cả ô nhập đã được khóa.",
+        cycleUnlockedMsg: "Đã mở khóa chu kỳ để chỉnh sửa.",
+        cycleSavedMsg: "Đã lưu dữ liệu chu kỳ vào mục Lịch sử!",
+        cycleUpdatedInHistoryMsg: "Đã cập nhật dữ liệu của chu kỳ trong Lịch sử!",
+        badgeStatic: "Chính thức"
+      }
+    };
+
+    const weekdaysMap = {
+      en: ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+      vi: ["Chủ Nhật", "Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy"]
+    };
+
+    function setElText(el, text) { if (el) el.textContent = text; }
+    function parseISODate(isoStr) {
+      const parts = isoStr.split('-');
+      return new Date(Date.UTC(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10)));
+    }
+    function formatDateKey(d) {
+      const y = d.getUTCFullYear();
+      const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+      const day = String(d.getUTCDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    }
+    function getQuarterFromDate(d) { return Math.floor(d.getUTCMonth() / 3) + 1; }
+    function getQuarterMidDate(year, quarter) {
+      const midMonthIndex = (quarter - 1) * 3 + 1;
+      return new Date(Date.UTC(year, midMonthIndex, 15));
+    }
+    function showToast(msg) {
+      if (!toast || !toastMessage) return;
+      toastMessage.textContent = msg;
+      toast.classList.remove('opacity-0', 'translate-y-20');
+      setTimeout(() => { toast.classList.add('opacity-0', 'translate-y-20'); }, 3000);
+    }
+
+    // -------------------------------------------------------------
+    // US Market Holidays (NYSE / NASDAQ)
+    // -------------------------------------------------------------
+    function getNthDayOfWeek(year, monthIndex, targetDayOfWeek, n) {
+      let count = 0;
+      for (let day = 1; day <= 31; day++) {
+        const d = new Date(Date.UTC(year, monthIndex, day));
+        if (d.getUTCMonth() !== monthIndex) break;
+        if (d.getUTCDay() === targetDayOfWeek) {
+          count++;
+          if (count === n) return d;
+        }
+      }
+      return null;
+    }
+    function getLastDayOfWeek(year, monthIndex, targetDayOfWeek) {
+      let last = null;
+      for (let day = 1; day <= 31; day++) {
+        const d = new Date(Date.UTC(year, monthIndex, day));
+        if (d.getUTCMonth() !== monthIndex) break;
+        if (d.getUTCDay() === targetDayOfWeek) last = d;
+      }
+      return last;
+    }
+    function getEasterSunday(year) {
+      const a = year % 19, b = Math.floor(year / 100), c = year % 100;
+      const d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25);
+      const g = Math.floor((b - f + 1) / 3), h = (19 * a + b - d - g + 15) % 30;
+      const i = Math.floor(c / 4), k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7;
+      const m = Math.floor((a + 11 * h + 22 * l) / 451);
+      const month = Math.floor((h + l - 7 * m + 114) / 31) - 1;
+      const day = ((h + l - 7 * m + 114) % 31) + 1;
+      return new Date(Date.UTC(year, month, day));
+    }
+    function getGoodFriday(year) {
+      const easter = getEasterSunday(year);
+      const gf = new Date(easter.getTime());
+      gf.setUTCDate(gf.getUTCDate() - 2);
+      return gf;
+    }
+    function adjustObservedHoliday(d) {
+      const dow = d.getUTCDay();
+      if (dow === 6) {
+        const res = new Date(d.getTime());
+        res.setUTCDate(res.getUTCDate() - 1);
+        return res;
+      }
+      if (dow === 0) {
+        const res = new Date(d.getTime());
+        res.setUTCDate(res.getUTCDate() + 1);
+        return res;
+      }
+      return d;
+    }
+    function getUSHolidaysForYear(year) {
+      const holidays = {};
+      function add(d, nameEn, nameVi) {
+        if (!d) return;
+        holidays[formatDateKey(d)] = { en: nameEn, vi: nameVi };
+      }
+      add(adjustObservedHoliday(new Date(Date.UTC(year, 0, 1))), "New Year's Day", "Tết Dương lịch");
+      add(getNthDayOfWeek(year, 0, 1, 3), "Martin Luther King Jr. Day", "Ngày Martin Luther King Jr.");
+      add(getNthDayOfWeek(year, 1, 1, 3), "Presidents' Day", "Ngày Tổng thống Mỹ");
+      add(getGoodFriday(year), "Good Friday", "Thứ Sáu Tuần Thánh");
+      add(getLastDayOfWeek(year, 4, 1), "Memorial Day", "Ngày Tưởng niệm Chiến sĩ trận vong");
+      add(adjustObservedHoliday(new Date(Date.UTC(year, 5, 19))), "Juneteenth", "Ngày Giải phóng Nô lệ (Juneteenth)");
+      add(adjustObservedHoliday(new Date(Date.UTC(year, 6, 4))), "Independence Day", "Ngày Quốc khánh Mỹ (4/7)");
+      add(getNthDayOfWeek(year, 8, 1, 1), "Labor Day", "Ngày Quốc tế Lao động Mỹ");
+      add(getNthDayOfWeek(year, 10, 1, 4), "Thanksgiving Day", "Lễ Tạ ơn");
+      add(adjustObservedHoliday(new Date(Date.UTC(year, 11, 25))), "Christmas Day", "Lễ Giáng sinh");
+      return holidays;
+    }
+    function isUSMarketHoliday(d) {
+      const holidays = getUSHolidaysForYear(d.getUTCFullYear());
+      return holidays[formatDateKey(d)] || null;
+    }
+    function isTradingDay(d) {
+      const dow = d.getUTCDay();
+      if (dow === 0 || dow === 6) return false;
+      if (isUSMarketHoliday(d)) return false;
+      return true;
+    }
+    function getNextTradingDay(d) {
+      const cur = new Date(d.getTime());
+      while (!isTradingDay(cur)) cur.setUTCDate(cur.getUTCDate() + 1);
+      return cur;
+    }
+
+    function calculateTask1(initialTargetDate) {
+      const validEndTradingDay = getNextTradingDay(initialTargetDate);
+      const tradingSessions = [];
+      const skippedHolidays = [];
+      let weekendDaysCount = 0;
+      let holidaysCount = 0;
+
+      const cursor = new Date(validEndTradingDay.getTime());
+      while (tradingSessions.length < 20) {
+        const dow = cursor.getUTCDay();
+        if (dow === 0 || dow === 6) {
+          weekendDaysCount++;
+        } else {
+          const hol = isUSMarketHoliday(cursor);
+          if (hol) {
+            holidaysCount++;
+            skippedHolidays.push({ date: new Date(cursor.getTime()), name: hol });
+          } else {
+            tradingSessions.unshift(new Date(cursor.getTime()));
+          }
+        }
+        cursor.setUTCDate(cursor.getUTCDate() - 1);
+      }
+
+      const startDate = tradingSessions[0];
+      const endDate = tradingSessions[tradingSessions.length - 1];
+      const year = endDate.getUTCFullYear();
+      const quarter = getQuarterFromDate(endDate);
+
+      return {
+        targetDate: initialTargetDate,
+        validEndTradingDay,
+        startDate,
+        endDate,
+        year,
+        quarter,
+        tradingSessions,
+        weekendDaysCount,
+        holidaysCount,
+        skippedHolidays
+      };
+    }
+
+    function renderTask1UI() {
+      if (!task1Result) return;
+      const r = task1Result;
+      const quarterTitle = document.getElementById('cycle-quarter-title');
+      if (quarterTitle) {
+        quarterTitle.textContent = currentLang === 'vi' 
+          ? `Chu kỳ giá cổ phiếu: Quý ${r.quarter} - ${r.year}`
+          : `Stock Price Cycle: Q${r.quarter} - ${r.year}`;
+      }
+
+      quarterBtns.forEach(btn => {
+        const q = parseInt(btn.getAttribute('data-quarter'), 10);
+        btn.className = (q === r.quarter)
+          ? "btn-quarter text-center py-1.5 sm:py-1 sm:px-3 rounded-lg transition-colors bg-white text-indigo-600 shadow-2xs font-bold active:scale-95"
+          : "btn-quarter text-center py-1.5 sm:py-1 sm:px-3 rounded-lg transition-colors text-slate-600 hover:text-slate-900 active:scale-95";
+      });
+
+      setElText(document.getElementById('dispTargetWeekday'), weekdaysMap[currentLang][r.targetDate.getUTCDay()]);
+      setElText(document.getElementById('dispTargetDate'), formatDateKey(r.targetDate));
+
+      const statusBadgeContainer = document.getElementById('targetStatusBadgeContainer');
+      if (statusBadgeContainer) {
+        const isOriginalDayTrading = isTradingDay(r.targetDate);
+        statusBadgeContainer.innerHTML = isOriginalDayTrading
+          ? `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200"><i data-lucide="check-circle" class="w-3 h-3"></i><span>${currentLang === 'vi' ? 'Phiên giao dịch hợp lệ' : 'Active Trading Day'}</span></span>`
+          : `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200"><i data-lucide="arrow-right" class="w-3 h-3"></i><span>${currentLang === 'vi' ? 'Chuyển sang:' : 'Rolled to:'} ${formatDateKey(r.validEndTradingDay)}</span></span>`;
+      }
+
+      setElText(document.getElementById('dispStartDate'), formatDateKey(r.startDate));
+      setElText(document.getElementById('dispStartWeekday'), weekdaysMap[currentLang][r.startDate.getUTCDay()]);
+      setElText(document.getElementById('dispEndDate'), formatDateKey(r.endDate));
+      setElText(document.getElementById('dispEndWeekday'), weekdaysMap[currentLang][r.endDate.getUTCDay()]);
+      setElText(document.getElementById('dispWeekendCount'), r.weekendDaysCount);
+      setElText(document.getElementById('dispHolidayCount'), r.holidaysCount);
+
+      const skippedContainer = document.getElementById('skippedHolidaysContainer');
+      const skippedList = document.getElementById('skippedHolidaysList');
+      if (skippedContainer && skippedList) {
+        if (r.skippedHolidays.length > 0) {
+          skippedContainer.classList.remove('hidden');
+          skippedList.innerHTML = r.skippedHolidays.map(h => `<li>${formatDateKey(h.date)}: ${h.name[currentLang] || h.name.en}</li>`).join('');
+        } else {
+          skippedContainer.classList.add('hidden');
+        }
+      }
+      lucide.createIcons();
+    }
+
+    function updateToggleTask1ButtonUI() {
+      if (!task1CollapsibleBody || !toggleIconContainer) return;
+      if (isTask1Collapsed) {
+        task1CollapsibleBody.classList.add('hidden');
+        toggleIconContainer.innerHTML = `<i data-lucide="chevron-down" class="w-4 h-4"></i>`;
+      } else {
+        task1CollapsibleBody.classList.remove('hidden');
+        toggleIconContainer.innerHTML = `<i data-lucide="chevron-up" class="w-4 h-4"></i>`;
+      }
+      lucide.createIcons();
+    }
+
+    function updateTask2Title(quarter, startStr, endStr) {
+      if (!task2Title) return;
+      const startSlash = startStr.replace(/-/g, '/');
+      const endSlash = endStr.replace(/-/g, '/');
+      task2Title.textContent = currentLang === 'vi'
+        ? `Dữ liệu quý ${quarter} (${startSlash} - ${endSlash})`
+        : `Quarter ${quarter} Data (${startSlash} - ${endSlash})`;
+    }
+
+    function calculateTask2Stats() {
+      if (!task2Sessions || task2Sessions.length === 0) return { avg: null, first: null, latest: null, changePct: null, activeCount: 0 };
+      const valid = task2Sessions.filter(s => s.price !== null && !isNaN(s.price));
+
+      if (statActiveSessions) {
+        statActiveSessions.textContent = `${valid.length} / ${task2Sessions.length}`;
+      }
+
+      if (valid.length > 0) {
+        const first = valid[0].price;
+        const latest = valid[valid.length - 1].price;
+        const sum = valid.reduce((acc, curr) => acc + curr.price, 0);
+        const avg = sum / valid.length;
+        const changePct = first !== 0 ? ((latest - first) / first) * 100 : 0;
+
+        setElText(statFirstPrice, `$${first.toFixed(2)}`);
+        setElText(statLatestPrice, `$${latest.toFixed(2)}`);
+        setElText(statAvgPrice, `$${avg.toFixed(2)}`);
+
+        if (statTotalChange) {
+          const prefix = changePct > 0 ? '+' : '';
+          statTotalChange.textContent = `${prefix}${changePct.toFixed(2)}%`;
+          statTotalChange.className = changePct > 0 
+            ? "text-xs sm:text-sm font-bold font-mono mt-0.5 sm:mt-1 block text-emerald-600" 
+            : (changePct < 0 ? "text-xs sm:text-sm font-bold font-mono mt-0.5 sm:mt-1 block text-rose-600" : "text-xs sm:text-sm font-bold font-mono mt-0.5 sm:mt-1 block text-slate-800");
+        }
+
+        return { avg, first, latest, changePct, activeCount: valid.length };
+      } else {
+        setElText(statFirstPrice, '--');
+        setElText(statLatestPrice, '--');
+        setElText(statAvgPrice, '--');
+        setElText(statTotalChange, '--');
+        if (statTotalChange) statTotalChange.className = "text-xs sm:text-sm font-bold font-mono mt-0.5 sm:mt-1 block text-slate-800";
+        return { avg: null, first: null, latest: null, changePct: null, activeCount: 0 };
+      }
+    }
+
+    function updateRowPercentageChanges() {
+      let lastPrice = null;
+      task2Sessions.forEach((session, idx) => {
+        const badgeEl = document.getElementById(`badge-change-${idx}`);
+        if (!badgeEl) return;
+
+        if (session.price !== null && !isNaN(session.price)) {
+          if (lastPrice !== null && lastPrice !== 0) {
+            const diff = session.price - lastPrice;
+            const pct = (diff / lastPrice) * 100;
+            if (diff > 0) {
+              badgeEl.innerHTML = `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200"><i data-lucide="trending-up" class="w-3 h-3"></i><span>+${pct.toFixed(2)}%</span></span>`;
+            } else if (diff < 0) {
+              badgeEl.innerHTML = `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200"><i data-lucide="trending-down" class="w-3 h-3"></i><span>${pct.toFixed(2)}%</span></span>`;
+            } else {
+              badgeEl.innerHTML = `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200"><i data-lucide="minus" class="w-3 h-3"></i></span>`;
+            }
+          } else {
+            badgeEl.innerHTML = `<span class="text-slate-400 font-mono text-xs">-</span>`;
+          }
+          lastPrice = session.price;
+        } else {
+          badgeEl.innerHTML = `<span class="text-slate-400 font-mono text-xs">--</span>`;
+        }
+      });
+      lucide.createIcons();
+    }
+
+    function updateFinalizedUI() {
+      if (!finalizedBadge || !txtFinalizeBtn) return;
+      if (isTask2Finalized) {
+        finalizedBadge.classList.remove('hidden');
+        txtFinalizeBtn.textContent = translations[currentLang].btnUnfinalizeCycle;
+      } else {
+        finalizedBadge.classList.add('hidden');
+        txtFinalizeBtn.textContent = translations[currentLang].btnFinalizeCycle;
+      }
+    }
+
+    function renderTask2Table() {
+      if (!task2TableBody) return;
+      task2TableBody.innerHTML = '';
+
+      let lastValidPrice = null;
+      task2Sessions.forEach((s, idx) => {
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-slate-50/80 transition-colors";
+
+        const d = s.date;
+        const dateKey = formatDateKey(d);
+        const weekdayStr = weekdaysMap[currentLang][d.getUTCDay()];
+        const isLocked = isTask2Finalized || s.locked;
+        const displayVal = (s.price !== null && !isNaN(s.price)) ? s.price : '';
+
+        let changeBadgeHtml = `<span class="text-slate-400 font-mono text-xs">--</span>`;
+        if (s.price !== null && !isNaN(s.price)) {
+          if (lastValidPrice !== null && lastValidPrice !== 0) {
+            const diff = s.price - lastValidPrice;
+            const pct = (diff / lastValidPrice) * 100;
+            if (diff > 0) {
+              changeBadgeHtml = `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200"><i data-lucide="trending-up" class="w-3 h-3"></i><span>+${pct.toFixed(2)}%</span></span>`;
+            } else if (diff < 0) {
+              changeBadgeHtml = `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200"><i data-lucide="trending-down" class="w-3 h-3"></i><span>${pct.toFixed(2)}%</span></span>`;
+            } else {
+              changeBadgeHtml = `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200"><i data-lucide="minus" class="w-3 h-3"></i></span>`;
+            }
+          } else {
+            changeBadgeHtml = `<span class="text-slate-400 font-mono text-xs">-</span>`;
+          }
+          lastValidPrice = s.price;
+        }
+
+        const sessionNumStr = s.sessionNumber < 10 ? '0' + s.sessionNumber : s.sessionNumber;
+
+        tr.innerHTML = `
+          <td class="py-2.5 px-3 sm:px-4 font-mono font-semibold text-slate-500">${sessionNumStr}</td>
+          <td class="py-2.5 px-3 sm:px-4 font-mono text-slate-800">${dateKey}</td>
+          <td class="py-2.5 px-3 sm:px-4 text-slate-600">${weekdayStr}</td>
+          <td class="py-2.5 px-3 sm:px-4">
+            <div class="relative max-w-[130px] sm:max-w-[140px]">
+              <span class="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-slate-400 font-semibold">$</span>
+              <input 
+                type="number" 
+                inputmode="decimal"
+                step="0.01" 
+                min="0"
+                id="input-price-${idx}"
+                value="${displayVal}"
+                ${isLocked ? 'readonly' : ''}
+                placeholder="0.00"
+                class="mobile-input-safe session-price-input w-full pl-6 pr-2 py-1.5 text-xs font-mono font-semibold text-slate-800 rounded-lg border transition-all ${
+                  isLocked 
+                    ? 'bg-slate-100/80 border-slate-200 text-slate-500 cursor-not-allowed select-none' 
+                    : 'bg-white border-slate-300 hover:border-indigo-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-100'
+                }"
+              />
+            </div>
+          </td>
+          <td class="py-2.5 px-3 sm:px-4" id="badge-change-${idx}">
+            ${changeBadgeHtml}
+          </td>
+          <td class="py-2.5 px-3 sm:px-4 text-right">
+            <button 
+              id="btn-lock-row-${idx}"
+              ${isTask2Finalized ? 'disabled' : ''}
+              class="w-8 h-8 flex items-center justify-center ml-auto rounded-lg transition-all cursor-pointer active:scale-95 ${
+                isTask2Finalized 
+                  ? 'text-slate-300 cursor-not-allowed' 
+                  : (s.locked ? 'text-amber-600 hover:bg-amber-50' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100')
+              }"
+              title="${s.locked ? 'Unlock' : 'Lock'}"
+            >
+              <i data-lucide="${s.locked ? 'lock' : 'unlock'}" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i>
+            </button>
+          </td>
+        `;
+
+        task2TableBody.appendChild(tr);
+
+        const inputEl = tr.querySelector(`#input-price-${idx}`);
+        if (inputEl) {
+          inputEl.addEventListener('input', (e) => {
+            const raw = e.target.value;
+            s.price = (raw !== '' && !isNaN(raw)) ? parseFloat(raw) : null;
+            calculateTask2Stats();
+            updateRowPercentageChanges();
+            saveStateToLocalStorage();
+          });
+
+          inputEl.addEventListener('blur', (e) => {
+            if (s.price !== null && !isNaN(s.price)) {
+              e.target.value = Number(s.price).toFixed(2);
+            }
+          });
+        }
+
+        const lockBtn = tr.querySelector(`#btn-lock-row-${idx}`);
+        if (lockBtn && !isTask2Finalized) {
+          lockBtn.addEventListener('click', () => {
+            s.locked = !s.locked;
+            if (inputEl) {
+              if (s.locked) {
+                inputEl.setAttribute('readonly', 'true');
+                inputEl.className = "mobile-input-safe session-price-input w-full pl-6 pr-2 py-1.5 text-xs font-mono font-semibold text-slate-800 rounded-lg border transition-all bg-slate-100/80 border-slate-200 text-slate-500 cursor-not-allowed select-none";
+                lockBtn.className = "w-8 h-8 flex items-center justify-center ml-auto rounded-lg transition-all cursor-pointer text-amber-600 hover:bg-amber-50 active:scale-95";
+                lockBtn.innerHTML = `<i data-lucide="lock" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i>`;
+              } else {
+                inputEl.removeAttribute('readonly');
+                inputEl.className = "mobile-input-safe session-price-input w-full pl-6 pr-2 py-1.5 text-xs font-mono font-semibold text-slate-800 rounded-lg border transition-all bg-white border-slate-300 hover:border-indigo-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-100";
+                lockBtn.className = "w-8 h-8 flex items-center justify-center ml-auto rounded-lg transition-all cursor-pointer text-slate-400 hover:text-slate-600 hover:bg-slate-100 active:scale-95";
+                lockBtn.innerHTML = `<i data-lucide="unlock" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i>`;
+              }
+              lucide.createIcons();
+            }
+            saveStateToLocalStorage();
+          });
+        }
+      });
+
+      lucide.createIcons();
+    }
+
+    // -------------------------------------------------------------
+    // History Merging & Rendering (Chronological: Newest First)
+    // -------------------------------------------------------------
+    function updateMergedHistory() {
+      const map = new Map();
+
+      // 1. Add static JSON records (marked as isStatic)
+      staticJsonHistory.forEach(r => {
+        map.set(r.id, { ...r, isStatic: true });
+      });
+
+      // 2. Add user local records (user edits override or append)
+      userLocalHistory.forEach(r => {
+        map.set(r.id, { ...r, isStatic: false });
+      });
+
+      mergedHistory = Array.from(map.values());
+
+      // 3. Sort chronologically from newest to oldest:
+      // Compare by year DESC, then quarter DESC, then endDate DESC
+      mergedHistory.sort((a, b) => {
+        if (b.year !== a.year) return b.year - a.year;
+        if (b.quarter !== a.quarter) return b.quarter - a.quarter;
+        return new Date(b.endDate) - new Date(a.endDate);
+      });
+    }
+
+    function renderHistoryList() {
+      if (!historyContainer || !historyCountBadge) return;
+      updateMergedHistory();
+
+      historyCountBadge.textContent = `${mergedHistory.length} records`;
+
+      if (historySourceBadge) {
+        if (staticJsonHistory.length > 0) {
+          historySourceBadge.classList.remove('hidden');
+          historySourceBadge.textContent = `${translations[currentLang].badgeStatic}: ${staticJsonHistory.length} Q`;
+        } else {
+          historySourceBadge.classList.add('hidden');
+        }
+      }
+
+      if (mergedHistory.length === 0) {
+        historyContainer.innerHTML = `
+          <div id="history-empty" class="text-center py-6 sm:py-8 text-slate-400 text-xs">
+            <i data-lucide="inbox" class="w-7 h-7 sm:w-8 sm:h-8 mx-auto mb-2 text-slate-300"></i>
+            <span>${translations[currentLang].historyEmpty}</span>
+          </div>
+        `;
+        lucide.createIcons();
+        return;
+      }
+
+      historyContainer.innerHTML = mergedHistory.map(rec => {
+        const isExpanded = openHistoryDetailId === rec.id;
+        const startSlash = rec.startDate.replace(/-/g, '/');
+        const endSlash = rec.endDate.replace(/-/g, '/');
+        const avgDisplay = (rec.avgPrice !== null && !isNaN(rec.avgPrice)) ? `$${Number(rec.avgPrice).toFixed(2)}` : '--';
+        const firstDisplay = (rec.firstPrice !== null && !isNaN(rec.firstPrice)) ? `$${Number(rec.firstPrice).toFixed(2)}` : '--';
+        const latestDisplay = (rec.latestPrice !== null && !isNaN(rec.latestPrice)) ? `$${Number(rec.latestPrice).toFixed(2)}` : '--';
+        const changeDisplay = (rec.totalChangePct !== null && !isNaN(rec.totalChangePct)) 
+          ? `${rec.totalChangePct > 0 ? '+' : ''}${Number(rec.totalChangePct).toFixed(2)}%`
+          : '--';
+        const changeClass = rec.totalChangePct > 0 ? 'text-emerald-600' : (rec.totalChangePct < 0 ? 'text-rose-600' : 'text-slate-800');
+
+        let detailSectionHtml = '';
+        if (isExpanded) {
+          let lastPrice = null;
+          const rows = (rec.sessions || []).map((s) => {
+            const d = parseISODate(s.dateIso);
+            const dateStr = formatDateKey(d);
+            const weekdayStr = weekdaysMap[currentLang][d.getUTCDay()];
+            let changeCell = `<span class="text-slate-400 font-mono text-xs">--</span>`;
+
+            if (s.price !== null && !isNaN(s.price)) {
+              if (lastPrice !== null && lastPrice !== 0) {
+                const diff = s.price - lastPrice;
+                const pct = (diff / lastPrice) * 100;
+                if (diff > 0) {
+                  changeCell = `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200"><i data-lucide="trending-up" class="w-3 h-3"></i><span>+${pct.toFixed(2)}%</span></span>`;
+                } else if (diff < 0) {
+                  changeCell = `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200"><i data-lucide="trending-down" class="w-3 h-3"></i><span>${pct.toFixed(2)}%</span></span>`;
+                } else {
+                  changeCell = `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200"><i data-lucide="minus" class="w-3 h-3"></i></span>`;
+                }
+              } else {
+                changeCell = `<span class="text-slate-400 font-mono text-xs">-</span>`;
+              }
+              lastPrice = s.price;
+            }
+
+            const priceDisplay = (s.price !== null && !isNaN(s.price)) ? `$${Number(s.price).toFixed(2)}` : '--';
+            const sessionNumStr = s.sessionNumber < 10 ? '0' + s.sessionNumber : s.sessionNumber;
+
+            return `
+              <tr class="hover:bg-slate-50/80 transition-colors">
+                <td class="py-2 px-3 font-mono font-semibold text-slate-500">${sessionNumStr}</td>
+                <td class="py-2 px-3 font-mono text-slate-800">${dateStr}</td>
+                <td class="py-2 px-3 text-slate-600">${weekdayStr}</td>
+                <td class="py-2 px-3 font-mono font-semibold text-slate-900">${priceDisplay}</td>
+                <td class="py-2 px-3">${changeCell}</td>
+              </tr>
+            `;
+          }).join('');
+
+          detailSectionHtml = `
+            <div class="mt-3.5 sm:mt-4 pt-3.5 sm:pt-4 border-t border-slate-200 space-y-3 sm:space-y-4">
+              <!-- Mirroring Task 2 Stats Bar -->
+              <div class="grid grid-cols-2 md:grid-cols-5 gap-2 sm:gap-2.5">
+                <div class="bg-white p-2 sm:p-2.5 rounded-xl border border-slate-200 text-center shadow-2xs">
+                  <span class="text-[9px] font-semibold uppercase tracking-wider text-slate-500 block truncate">${translations[currentLang].firstPriceLabel}</span>
+                  <strong class="text-xs font-bold text-slate-800 font-mono mt-0.5 block">${firstDisplay}</strong>
+                </div>
+                <div class="bg-white p-2 sm:p-2.5 rounded-xl border border-slate-200 text-center shadow-2xs">
+                  <span class="text-[9px] font-semibold uppercase tracking-wider text-slate-500 block truncate">${translations[currentLang].latestPriceLabel}</span>
+                  <strong class="text-xs font-bold text-slate-800 font-mono mt-0.5 block">${latestDisplay}</strong>
+                </div>
+                <div class="col-span-2 md:col-span-1 bg-gradient-to-b from-indigo-50 to-indigo-100/50 p-2 sm:p-2.5 rounded-xl border-2 border-indigo-400/60 shadow-2xs text-center order-first md:order-none">
+                  <span class="text-[10px] font-bold uppercase tracking-wider text-indigo-900 block">${translations[currentLang].avgPriceLabel}</span>
+                  <strong class="text-base font-black text-indigo-700 font-mono mt-0.5 block">${avgDisplay}</strong>
+                </div>
+                <div class="bg-white p-2 sm:p-2.5 rounded-xl border border-slate-200 text-center shadow-2xs">
+                  <span class="text-[9px] font-semibold uppercase tracking-wider text-slate-500 block truncate">${translations[currentLang].totalChangeLabel}</span>
+                  <strong class="text-xs font-bold font-mono mt-0.5 block ${changeClass}">${changeDisplay}</strong>
+                </div>
+                <div class="bg-white p-2 sm:p-2.5 rounded-xl border border-slate-200 text-center shadow-2xs">
+                  <span class="text-[9px] font-semibold uppercase tracking-wider text-slate-500 block truncate">${translations[currentLang].activeSessionsLabel}</span>
+                  <strong class="text-xs font-bold text-slate-800 font-mono mt-0.5 block">${rec.activeCount || 0} / ${(rec.sessions || []).length}</strong>
+                </div>
+              </div>
+
+              <!-- 20-session Detail Table -->
+              <div class="overflow-x-auto touch-scroll rounded-xl border border-slate-200 bg-white -mx-1 sm:mx-0">
+                <table class="w-full text-left text-xs text-slate-700 min-w-[500px] sm:min-w-full">
+                  <thead class="bg-slate-100/80 text-[10px] font-semibold text-slate-600 uppercase tracking-wider border-b border-slate-200">
+                    <tr>
+                      <th class="py-2 px-3 w-14">${translations[currentLang].thSession}</th>
+                      <th class="py-2 px-3 w-28">${translations[currentLang].thDate}</th>
+                      <th class="py-2 px-3 w-24">${translations[currentLang].thWeekday}</th>
+                      <th class="py-2 px-3">${translations[currentLang].thPrice}</th>
+                      <th class="py-2 px-3 w-28 sm:w-32">${translations[currentLang].thChange}</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-slate-100">
+                    ${rows}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          `;
+        }
+
+        const staticPill = rec.isStatic 
+          ? `<span class="text-[9px] sm:text-[10px] font-semibold px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">${translations[currentLang].badgeStatic}</span>` 
+          : '';
+
+        return `
+          <div id="history-card-${rec.id}" class="bg-slate-50 rounded-xl border border-slate-200 p-3 sm:p-4 transition-all">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3">
+              <div class="min-w-0">
+                <div class="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                  <span class="text-xs sm:text-sm font-bold text-slate-900">${currentLang === 'vi' ? `Quý ${rec.quarter}` : `Q${rec.quarter}`} (${startSlash} - ${endSlash})</span>
+                  <span class="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-700 border border-indigo-200 shrink-0">${rec.year}</span>
+                  ${staticPill}
+                </div>
+                <div class="flex items-center gap-2 sm:gap-3 text-[11px] sm:text-xs text-slate-500 mt-1 flex-wrap">
+                  <span>${currentLang === 'vi' ? 'Giá trung bình:' : 'Average Price:'} <strong class="text-indigo-700 font-mono font-bold">${avgDisplay}</strong></span>
+                  <span>•</span>
+                  <span>${new Date(rec.savedAt).toLocaleDateString()} ${new Date(rec.savedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                </div>
+              </div>
+
+              <!-- Action buttons for card -->
+              <div class="flex items-center gap-1.5 self-end sm:self-auto shrink-0 pt-1 sm:pt-0">
+                <button 
+                  class="btn-export-pdf-rec px-2.5 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg transition-all flex items-center gap-1 cursor-pointer active:scale-95"
+                  data-id="${rec.id}"
+                  title="${translations[currentLang].btnExportPdf}"
+                >
+                  <i data-lucide="file-text" class="w-3.5 h-3.5 shrink-0"></i>
+                  <span>PDF</span>
+                </button>
+
+                <button 
+                  class="btn-toggle-history-detail w-8 h-8 flex items-center justify-center text-indigo-600 hover:bg-indigo-50 border border-indigo-200 rounded-lg transition-all cursor-pointer active:scale-95"
+                  data-id="${rec.id}"
+                  title="View report"
+                >
+                  <i data-lucide="${isExpanded ? 'chevron-up' : 'eye'}" class="w-4 h-4"></i>
+                </button>
+
+                ${!rec.isStatic ? `
+                  <button 
+                    class="btn-delete-history-rec w-8 h-8 flex items-center justify-center text-rose-500 hover:bg-rose-50 border border-rose-200 rounded-lg transition-all cursor-pointer active:scale-95"
+                    data-id="${rec.id}"
+                    title="Delete record"
+                  >
+                    <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                  </button>
+                ` : ''}
+              </div>
+            </div>
+
+            ${detailSectionHtml}
+          </div>
+        `;
+      }).join('');
+
+      document.querySelectorAll('.btn-toggle-history-detail').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const id = e.currentTarget.getAttribute('data-id');
+          openHistoryDetailId = openHistoryDetailId === id ? null : id;
+          renderHistoryList();
+        });
+      });
+
+      document.querySelectorAll('.btn-export-pdf-rec').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const id = e.currentTarget.getAttribute('data-id');
+          const rec = mergedHistory.find(r => r.id === id);
+          if (rec) exportPdfForRecord(rec);
+        });
+      });
+
+      document.querySelectorAll('.btn-delete-history-rec').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const id = e.currentTarget.getAttribute('data-id');
+          userLocalHistory = userLocalHistory.filter(r => r.id !== id);
+          if (openHistoryDetailId === id) openHistoryDetailId = null;
+          saveStateToLocalStorage();
+          renderHistoryList();
+          showToast(currentLang === 'vi' ? 'Đã xóa bản ghi lịch sử!' : 'History record deleted!');
+        });
+      });
+
+      lucide.createIcons();
+    }
+
+    // -------------------------------------------------------------
+    // Fetch External Static JSON (history_data.json)
+    // -------------------------------------------------------------
+    async function loadStaticJsonHistory() {
+      try {
+        const response = await fetch('./history_data.json', { cache: 'no-cache' });
+        if (response.ok) {
+          const data = await response.json();
+          if (Array.isArray(data)) {
+            staticJsonHistory = data;
+          }
+        }
+      } catch (err) {
+        if (window.STATIC_EMBEDDED_HISTORY && window.STATIC_EMBEDDED_HISTORY.length > 0) {
+          staticJsonHistory = window.STATIC_EMBEDDED_HISTORY;
+        }
+      }
+      renderHistoryList();
+    }
+
+    // Local Storage State Persistence
+    function saveStateToLocalStorage() {
+      try {
+        const state = {
+          currentLang,
+          isTask1Collapsed,
+          isTask2Finalized,
+          userHistory: userLocalHistory,
+          task2Active: !task2Panel.classList.contains('hidden'),
+          targetDate: task1Result ? formatDateKey(task1Result.targetDate) : null,
+          sessions: task2Sessions.map(s => ({
+            sessionNumber: s.sessionNumber,
+            dateIso: formatDateKey(s.date),
+            price: s.price,
+            locked: s.locked
+          }))
+        };
+        localStorage.setItem('NAV_RECORD_STOCK_STATE', JSON.stringify(state));
+      } catch (err) {
+        console.warn("Storage write error:", err);
+      }
+    }
+
+    function loadStateFromLocalStorage() {
+      try {
+        const saved = localStorage.getItem('NAV_RECORD_STOCK_STATE');
+        if (!saved) return false;
+        const state = JSON.parse(saved);
+
+        if (state.currentLang) {
+          setLanguage(state.currentLang, false);
+        }
+
+        if (Array.isArray(state.userHistory)) {
+          userLocalHistory = state.userHistory;
+        } else if (Array.isArray(state.history)) {
+          userLocalHistory = state.history;
+        }
+
+        if (state.isTask1Collapsed !== undefined) {
+          isTask1Collapsed = state.isTask1Collapsed;
+        }
+        updateToggleTask1ButtonUI();
+
+        if (state.task2Active && Array.isArray(state.sessions) && state.sessions.length > 0 && task1Result) {
+          task2Sessions = state.sessions.map(s => ({
+            sessionNumber: s.sessionNumber,
+            date: parseISODate(s.dateIso),
+            price: s.price,
+            locked: !!s.locked
+          }));
+          isTask2Finalized = !!state.isTask2Finalized;
+          updateFinalizedUI();
+          updateTask2Title(task1Result.quarter, formatDateKey(task1Result.startDate), formatDateKey(task1Result.endDate));
+          task2Panel.classList.remove('hidden');
+          calculateTask2Stats();
+          renderTask2Table();
+        }
+
+        renderHistoryList();
+        return true;
+      } catch (err) {
+        console.warn("Storage load error:", err);
+        return false;
+      }
+    }
+
+    // -------------------------------------------------------------
+    // Native Print & Save as PDF Generator
+    // -------------------------------------------------------------
+    function buildReportDocumentHtml(title, subtitle, stats, sessionsList, isFinalized) {
+      const t = translations[currentLang];
+      const firstPriceDisplay = (stats && stats.first !== null && stats.first !== undefined) ? `$${Number(stats.first).toFixed(2)}` : '--';
+      const latestPriceDisplay = (stats && stats.latest !== null && stats.latest !== undefined) ? `$${Number(stats.latest).toFixed(2)}` : '--';
+      const avgPriceDisplay = (stats && stats.avg !== null && stats.avg !== undefined) ? `$${Number(stats.avg).toFixed(2)}` : '--';
+      const totalChangeDisplay = (stats && stats.changePct !== null && stats.changePct !== undefined)
+        ? `${stats.changePct > 0 ? '+' : ''}${Number(stats.changePct).toFixed(2)}%`
+        : '--';
+      const changeColor = (stats && stats.changePct > 0) ? '#059669' : ((stats && stats.changePct < 0) ? '#e11d48' : '#1e293b');
+      const activeSessionsDisplay = `${(stats && stats.activeCount) || 0} / ${sessionsList.length}`;
+
+      let lastPrice = null;
+      const rowsHtml = sessionsList.map((s) => {
+        let d = null;
+        if (s.date instanceof Date) d = s.date;
+        else if (s.dateIso) d = parseISODate(s.dateIso);
+        else if (typeof s.date === 'string') d = parseISODate(s.date);
+        else d = new Date();
+
+        const dateStr = formatDateKey(d).replace(/-/g, '/');
+        const weekdayStr = weekdaysMap[currentLang][d.getUTCDay()];
+        let changeCell = `<span style="color:#94a3b8; font-family:monospace;">--</span>`;
+
+        const priceVal = (s.price !== null && s.price !== undefined && s.price !== '') ? Number(s.price) : null;
+
+        if (priceVal !== null && !isNaN(priceVal)) {
+          if (lastPrice !== null && lastPrice !== 0) {
+            const diff = priceVal - lastPrice;
+            const pct = (diff / lastPrice) * 100;
+            if (diff > 0) {
+              changeCell = `<span style="display:inline-block; padding: 2px 8px; border-radius: 4px; font-weight:700; font-family:monospace; background:#ecfdf5; color:#059669; border: 1px solid #a7f3d0;">▲ +${pct.toFixed(2)}%</span>`;
+            } else if (diff < 0) {
+              changeCell = `<span style="display:inline-block; padding: 2px 8px; border-radius: 4px; font-weight:700; font-family:monospace; background:#fff1f2; color:#e11d48; border: 1px solid #fecdd3;">▼ ${pct.toFixed(2)}%</span>`;
+            } else {
+              changeCell = `<span style="display:inline-block; padding: 2px 8px; border-radius: 4px; font-weight:700; font-family:monospace; background:#fefce8; color:#b45309; border: 1px solid #fef08a;">—</span>`;
+            }
+          } else {
+            changeCell = `<span style="color:#94a3b8; font-family:monospace; font-size:11px;">- (Base)</span>`;
+          }
+          lastPrice = priceVal;
+        }
+
+        const priceDisplay = (priceVal !== null && !isNaN(priceVal)) ? `$${priceVal.toFixed(2)}` : '--';
+        const sNum = s.sessionNumber < 10 ? '0' + s.sessionNumber : s.sessionNumber;
+
+        return `
+          <tr style="border-bottom: 1px solid #e2e8f0;">
+            <td style="padding: 7px 10px; font-family:monospace; font-weight:600; color:#64748b; text-align:center;">${sNum}</td>
+            <td style="padding: 7px 10px; font-family:monospace; font-weight:600; color:#1e293b;">${dateStr}</td>
+            <td style="padding: 7px 10px; color:#64748b;">${weekdayStr}</td>
+            <td style="padding: 7px 10px; font-family:monospace; font-weight:700; color:#0f172a;">${priceDisplay}</td>
+            <td style="padding: 7px 10px;">${changeCell}</td>
+          </tr>
+        `;
+      }).join('');
+
+      return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>${title}</title>
+  <style>
+    @page { size: A4 portrait; margin: 12mm 10mm; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      margin: 0; padding: 0; color: #1e293b; background: #ffffff;
+      -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    }
+    .container { max-width: 780px; margin: 0 auto; }
+    .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #cbd5e1; padding-bottom: 12px; margin-bottom: 14px; }
+    .header-title { font-size: 18px; font-weight: 800; color: #0f172a; margin: 0; }
+    .header-sub { font-size: 11px; color: #64748b; margin-top: 3px; }
+    .badge { font-size: 10px; font-weight: 700; color: #4338ca; background: #e0e7ff; padding: 3px 8px; border-radius: 6px; text-transform: uppercase; }
+    .stats-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 14px; }
+    .stat-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 6px; text-align: center; }
+    .stat-card-highlight { background: #eef2ff; border: 2px solid #6366f1; border-radius: 8px; padding: 8px 6px; text-align: center; }
+    .stat-label { font-size: 9px; font-weight: 700; text-transform: uppercase; color: #64748b; display: block; }
+    .stat-value { font-size: 14px; font-weight: 800; font-family: monospace; color: #0f172a; margin-top: 2px; display: block; }
+    .table-box { border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden; }
+    table { width: 100%; border-collapse: collapse; font-size: 11px; text-align: left; }
+    th { background: #f1f5f9; border-bottom: 2px solid #cbd5e1; padding: 8px 10px; color: #475569; text-transform: uppercase; font-size: 10px; font-weight: 700; }
+    .footer { margin-top: 12px; display: flex; justify-content: space-between; font-size: 9px; color: #94a3b8; border-top: 1px solid #f1f5f9; padding-top: 6px; }
+    .no-print-bar {
+      background: #0f172a; color: #fff; padding: 10px 16px; margin-bottom: 14px; border-radius: 8px;
+      display: flex; justify-content: space-between; align-items: center; font-size: 12px;
+    }
+    .print-btn {
+      background: #4f46e5; color: #fff; border: none; padding: 6px 14px; border-radius: 6px;
+      font-weight: 600; cursor: pointer; font-size: 12px;
+    }
+    @media print {
+      .no-print-bar { display: none !important; }
+      body { padding: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="no-print-bar">
+      <span>📄 <strong>Báo cáo sẵn sàng xuất PDF</strong> (Chọn "Save as PDF" trong hộp thoại in)</span>
+      <button class="print-btn" onclick="window.print()">In / Lưu PDF ngay</button>
+    </div>
+
+    <div class="header">
+      <div>
+        <h1 class="header-title">${title} ${isFinalized ? '<span style="font-size:10px; background:#d1fae5; color:#065f46; border:1px solid #6ee7b7; padding:2px 6px; border-radius:99px; margin-left:6px;">FINALIZED</span>' : ''}</h1>
+        <div class="header-sub">${subtitle}</div>
+      </div>
+      <div style="text-align:right;">
+        <span class="badge">NYSE / NASDAQ</span>
+        <div style="font-size:10px; color:#94a3b8; margin-top:4px;">Date: ${new Date().toLocaleDateString()}</div>
+      </div>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <span class="stat-label">${t.firstPriceLabel}</span>
+        <strong class="stat-value">${firstPriceDisplay}</strong>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">${t.latestPriceLabel}</span>
+        <strong class="stat-value">${latestPriceDisplay}</strong>
+      </div>
+      <div class="stat-card-highlight">
+        <span class="stat-label" style="color:#4338ca;">${t.avgPriceLabel}</span>
+        <strong class="stat-value" style="color:#4338ca; font-size:16px;">${avgPriceDisplay}</strong>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">${t.totalChangeLabel}</span>
+        <strong class="stat-value" style="color:${changeColor};">${totalChangeDisplay}</strong>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">${t.activeSessionsLabel}</span>
+        <strong class="stat-value">${activeSessionsDisplay}</strong>
+      </div>
+    </div>
+
+    <div class="table-box">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:50px; text-align:center;">${t.thSession}</th>
+            <th style="width:110px;">${t.thDate}</th>
+            <th style="width:90px;">${t.thWeekday}</th>
+            <th>${t.thPrice}</th>
+            <th style="width:130px;">${t.thChange}</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rowsHtml}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="footer">
+      <span>Nav Record Stock • US Stock Market 20-Day Trading Cycle (NYSE / NASDAQ)</span>
+      <span style="font-weight: 600; color: #475569;">&copy; NamVo</span>
+    </div>
+  </div>
+
+  <script>
+    window.onload = function() {
+      setTimeout(function() { window.print(); }, 300);
+    };
+  <\/script>
+</body>
+</html>`;
+    }
+
+    function triggerDocumentPrintExport(fullHtml) {
+      showToast(translations[currentLang].pdfExporting);
+      const printWin = window.open('', '_blank');
+      if (printWin) {
+        printWin.document.open();
+        printWin.document.write(fullHtml);
+        printWin.document.close();
+      } else {
+        let printIframe = document.getElementById('export-print-iframe');
+        if (!printIframe) {
+          printIframe = document.createElement('iframe');
+          printIframe.id = 'export-print-iframe';
+          printIframe.style.position = 'fixed';
+          printIframe.style.right = '0';
+          printIframe.style.bottom = '0';
+          printIframe.style.width = '0';
+          printIframe.style.height = '0';
+          printIframe.style.border = '0';
+          document.body.appendChild(printIframe);
+        }
+        const doc = printIframe.contentWindow.document;
+        doc.open();
+        doc.write(fullHtml);
+        doc.close();
+        setTimeout(() => {
+          printIframe.contentWindow.focus();
+          printIframe.contentWindow.print();
+        }, 500);
+      }
+    }
+
+    function exportPdfForTask2() {
+      if (!task1Result || !task2Sessions || task2Sessions.length === 0) return;
+      const stats = calculateTask2Stats();
+      const startKey = formatDateKey(task1Result.startDate).replace(/-/g, '/');
+      const endKey = formatDateKey(task1Result.endDate).replace(/-/g, '/');
+      const q = task1Result.quarter;
+
+      const title = currentLang === 'vi' 
+        ? `Báo cáo Dữ liệu Quý ${q} (${startKey} - ${endKey})` 
+        : `Quarter ${q} Data Report (${startKey} - ${endKey})`;
+      
+      const subtitle = translations[currentLang].task2Subtitle;
+      const htmlContent = buildReportDocumentHtml(title, subtitle, stats, task2Sessions, isTask2Finalized);
+      triggerDocumentPrintExport(htmlContent);
+    }
+
+    function exportPdfForRecord(rec) {
+      if (!rec) return;
+      const startKey = rec.startDate.replace(/-/g, '/');
+      const endKey = rec.endDate.replace(/-/g, '/');
+      const q = rec.quarter;
+
+      const title = currentLang === 'vi' 
+        ? `Báo cáo Dữ liệu Quý ${q} (${startKey} - ${endKey})` 
+        : `Quarter ${q} Data Report (${startKey} - ${endKey})`;
+
+      const subtitle = currentLang === 'vi'
+        ? `Lưu trữ lúc: ${new Date(rec.savedAt).toLocaleDateString()} ${new Date(rec.savedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+        : `Archived at: ${new Date(rec.savedAt).toLocaleDateString()} ${new Date(rec.savedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+
+      const stats = {
+        avg: rec.avgPrice,
+        first: rec.firstPrice,
+        latest: rec.latestPrice,
+        changePct: rec.totalChangePct,
+        activeCount: rec.activeCount
+      };
+
+      const htmlContent = buildReportDocumentHtml(title, subtitle, stats, rec.sessions || [], true);
+      triggerDocumentPrintExport(htmlContent);
+    }
+
+    if (btnExportPdfTask2) {
+      btnExportPdfTask2.addEventListener('click', exportPdfForTask2);
+    }
+
+    // -------------------------------------------------------------
+    // Main App Event Handlers
+    // -------------------------------------------------------------
+    function handleDateChange(isoDateStr, triggerSave = true) {
+      if (!isoDateStr) return;
+      const d = parseISODate(isoDateStr);
+      task1Result = calculateTask1(d);
+      renderTask1UI();
+      if (triggerSave) saveStateToLocalStorage();
+    }
+
+    targetDateInput.addEventListener('change', (e) => {
+      handleDateChange(e.target.value);
+    });
+
+    quarterBtns.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const q = parseInt(e.currentTarget.getAttribute('data-quarter'), 10);
+        const y = task1Result ? task1Result.year : new Date().getUTCFullYear();
+        const midDate = getQuarterMidDate(y, q);
+        const dateKey = formatDateKey(midDate);
+        targetDateInput.value = dateKey;
+        handleDateChange(dateKey);
+      });
+    });
+
+    if (btnToday) {
+      btnToday.addEventListener('click', () => {
+        const today = new Date();
+        const dateKey = formatDateKey(today);
+        targetDateInput.value = dateKey;
+        handleDateChange(dateKey);
+      });
+    }
+
+    if (btnResetDefault) {
+      btnResetDefault.addEventListener('click', () => {
+        const y = task1Result ? task1Result.year : new Date().getUTCFullYear();
+        const q = task1Result ? task1Result.quarter : 4;
+        const midDate = getQuarterMidDate(y, q);
+        const dateKey = formatDateKey(midDate);
+        targetDateInput.value = dateKey;
+        handleDateChange(dateKey);
+      });
+    }
+
+    btnToggleTask1.addEventListener('click', () => {
+      isTask1Collapsed = !isTask1Collapsed;
+      updateToggleTask1ButtonUI();
+      saveStateToLocalStorage();
+    });
+
+    function executeLoadTask2() {
+      if (!task1Result) return;
+      const sessions = task1Result.tradingSessions;
+      task2Sessions = sessions.map((d, index) => ({
+        sessionNumber: index + 1,
+        date: d,
+        price: null,
+        locked: false
+      }));
+
+      isTask2Finalized = false;
+      updateFinalizedUI();
+
+      updateTask2Title(
+        task1Result.quarter, 
+        formatDateKey(task1Result.startDate), 
+        formatDateKey(task1Result.endDate)
+      );
+
+      task2Panel.classList.remove('hidden');
+      calculateTask2Stats();
+      renderTask2Table();
+
+      task2Panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      showToast(translations[currentLang].cycleConfirmed);
+      saveStateToLocalStorage();
+    }
+
+    function showDuplicateModal(existingRecord) {
+      pendingExistingRecord = existingRecord;
+      const t = translations[currentLang];
+      const qText = currentLang === 'vi' ? `Quý ${existingRecord.quarter} - ${existingRecord.year}` : `Q${existingRecord.quarter} - ${existingRecord.year}`;
+      
+      modalWarningDesc.textContent = t.modalDuplicateDesc.replace('{quarterYear}', qText);
+      setElText(modalExistingQuarter, qText);
+      const startSlash = existingRecord.startDate.replace(/-/g, '/');
+      const endSlash = existingRecord.endDate.replace(/-/g, '/');
+      setElText(modalExistingRange, `${startSlash} - ${endSlash}`);
+      setElText(modalExistingAvg, (existingRecord.avgPrice !== null && !isNaN(existingRecord.avgPrice)) ? `$${Number(existingRecord.avgPrice).toFixed(2)}` : '--');
+
+      duplicateModal.classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function hideDuplicateModal() {
+      duplicateModal.classList.add('hidden');
+      pendingExistingRecord = null;
+    }
+
+    btnModalViewExisting.addEventListener('click', () => {
+      if (pendingExistingRecord) {
+        const targetId = pendingExistingRecord.id;
+        openHistoryDetailId = targetId;
+        renderHistoryList();
+        hideDuplicateModal();
+
+        setTimeout(() => {
+          const card = document.getElementById(`history-card-${targetId}`);
+          if (card) {
+            card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 100);
+      }
+    });
+
+    if (btnModalClose) {
+      btnModalClose.addEventListener('click', () => {
+        hideDuplicateModal();
+      });
+    }
+
+    btnApplyCycle.addEventListener('click', () => {
+      if (!task1Result) return;
+      const targetQuarter = task1Result.quarter;
+      const targetYear = task1Result.year;
+
+      updateMergedHistory();
+      const existing = mergedHistory.find(r => r.quarter === targetQuarter && r.year === targetYear);
+
+      if (existing) {
+        showDuplicateModal(existing);
+      } else {
+        executeLoadTask2();
+      }
+    });
+
+    btnFinalizeCycle.addEventListener('click', () => {
+      if (!task2Sessions || task2Sessions.length === 0) return;
+      isTask2Finalized = !isTask2Finalized;
+      updateFinalizedUI();
+      renderTask2Table();
+      saveStateToLocalStorage();
+
+      const msg = isTask2Finalized 
+        ? translations[currentLang].cycleFinalizedMsg 
+        : translations[currentLang].cycleUnlockedMsg;
+      showToast(msg);
+    });
+
+    btnSaveHistory.addEventListener('click', () => {
+      if (!task1Result || !task2Sessions || task2Sessions.length === 0) return;
+
+      const stats = calculateTask2Stats();
+      const startKey = formatDateKey(task1Result.startDate);
+      const endKey = formatDateKey(task1Result.endDate);
+      const recordKey = `${task1Result.year}-Q${task1Result.quarter}-${startKey}-${endKey}`;
+
+      const serializedSessions = task2Sessions.map(s => ({
+        sessionNumber: s.sessionNumber,
+        dateIso: formatDateKey(s.date),
+        price: (s.price !== null && !isNaN(s.price)) ? Number(s.price) : null,
+        locked: !!s.locked
+      }));
+
+      const newRecord = {
+        id: recordKey,
+        quarter: task1Result.quarter,
+        year: task1Result.year,
+        startDate: startKey,
+        endDate: endKey,
+        avgPrice: stats.avg,
+        firstPrice: stats.first,
+        latestPrice: stats.latest,
+        totalChangePct: stats.changePct,
+        activeCount: stats.activeCount,
+        sessions: serializedSessions,
+        savedAt: new Date().toISOString()
+      };
+
+      const existingIdx = userLocalHistory.findIndex(r => r.id === recordKey);
+      if (existingIdx >= 0) {
+        userLocalHistory[existingIdx] = newRecord;
+        showToast(translations[currentLang].cycleUpdatedInHistoryMsg);
+      } else {
+        userLocalHistory.unshift(newRecord);
+        showToast(translations[currentLang].cycleSavedMsg);
+      }
+
+      task2Panel.classList.add('hidden');
+
+      saveStateToLocalStorage();
+      renderHistoryList();
+
+      const historyEl = document.getElementById('history-container');
+      if (historyEl) {
+        historyEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    });
+
+    if (btnClearTask2) {
+      btnClearTask2.addEventListener('click', () => {
+        if (isTask2Finalized) return;
+        task2Sessions.forEach((s, idx) => {
+          s.price = null;
+          s.locked = false;
+          const inputEl = document.getElementById(`input-price-${idx}`);
+          if (inputEl) {
+            inputEl.value = '';
+            inputEl.removeAttribute('readonly');
+            inputEl.className = "mobile-input-safe session-price-input w-full pl-6 pr-2 py-1.5 text-xs font-mono font-semibold text-slate-800 rounded-lg border transition-all bg-white border-slate-300 hover:border-indigo-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-100";
+          }
+        });
+        calculateTask2Stats();
+        updateRowPercentageChanges();
+        saveStateToLocalStorage();
+        showToast(currentLang === 'vi' ? 'Đã xóa dữ liệu bảng!' : 'Table data cleared!');
+      });
+    }
+
+    // -------------------------------------------------------------
+    // Multilingual Switcher (EN / VI)
+    // -------------------------------------------------------------
+    const langEnBtn = document.getElementById('lang-en');
+    const langViBtn = document.getElementById('lang-vi');
+
+    function setLanguage(lang, triggerSave = true) {
+      currentLang = lang;
+      if (lang === 'en') {
+        langEnBtn.className = "px-2 sm:px-2.5 py-1 rounded-md transition-all bg-white text-indigo-600 shadow-2xs cursor-pointer active:scale-95";
+        langViBtn.className = "px-2 sm:px-2.5 py-1 rounded-md transition-all text-slate-600 hover:text-slate-900 cursor-pointer active:scale-95";
+      } else {
+        langViBtn.className = "px-2 sm:px-2.5 py-1 rounded-md transition-all bg-white text-indigo-600 shadow-2xs cursor-pointer active:scale-95";
+        langEnBtn.className = "px-2 sm:px-2.5 py-1 rounded-md transition-all text-slate-600 hover:text-slate-900 cursor-pointer active:scale-95";
+      }
+
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (translations[lang] && translations[lang][key] !== undefined) {
+          el.textContent = translations[lang][key];
+        }
+      });
+
+      renderTask1UI();
+      updateFinalizedUI();
+
+      if (task1Result && !task2Panel.classList.contains('hidden')) {
+        updateTask2Title(
+          task1Result.quarter, 
+          formatDateKey(task1Result.startDate), 
+          formatDateKey(task1Result.endDate)
+        );
+        calculateTask2Stats();
+        renderTask2Table();
+      }
+
+      renderHistoryList();
+      if (triggerSave) saveStateToLocalStorage();
+    }
+
+    langEnBtn.addEventListener('click', () => setLanguage('en'));
+    langViBtn.addEventListener('click', () => setLanguage('vi'));
+
+    // -------------------------------------------------------------
+    // Initializer
+    // -------------------------------------------------------------
+    window.addEventListener('DOMContentLoaded', async () => {
+      const now = new Date();
+      const currentYear = now.getUTCFullYear();
+      const currentQuarter = getQuarterFromDate(now);
+      const initialDate = getQuarterMidDate(currentYear, currentQuarter);
+      const initialDateStr = formatDateKey(initialDate);
+
+      targetDateInput.value = initialDateStr;
+      handleDateChange(initialDateStr, false);
+      setLanguage('en', false);
+
+      const restored = loadStateFromLocalStorage();
+      if (!restored) {
+        updateToggleTask1ButtonUI();
+      }
+
+      // Load external JSON data concurrently
+      await loadStaticJsonHistory();
+    });
+  </script>
+</body>
+</html>
