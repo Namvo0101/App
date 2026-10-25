@@ -2,14 +2,14 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Nav Record Stock</title>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
   <style>
-    /* Cross-browser date picker styling */
+    /* Cross-browser date picker indicator styling */
     input[type="date"]::-webkit-calendar-picker-indicator {
       position: absolute;
       top: 0; left: 0; right: 0; bottom: 0;
@@ -18,6 +18,29 @@
     }
     input[type="date"] { position: relative; }
 
+    /* Prevent mobile input auto-zoom on iOS devices */
+    @media (max-width: 640px) {
+      .mobile-input-safe {
+        font-size: 16px !important;
+      }
+    }
+
+    /* Smooth touch scrolling for tables on mobile screens */
+    .touch-scroll {
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: thin;
+    }
+    .touch-scroll::-webkit-scrollbar {
+      height: 4px;
+    }
+    .touch-scroll::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    .touch-scroll::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+
     @media print {
       body * { visibility: hidden; }
       #print-area, #print-area * { visibility: visible; }
@@ -25,149 +48,147 @@
     }
   </style>
 </head>
-<body class="bg-slate-50 text-slate-800 min-h-screen font-sans antialiased pb-20">
+<body class="bg-slate-50 text-slate-800 min-h-screen font-sans antialiased pb-16 sm:pb-20 selection:bg-indigo-100 selection:text-indigo-900">
 
-  <!-- Header -->
-  <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
-    <div class="max-w-5xl mx-auto px-4 py-3.5 flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <div class="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-sm">
-          <i data-lucide="line-chart" class="w-5 h-5"></i>
+  <!-- Header: Mobile-optimized sticky navigation -->
+  <header class="bg-white/95 backdrop-blur-md border-b border-slate-200 sticky top-0 z-30 shadow-2xs">
+    <div class="max-w-5xl mx-auto px-3.5 sm:px-4 py-2.5 sm:py-3.5 flex items-center justify-between gap-2">
+      <div class="flex items-center gap-2.5 min-w-0">
+        <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-xs shrink-0">
+          <i data-lucide="line-chart" class="w-4 h-4 sm:w-5 sm:h-5"></i>
         </div>
-        <div>
-          <h1 class="text-base font-bold text-slate-900 leading-tight">Nav Record Stock</h1>
-          <p class="text-xs text-slate-500" data-i18n="appSubtitle">US Stock Market 20-Day Trading Cycle (NYSE / NASDAQ)</p>
+        <div class="min-w-0">
+          <h1 class="text-sm sm:text-base font-bold text-slate-900 leading-tight truncate">Nav Record Stock</h1>
+          <p class="text-[10px] sm:text-xs text-slate-500 truncate" data-i18n="appSubtitle">US Stock Market 20-Day Trading Cycle (NYSE / NASDAQ)</p>
         </div>
       </div>
 
-      <!-- Right controls: Language switch -->
-      <div class="flex items-center gap-3">
-        <div class="flex items-center bg-slate-100 p-1 rounded-lg border border-slate-200 text-xs font-semibold">
-          <button id="lang-en" class="px-2.5 py-1 rounded-md transition-colors bg-white text-indigo-600 shadow-xs cursor-pointer">EN</button>
-          <button id="lang-vi" class="px-2.5 py-1 rounded-md transition-colors text-slate-600 hover:text-slate-900 cursor-pointer">VI</button>
+      <!-- Right controls: Touch-friendly language switch -->
+      <div class="flex items-center gap-2 shrink-0">
+        <div class="flex items-center bg-slate-100 p-0.5 sm:p-1 rounded-lg border border-slate-200 text-xs font-semibold">
+          <button id="lang-en" class="px-2 sm:px-2.5 py-1 rounded-md transition-all bg-white text-indigo-600 shadow-2xs cursor-pointer active:scale-95">EN</button>
+          <button id="lang-vi" class="px-2 sm:px-2.5 py-1 rounded-md transition-all text-slate-600 hover:text-slate-900 cursor-pointer active:scale-95">VI</button>
         </div>
       </div>
     </div>
   </header>
 
   <!-- Main Content Container -->
-  <main class="max-w-5xl mx-auto px-4 mt-6 space-y-6">
+  <main class="max-w-5xl mx-auto px-3 sm:px-4 mt-3 sm:mt-6 space-y-4 sm:space-y-6">
 
     <!-- TASK 1 PANEL -->
-    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-6 transition-all duration-300">
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-2xs p-3.5 sm:p-6 transition-all duration-300">
       
       <!-- Panel Header -->
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-slate-100">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 sm:pb-4 border-b border-slate-100">
         <div>
-          <h2 id="task1-title" class="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
+          <h2 id="task1-title" class="text-sm sm:text-lg font-bold text-slate-900 flex items-center gap-2">
             <span id="cycle-quarter-title">Stock Price Cycle: Q4 - 2026</span>
           </h2>
-          <p class="text-xs text-slate-500 mt-0.5" data-i18n="targetDateSub">Default: 15th day of the mid-quarter month</p>
+          <p class="text-[11px] sm:text-xs text-slate-500 mt-0.5" data-i18n="targetDateSub">Default: 15th day of the mid-quarter month</p>
         </div>
         <div class="self-start sm:self-auto">
-          <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
             <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
             NYSE / NASDAQ
           </span>
         </div>
       </div>
 
-      <!-- Target Date Input Bar (Always visible) -->
-      <div class="mt-4">
+      <!-- Target Date Input Bar (Full Touch Friendly on Mobile) -->
+      <div class="mt-3 sm:mt-4">
         <div class="relative w-full border border-slate-300 hover:border-indigo-400 focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-100 rounded-xl transition-all bg-white shadow-2xs">
-          <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+          <div class="absolute inset-y-0 left-0 pl-3 sm:pl-3.5 flex items-center pointer-events-none text-slate-400">
             <i data-lucide="calendar" class="w-4 h-4"></i>
           </div>
           <input 
             type="date" 
             id="target-date-input" 
-            class="w-full py-2.5 pl-10 pr-4 text-sm font-semibold text-slate-800 text-center bg-transparent focus:outline-none cursor-pointer"
+            class="mobile-input-safe w-full py-2.5 sm:py-2.5 pl-9 pr-3 text-xs sm:text-sm font-semibold text-slate-800 text-center bg-transparent focus:outline-none cursor-pointer"
           />
         </div>
       </div>
 
       <!-- Collapsible Task 1 Details (Default hidden) -->
-      <div id="task1-collapsible-body" class="hidden mt-4 pt-4 border-t border-slate-100 space-y-4">
+      <div id="task1-collapsible-body" class="hidden mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-slate-100 space-y-3 sm:space-y-4">
         
-        <!-- Controls: Quarter Pills & Today & Reset -->
-        <div class="flex flex-wrap items-center justify-between gap-2">
-          <!-- Quarter Pill Buttons -->
-          <div class="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs font-semibold">
-            <button class="btn-quarter px-3 py-1 rounded-lg transition-colors text-slate-600 hover:text-slate-900" data-quarter="1">Q1</button>
-            <button class="btn-quarter px-3 py-1 rounded-lg transition-colors text-slate-600 hover:text-slate-900" data-quarter="2">Q2</button>
-            <button class="btn-quarter px-3 py-1 rounded-lg transition-colors text-slate-600 hover:text-slate-900" data-quarter="3">Q3</button>
-            <button class="btn-quarter px-3 py-1 rounded-lg transition-colors text-slate-600 hover:text-slate-900" data-quarter="4">Q4</button>
+        <!-- Controls: Quarter Pills & Today & Reset (Mobile Grid) -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+          <!-- Quarter Pill Buttons (Responsive 4-column grid on mobile) -->
+          <div class="grid grid-cols-4 sm:flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs font-semibold gap-1 sm:gap-0">
+            <button class="btn-quarter text-center py-1.5 sm:py-1 sm:px-3 rounded-lg transition-colors text-slate-600 hover:text-slate-900 active:scale-95" data-quarter="1">Q1</button>
+            <button class="btn-quarter text-center py-1.5 sm:py-1 sm:px-3 rounded-lg transition-colors text-slate-600 hover:text-slate-900 active:scale-95" data-quarter="2">Q2</button>
+            <button class="btn-quarter text-center py-1.5 sm:py-1 sm:px-3 rounded-lg transition-colors text-slate-600 hover:text-slate-900 active:scale-95" data-quarter="3">Q3</button>
+            <button class="btn-quarter text-center py-1.5 sm:py-1 sm:px-3 rounded-lg transition-colors text-slate-600 hover:text-slate-900 active:scale-95" data-quarter="4">Q4</button>
           </div>
 
           <!-- Quick Action Buttons -->
-          <div class="flex items-center gap-2">
-            <button id="btn-today" class="px-3 py-1.5 text-xs font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors border border-indigo-200" data-i18n="btnToday">
+          <div class="flex items-center justify-end gap-2">
+            <button id="btn-today" class="flex-1 sm:flex-none text-center px-3.5 py-1.5 text-xs font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors border border-indigo-200 active:scale-95" data-i18n="btnToday">
               Today
             </button>
-            <button id="btn-reset-default" class="p-1.5 text-slate-500 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer" title="Reset to Quarter Mid-Date">
+            <button id="btn-reset-default" class="p-1.5 text-slate-500 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer active:scale-95 shrink-0" title="Reset to Quarter Mid-Date">
               <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
             </button>
           </div>
         </div>
 
         <!-- Target Date Context Info -->
-        <div class="bg-slate-50 rounded-xl p-3 border border-slate-200/80 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <div class="flex items-center gap-2 text-slate-600">
+        <div class="bg-slate-50 rounded-xl p-2.5 sm:p-3 border border-slate-200/80 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div class="flex items-center gap-2 text-slate-600 min-w-0">
             <i data-lucide="info" class="w-4 h-4 text-slate-400 shrink-0"></i>
-            <span><span data-i18n="selectedTarget">Selected Date:</span> <strong id="dispTargetWeekday" class="text-slate-800 font-semibold">--</strong>, <span id="dispTargetDate" class="font-mono text-slate-800 font-semibold">--</span></span>
+            <span class="truncate"><span data-i18n="selectedTarget">Selected Date:</span> <strong id="dispTargetWeekday" class="text-slate-800 font-semibold">--</strong>, <span id="dispTargetDate" class="font-mono text-slate-800 font-semibold">--</span></span>
           </div>
-          <div id="targetStatusBadgeContainer">
-            <!-- Badge rendered dynamically -->
-          </div>
+          <div id="targetStatusBadgeContainer" class="self-start sm:self-auto shrink-0"></div>
         </div>
 
         <!-- Cycle Days Distribution Panel -->
-        <div class="bg-indigo-50/40 rounded-xl p-4 border border-indigo-100/80 space-y-3">
+        <div class="bg-indigo-50/40 rounded-xl p-3 sm:p-4 border border-indigo-100/80 space-y-2.5 sm:space-y-3">
           <h3 class="text-xs font-bold uppercase tracking-wider text-indigo-900 flex items-center gap-1.5" data-i18n="cycleDistributionTitle">
-            <i data-lucide="calendar-range" class="w-4 h-4 text-indigo-600"></i>
+            <i data-lucide="calendar-range" class="w-4 h-4 text-indigo-600 shrink-0"></i>
             Cycle Days Distribution
           </h3>
 
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
             <!-- Start Date -->
-            <div class="bg-white p-3 rounded-lg border border-slate-200/80 shadow-2xs flex items-center justify-between">
+            <div class="bg-white p-2.5 sm:p-3 rounded-lg border border-slate-200/80 shadow-2xs flex items-center justify-between">
               <div>
-                <span class="text-[10px] uppercase font-bold text-indigo-600 tracking-wider block" data-i18n="startDateLabel">Start Date</span>
-                <span id="dispStartDate" class="text-sm font-bold font-mono text-slate-900">--</span>
+                <span class="text-[9px] sm:text-[10px] uppercase font-bold text-indigo-600 tracking-wider block" data-i18n="startDateLabel">Start Date</span>
+                <span id="dispStartDate" class="text-xs sm:text-sm font-bold font-mono text-slate-900">--</span>
               </div>
-              <span id="dispStartWeekday" class="text-xs font-medium text-slate-500">--</span>
+              <span id="dispStartWeekday" class="text-[11px] sm:text-xs font-medium text-slate-500">--</span>
             </div>
 
             <!-- End Date -->
-            <div class="bg-white p-3 rounded-lg border border-slate-200/80 shadow-2xs flex items-center justify-between">
+            <div class="bg-white p-2.5 sm:p-3 rounded-lg border border-slate-200/80 shadow-2xs flex items-center justify-between">
               <div>
-                <span class="text-[10px] uppercase font-bold text-emerald-600 tracking-wider block" data-i18n="endDateLabel">End Date</span>
-                <span id="dispEndDate" class="text-sm font-bold font-mono text-slate-900">--</span>
+                <span class="text-[9px] sm:text-[10px] uppercase font-bold text-emerald-600 tracking-wider block" data-i18n="endDateLabel">End Date</span>
+                <span id="dispEndDate" class="text-xs sm:text-sm font-bold font-mono text-slate-900">--</span>
               </div>
-              <span id="dispEndWeekday" class="text-xs font-medium text-slate-500">--</span>
+              <span id="dispEndWeekday" class="text-[11px] sm:text-xs font-medium text-slate-500">--</span>
             </div>
           </div>
 
           <!-- Cycle Stats -->
-          <div class="grid grid-cols-3 gap-2 pt-1 text-center">
-            <div class="bg-white/80 p-2 rounded-lg border border-slate-200 text-xs">
-              <span class="text-[10px] text-slate-500 block" data-i18n="statTradingDays">Trading Days</span>
-              <strong class="text-slate-900 text-sm font-bold">20</strong>
+          <div class="grid grid-cols-3 gap-1.5 sm:gap-2 pt-0.5 text-center">
+            <div class="bg-white/80 p-1.5 sm:p-2 rounded-lg border border-slate-200 text-xs">
+              <span class="text-[9px] sm:text-[10px] text-slate-500 block truncate" data-i18n="statTradingDays">Trading Days</span>
+              <strong class="text-slate-900 text-xs sm:text-sm font-bold">20</strong>
             </div>
-            <div class="bg-white/80 p-2 rounded-lg border border-slate-200 text-xs">
-              <span class="text-[10px] text-slate-500 block" data-i18n="statWeekendDays">Weekend Days</span>
-              <strong id="dispWeekendCount" class="text-slate-900 text-sm font-bold">--</strong>
+            <div class="bg-white/80 p-1.5 sm:p-2 rounded-lg border border-slate-200 text-xs">
+              <span class="text-[9px] sm:text-[10px] text-slate-500 block truncate" data-i18n="statWeekendDays">Weekend Days</span>
+              <strong id="dispWeekendCount" class="text-slate-900 text-xs sm:text-sm font-bold">--</strong>
             </div>
-            <div class="bg-white/80 p-2 rounded-lg border border-slate-200 text-xs">
-              <span class="text-[10px] text-slate-500 block" data-i18n="statHolidays">Holidays</span>
-              <strong id="dispHolidayCount" class="text-slate-900 text-sm font-bold">--</strong>
+            <div class="bg-white/80 p-1.5 sm:p-2 rounded-lg border border-slate-200 text-xs">
+              <span class="text-[9px] sm:text-[10px] text-slate-500 block truncate" data-i18n="statHolidays">Holidays</span>
+              <strong id="dispHolidayCount" class="text-slate-900 text-xs sm:text-sm font-bold">--</strong>
             </div>
           </div>
 
           <!-- Skipped Holidays List -->
           <div id="skippedHolidaysContainer" class="hidden text-xs bg-amber-50/70 p-2.5 rounded-lg border border-amber-200 text-amber-800 space-y-1">
             <div class="font-semibold flex items-center gap-1">
-              <i data-lucide="alert-circle" class="w-3.5 h-3.5 text-amber-600"></i>
+              <i data-lucide="alert-circle" class="w-3.5 h-3.5 text-amber-600 shrink-0"></i>
               <span data-i18n="skippedHolidaysTitle">US Market Holidays Skipped:</span>
             </div>
             <ul id="skippedHolidaysList" class="list-disc list-inside space-y-0.5 text-[11px] text-amber-900 pl-1"></ul>
@@ -177,21 +198,21 @@
       </div>
 
       <!-- Task 1 Footer Action Bar: Apply Cycle & Toggle Details -->
-      <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
-        <div class="text-[11px] text-slate-400 flex items-center gap-1">
-          <i data-lucide="shield-check" class="w-3.5 h-3.5 text-slate-400"></i>
-          <span>SEC/FINRA Holiday Calendar</span>
+      <div class="mt-3 sm:mt-4 pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+        <div class="text-[10px] sm:text-[11px] text-slate-400 flex items-center gap-1 min-w-0">
+          <i data-lucide="shield-check" class="w-3.5 h-3.5 text-slate-400 shrink-0"></i>
+          <span class="truncate">SEC/FINRA Holiday Calendar</span>
         </div>
 
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2 shrink-0">
           <!-- Apply Cycle Button -->
-          <button id="btn-apply-cycle" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 shadow-sm transition-all cursor-pointer">
-            <i data-lucide="check" class="w-4 h-4"></i>
+          <button id="btn-apply-cycle" class="inline-flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 shadow-xs transition-all cursor-pointer active:scale-95">
+            <i data-lucide="check" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i>
             <span data-i18n="btnApplyCycle">Apply Cycle</span>
           </button>
 
           <!-- Toggle Button (Icon only) -->
-          <button id="btn-toggle-task1" class="w-8 h-8 flex items-center justify-center rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors cursor-pointer" title="Toggle Details">
+          <button id="btn-toggle-task1" class="w-8 h-8 flex items-center justify-center rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors cursor-pointer active:scale-95" title="Toggle Details">
             <div id="toggleIconContainer">
               <i data-lucide="chevron-down" class="w-4 h-4"></i>
             </div>
@@ -202,96 +223,96 @@
     </div>
 
     <!-- TASK 2 PANEL (Activated upon cycle apply) -->
-    <div id="task2-panel" class="hidden bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-6 transition-all duration-300">
+    <div id="task2-panel" class="hidden bg-white rounded-2xl border border-slate-200 shadow-2xs p-3.5 sm:p-6 transition-all duration-300">
       
-      <!-- Task 2 Header -->
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
+      <!-- Task 2 Header: Mobile flex-col responsive -->
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 sm:pb-4 border-b border-slate-100">
         <div>
-          <div class="flex items-center gap-2">
-            <h2 id="task2-title" class="text-base sm:text-lg font-bold text-slate-900 leading-tight"></h2>
-            <span id="finalized-badge" class="hidden px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-800 border border-emerald-300">
+          <div class="flex items-center gap-2 flex-wrap">
+            <h2 id="task2-title" class="text-sm sm:text-lg font-bold text-slate-900 leading-tight"></h2>
+            <span id="finalized-badge" class="hidden px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-semibold bg-emerald-100 text-emerald-800 border border-emerald-300">
               <i data-lucide="lock" class="w-3 h-3 inline mr-1"></i><span data-i18n="badgeFinalized">Finalized</span>
             </span>
           </div>
-          <p class="text-xs text-slate-500 mt-0.5" data-i18n="task2Subtitle">Daily price input and automatic percentage change tracking</p>
+          <p class="text-[11px] sm:text-xs text-slate-500 mt-0.5" data-i18n="task2Subtitle">Daily price input and automatic percentage change tracking</p>
         </div>
 
-        <!-- Action Buttons: Finalize, Export PDF, Save, Clear -->
-        <div class="flex flex-wrap items-center gap-2">
+        <!-- Action Buttons: Touch-friendly targets -->
+        <div class="grid grid-cols-2 sm:flex sm:items-center gap-2 pt-1 sm:pt-0">
           <!-- Finalize Cycle Button -->
-          <button id="btn-finalize-cycle" class="px-3 py-1.5 text-xs font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-300 rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer">
-            <i data-lucide="lock" class="w-3.5 h-3.5"></i>
-            <span id="txt-finalize-btn" data-i18n="btnFinalizeCycle">Finalize Cycle</span>
+          <button id="btn-finalize-cycle" class="w-full sm:w-auto px-2.5 sm:px-3 py-1.5 text-xs font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-300 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95">
+            <i data-lucide="lock" class="w-3.5 h-3.5 shrink-0"></i>
+            <span id="txt-finalize-btn" class="truncate" data-i18n="btnFinalizeCycle">Finalize Cycle</span>
           </button>
 
           <!-- Export Task 2 PDF Button -->
-          <button id="btn-export-pdf-task2" class="px-3 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer" title="Export PDF Report">
-            <i data-lucide="file-text" class="w-3.5 h-3.5"></i>
-            <span data-i18n="btnExportPdf">Export PDF</span>
+          <button id="btn-export-pdf-task2" class="w-full sm:w-auto px-2.5 sm:px-3 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95" title="Export PDF Report">
+            <i data-lucide="file-text" class="w-3.5 h-3.5 shrink-0"></i>
+            <span class="truncate" data-i18n="btnExportPdf">Export PDF</span>
           </button>
 
           <!-- Save Data to History Button -->
-          <button id="btn-save-history" class="px-3.5 py-1.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer">
-            <i data-lucide="save" class="w-3.5 h-3.5"></i>
-            <span data-i18n="btnSaveHistory">Save Data</span>
+          <button id="btn-save-history" class="w-full sm:w-auto px-3 py-1.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-2xs transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95">
+            <i data-lucide="save" class="w-3.5 h-3.5 shrink-0"></i>
+            <span class="truncate" data-i18n="btnSaveHistory">Save Data</span>
           </button>
 
           <!-- Clear Table Button -->
-          <button id="btn-clear-task2" class="px-2.5 py-1.5 text-xs font-medium text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 rounded-xl transition-colors border border-rose-200 flex items-center gap-1 cursor-pointer" title="Clear Table">
-            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
-            <span data-i18n="btnClearAll">Clear</span>
+          <button id="btn-clear-task2" class="w-full sm:w-auto px-2 py-1.5 text-xs font-medium text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 rounded-xl transition-all border border-rose-200 flex items-center justify-center gap-1 cursor-pointer active:scale-95" title="Clear Table">
+            <i data-lucide="trash-2" class="w-3.5 h-3.5 shrink-0"></i>
+            <span class="truncate" data-i18n="btnClearAll">Clear</span>
           </button>
         </div>
       </div>
 
-      <!-- Task 2 Summary Statistics -->
-      <div class="grid grid-cols-2 md:grid-cols-5 gap-3 my-5">
+      <!-- Task 2 Summary Statistics: Mobile responsive grid with full-width Avg Price -->
+      <div class="grid grid-cols-2 md:grid-cols-5 gap-2 sm:gap-3 my-3.5 sm:my-5">
         
         <!-- 1. Initial Price -->
-        <div class="bg-slate-50/80 p-3 rounded-xl border border-slate-200 text-center">
-          <span class="text-[10px] font-semibold uppercase tracking-wider text-slate-500 block" data-i18n="firstPriceLabel">Initial Price</span>
-          <strong id="statFirstPrice" class="text-sm font-bold text-slate-800 font-mono mt-1 block">--</strong>
+        <div class="bg-slate-50/80 p-2 sm:p-3 rounded-xl border border-slate-200 text-center">
+          <span class="text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider text-slate-500 block truncate" data-i18n="firstPriceLabel">Initial Price</span>
+          <strong id="statFirstPrice" class="text-xs sm:text-sm font-bold text-slate-800 font-mono mt-0.5 sm:mt-1 block">--</strong>
         </div>
 
         <!-- 2. Latest Price -->
-        <div class="bg-slate-50/80 p-3 rounded-xl border border-slate-200 text-center">
-          <span class="text-[10px] font-semibold uppercase tracking-wider text-slate-500 block" data-i18n="latestPriceLabel">Latest Price</span>
-          <strong id="statLatestPrice" class="text-sm font-bold text-slate-800 font-mono mt-1 block">--</strong>
+        <div class="bg-slate-50/80 p-2 sm:p-3 rounded-xl border border-slate-200 text-center">
+          <span class="text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider text-slate-500 block truncate" data-i18n="latestPriceLabel">Latest Price</span>
+          <strong id="statLatestPrice" class="text-xs sm:text-sm font-bold text-slate-800 font-mono mt-0.5 sm:mt-1 block">--</strong>
         </div>
 
-        <!-- 3. CURRENT AVG PRICE (Centered & Highlighted) -->
-        <div class="col-span-2 md:col-span-1 bg-gradient-to-b from-indigo-50 to-indigo-100/50 p-3.5 rounded-xl border-2 border-indigo-400/60 shadow-xs text-center flex flex-col justify-center items-center">
-          <span class="text-[11px] font-bold uppercase tracking-wider text-indigo-900 block" data-i18n="avgPriceLabel">Current Avg Price</span>
-          <div class="flex items-baseline justify-center gap-1 mt-1">
-            <strong id="statAvgPrice" class="text-lg font-black text-indigo-700 font-mono">--</strong>
+        <!-- 3. CURRENT AVG PRICE (Centered & Highlighted, Full width on Mobile) -->
+        <div class="col-span-2 md:col-span-1 bg-gradient-to-b from-indigo-50 to-indigo-100/50 p-2.5 sm:p-3.5 rounded-xl border-2 border-indigo-400/60 shadow-2xs text-center flex flex-col justify-center items-center order-first md:order-none">
+          <span class="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-indigo-900 block" data-i18n="avgPriceLabel">Current Avg Price</span>
+          <div class="flex items-baseline justify-center gap-1 mt-0.5 sm:mt-1">
+            <strong id="statAvgPrice" class="text-base sm:text-lg font-black text-indigo-700 font-mono">--</strong>
           </div>
         </div>
 
         <!-- 4. Period Change -->
-        <div class="bg-slate-50/80 p-3 rounded-xl border border-slate-200 text-center">
-          <span class="text-[10px] font-semibold uppercase tracking-wider text-slate-500 block" data-i18n="totalChangeLabel">Period Change</span>
-          <strong id="statTotalChange" class="text-sm font-bold text-slate-800 font-mono mt-1 block">--</strong>
+        <div class="bg-slate-50/80 p-2 sm:p-3 rounded-xl border border-slate-200 text-center">
+          <span class="text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider text-slate-500 block truncate" data-i18n="totalChangeLabel">Period Change</span>
+          <strong id="statTotalChange" class="text-xs sm:text-sm font-bold text-slate-800 font-mono mt-0.5 sm:mt-1 block">--</strong>
         </div>
 
         <!-- 5. Active Sessions -->
-        <div class="bg-slate-50/80 p-3 rounded-xl border border-slate-200 text-center">
-          <span class="text-[10px] font-semibold uppercase tracking-wider text-slate-500 block" data-i18n="activeSessionsLabel">Active Sessions</span>
-          <strong id="statActiveSessions" class="text-sm font-bold text-slate-800 font-mono mt-1 block">0 / 20</strong>
+        <div class="bg-slate-50/80 p-2 sm:p-3 rounded-xl border border-slate-200 text-center">
+          <span class="text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider text-slate-500 block truncate" data-i18n="activeSessionsLabel">Active Sessions</span>
+          <strong id="statActiveSessions" class="text-xs sm:text-sm font-bold text-slate-800 font-mono mt-0.5 sm:mt-1 block">0 / 20</strong>
         </div>
 
       </div>
 
-      <!-- Task 2 Table Container -->
-      <div class="overflow-x-auto rounded-xl border border-slate-200">
-        <table class="w-full text-left text-xs text-slate-700">
-          <thead class="bg-slate-100/80 text-[11px] font-semibold text-slate-600 uppercase tracking-wider border-b border-slate-200">
+      <!-- Task 2 Table Container: Smooth horizontal touch scroll on mobile -->
+      <div class="overflow-x-auto touch-scroll rounded-xl border border-slate-200 -mx-1 sm:mx-0">
+        <table class="w-full text-left text-xs text-slate-700 min-w-[560px] sm:min-w-full">
+          <thead class="bg-slate-100/80 text-[10px] sm:text-[11px] font-semibold text-slate-600 uppercase tracking-wider border-b border-slate-200">
             <tr>
-              <th scope="col" class="py-3 px-4 w-16" data-i18n="thSession">Session</th>
-              <th scope="col" class="py-3 px-4 w-32" data-i18n="thDate">Date</th>
-              <th scope="col" class="py-3 px-4 w-28" data-i18n="thWeekday">Day</th>
-              <th scope="col" class="py-3 px-4 min-w-[150px]" data-i18n="thPrice">Closing Price ($)</th>
-              <th scope="col" class="py-3 px-4 min-w-[130px]" data-i18n="thChange">Change (%)</th>
-              <th scope="col" class="py-3 px-4 text-right w-20" data-i18n="thAction">Action</th>
+              <th scope="col" class="py-2.5 sm:py-3 px-3 sm:px-4 w-14 sm:w-16" data-i18n="thSession">Session</th>
+              <th scope="col" class="py-2.5 sm:py-3 px-3 sm:px-4 w-28 sm:w-32" data-i18n="thDate">Date</th>
+              <th scope="col" class="py-2.5 sm:py-3 px-3 sm:px-4 w-24 sm:w-28" data-i18n="thWeekday">Day</th>
+              <th scope="col" class="py-2.5 sm:py-3 px-3 sm:px-4 min-w-[130px] sm:min-w-[150px]" data-i18n="thPrice">Closing Price ($)</th>
+              <th scope="col" class="py-2.5 sm:py-3 px-3 sm:px-4 min-w-[120px] sm:min-w-[130px]" data-i18n="thChange">Change (%)</th>
+              <th scope="col" class="py-2.5 sm:py-3 px-3 sm:px-4 text-right w-16 sm:w-20" data-i18n="thAction">Action</th>
             </tr>
           </thead>
           <tbody id="task2-table-body" class="divide-y divide-slate-100"></tbody>
@@ -301,29 +322,29 @@
     </div>
 
     <!-- CALCULATION HISTORY PANEL -->
-    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-6 transition-all duration-300">
-      <div class="flex items-center justify-between pb-4 border-b border-slate-100">
-        <div>
-          <h2 class="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
-            <i data-lucide="history" class="w-5 h-5 text-indigo-600"></i>
-            <span data-i18n="historyTitle">Calculation History</span>
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-2xs p-3.5 sm:p-6 transition-all duration-300">
+      <div class="flex items-center justify-between pb-3 sm:pb-4 border-b border-slate-100 gap-2">
+        <div class="min-w-0">
+          <h2 class="text-sm sm:text-lg font-bold text-slate-900 flex items-center gap-2">
+            <i data-lucide="history" class="w-4 h-4 sm:w-5 sm:h-5 text-indigo-600 shrink-0"></i>
+            <span class="truncate" data-i18n="historyTitle">Calculation History</span>
           </h2>
-          <p class="text-xs text-slate-500 mt-0.5" data-i18n="historySubtitle">Archived stock price cycles sorted chronologically (newest first)</p>
+          <p class="text-[10px] sm:text-xs text-slate-500 mt-0.5 truncate" data-i18n="historySubtitle">Archived stock price cycles sorted chronologically (newest first)</p>
         </div>
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-1.5 shrink-0">
           <span id="history-source-badge" class="hidden sm:inline-flex px-2 py-0.5 text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-md">
-            Official Loaded
+            Official
           </span>
-          <span id="history-count-badge" class="px-2.5 py-1 text-xs font-semibold bg-slate-100 text-slate-700 rounded-full border border-slate-200">
+          <span id="history-count-badge" class="px-2 sm:px-2.5 py-0.5 sm:py-1 text-[11px] sm:text-xs font-semibold bg-slate-100 text-slate-700 rounded-full border border-slate-200">
             0 records
           </span>
         </div>
       </div>
 
       <!-- History Records Container -->
-      <div id="history-container" class="mt-4 space-y-3">
-        <div id="history-empty" class="text-center py-8 text-slate-400 text-xs">
-          <i data-lucide="inbox" class="w-8 h-8 mx-auto mb-2 text-slate-300"></i>
+      <div id="history-container" class="mt-3 sm:mt-4 space-y-2.5 sm:space-y-3">
+        <div id="history-empty" class="text-center py-6 sm:py-8 text-slate-400 text-xs">
+          <i data-lucide="inbox" class="w-7 h-7 sm:w-8 sm:h-8 mx-auto mb-2 text-slate-300"></i>
           <span data-i18n="historyEmpty">No saved cycles yet. Click "Save Data" in Task 2 to archive a completed cycle.</span>
         </div>
       </div>
@@ -332,29 +353,29 @@
   </main>
 
   <!-- FOOTER -->
-  <footer class="max-w-5xl mx-auto px-4 mt-12 mb-6 text-center">
-    <div class="pt-6 border-t border-slate-200/80 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500">
+  <footer class="max-w-5xl mx-auto px-4 mt-8 sm:mt-12 mb-4 text-center">
+    <div class="pt-4 sm:pt-6 border-t border-slate-200/80 flex flex-col sm:flex-row items-center justify-between gap-1.5 sm:gap-2 text-xs text-slate-500">
       <div class="flex items-center gap-1.5 font-medium text-slate-600">
         <span class="text-slate-400 font-sans">&copy;</span>
         <span class="font-semibold text-slate-800">NamVo</span>
         <span class="text-slate-300">•</span>
         <span class="text-slate-400">All rights reserved</span>
       </div>
-      <div class="text-[11px] text-slate-400">
+      <div class="text-[10px] sm:text-[11px] text-slate-400">
         <span>Nav Record Stock • US Stock Market 20-Day Trading Cycle (NYSE / NASDAQ)</span>
       </div>
     </div>
   </footer>
 
   <!-- Duplicate Quarter Warning Modal Popup -->
-  <div id="duplicate-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs hidden transition-all duration-300">
-    <div class="bg-white rounded-2xl border border-slate-200 shadow-xl max-w-md w-full p-5 sm:p-6 space-y-4 transform scale-95 transition-all">
-      <div class="flex items-start gap-3.5">
-        <div class="w-10 h-10 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center shrink-0">
+  <div id="duplicate-modal" class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs hidden transition-all duration-300">
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-xl max-w-sm sm:max-w-md w-full p-4 sm:p-6 space-y-3.5 sm:space-y-4 transform scale-95 transition-all">
+      <div class="flex items-start gap-3">
+        <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center shrink-0">
           <i data-lucide="alert-triangle" class="w-5 h-5"></i>
         </div>
-        <div class="space-y-1">
-          <h3 id="modal-warning-title" class="text-base font-bold text-slate-900" data-i18n="modalDuplicateTitle">
+        <div class="space-y-1 min-w-0">
+          <h3 id="modal-warning-title" class="text-sm sm:text-base font-bold text-slate-900 leading-tight" data-i18n="modalDuplicateTitle">
             Quarter Data Already Exists!
           </h3>
           <p id="modal-warning-desc" class="text-xs text-slate-600 leading-relaxed"></p>
@@ -373,11 +394,11 @@
       </div>
 
       <!-- Action Buttons -->
-      <div class="flex items-center justify-end gap-2.5 pt-2">
-        <button id="btn-modal-close" class="px-3.5 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer" data-i18n="btnModalClose">
+      <div class="flex items-center justify-end gap-2 pt-1 sm:pt-2">
+        <button id="btn-modal-close" class="flex-1 sm:flex-none px-3.5 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all cursor-pointer active:scale-95" data-i18n="btnModalClose">
           Close
         </button>
-        <button id="btn-modal-view-existing" class="px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 rounded-xl shadow-xs transition-colors cursor-pointer flex items-center gap-1.5" data-i18n="btnModalViewHistory">
+        <button id="btn-modal-view-existing" class="flex-1 sm:flex-none px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 rounded-xl shadow-2xs transition-all cursor-pointer flex items-center justify-center gap-1.5 active:scale-95" data-i18n="btnModalViewHistory">
           <i data-lucide="eye" class="w-3.5 h-3.5"></i>
           <span data-i18n="btnModalViewHistory">View Archived Data</span>
         </button>
@@ -386,10 +407,10 @@
   </div>
 
   <!-- Notification Toast -->
-  <div id="toast" class="fixed bottom-5 right-5 z-50 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none">
-    <div class="bg-slate-900 text-white text-xs font-medium px-4 py-2.5 rounded-xl shadow-lg flex items-center gap-2">
-      <i data-lucide="info" class="w-4 h-4 text-indigo-400"></i>
-      <span id="toast-message">Notification</span>
+  <div id="toast" class="fixed bottom-4 inset-x-4 sm:inset-x-auto sm:right-5 sm:bottom-5 z-50 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none">
+    <div class="bg-slate-900/95 text-white text-xs font-medium px-4 py-2.5 rounded-xl shadow-lg flex items-center justify-center sm:justify-start gap-2 border border-slate-700/50 backdrop-blur-md">
+      <i data-lucide="info" class="w-4 h-4 text-indigo-400 shrink-0"></i>
+      <span id="toast-message" class="truncate">Notification</span>
     </div>
   </div>
 
@@ -723,8 +744,8 @@
       quarterBtns.forEach(btn => {
         const q = parseInt(btn.getAttribute('data-quarter'), 10);
         btn.className = (q === r.quarter)
-          ? "btn-quarter px-3 py-1 rounded-lg transition-colors bg-white text-indigo-600 shadow-xs font-bold"
-          : "btn-quarter px-3 py-1 rounded-lg transition-colors text-slate-600 hover:text-slate-900";
+          ? "btn-quarter text-center py-1.5 sm:py-1 sm:px-3 rounded-lg transition-colors bg-white text-indigo-600 shadow-2xs font-bold active:scale-95"
+          : "btn-quarter text-center py-1.5 sm:py-1 sm:px-3 rounded-lg transition-colors text-slate-600 hover:text-slate-900 active:scale-95";
       });
 
       setElText(document.getElementById('dispTargetWeekday'), weekdaysMap[currentLang][r.targetDate.getUTCDay()]);
@@ -734,8 +755,8 @@
       if (statusBadgeContainer) {
         const isOriginalDayTrading = isTradingDay(r.targetDate);
         statusBadgeContainer.innerHTML = isOriginalDayTrading
-          ? `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200"><i data-lucide="check-circle" class="w-3 h-3"></i><span>${currentLang === 'vi' ? 'Phiên giao dịch hợp lệ' : 'Active Trading Day'}</span></span>`
-          : `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200"><i data-lucide="arrow-right" class="w-3 h-3"></i><span>${currentLang === 'vi' ? 'Chuyển sang:' : 'Rolled to:'} ${formatDateKey(r.validEndTradingDay)}</span></span>`;
+          ? `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200"><i data-lucide="check-circle" class="w-3 h-3"></i><span>${currentLang === 'vi' ? 'Phiên giao dịch hợp lệ' : 'Active Trading Day'}</span></span>`
+          : `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200"><i data-lucide="arrow-right" class="w-3 h-3"></i><span>${currentLang === 'vi' ? 'Chuyển sang:' : 'Rolled to:'} ${formatDateKey(r.validEndTradingDay)}</span></span>`;
       }
 
       setElText(document.getElementById('dispStartDate'), formatDateKey(r.startDate));
@@ -802,8 +823,8 @@
           const prefix = changePct > 0 ? '+' : '';
           statTotalChange.textContent = `${prefix}${changePct.toFixed(2)}%`;
           statTotalChange.className = changePct > 0 
-            ? "text-sm font-bold font-mono mt-1 block text-emerald-600" 
-            : (changePct < 0 ? "text-sm font-bold font-mono mt-1 block text-rose-600" : "text-sm font-bold font-mono mt-1 block text-slate-800");
+            ? "text-xs sm:text-sm font-bold font-mono mt-0.5 sm:mt-1 block text-emerald-600" 
+            : (changePct < 0 ? "text-xs sm:text-sm font-bold font-mono mt-0.5 sm:mt-1 block text-rose-600" : "text-xs sm:text-sm font-bold font-mono mt-0.5 sm:mt-1 block text-slate-800");
         }
 
         return { avg, first, latest, changePct, activeCount: valid.length };
@@ -812,7 +833,7 @@
         setElText(statLatestPrice, '--');
         setElText(statAvgPrice, '--');
         setElText(statTotalChange, '--');
-        if (statTotalChange) statTotalChange.className = "text-sm font-bold font-mono mt-1 block text-slate-800";
+        if (statTotalChange) statTotalChange.className = "text-xs sm:text-sm font-bold font-mono mt-0.5 sm:mt-1 block text-slate-800";
         return { avg: null, first: null, latest: null, changePct: null, activeCount: 0 };
       }
     }
@@ -892,21 +913,22 @@
         const sessionNumStr = s.sessionNumber < 10 ? '0' + s.sessionNumber : s.sessionNumber;
 
         tr.innerHTML = `
-          <td class="py-2.5 px-4 font-mono font-semibold text-slate-500">${sessionNumStr}</td>
-          <td class="py-2.5 px-4 font-mono text-slate-800">${dateKey}</td>
-          <td class="py-2.5 px-4 text-slate-600">${weekdayStr}</td>
-          <td class="py-2.5 px-4">
-            <div class="relative max-w-[140px]">
+          <td class="py-2.5 px-3 sm:px-4 font-mono font-semibold text-slate-500">${sessionNumStr}</td>
+          <td class="py-2.5 px-3 sm:px-4 font-mono text-slate-800">${dateKey}</td>
+          <td class="py-2.5 px-3 sm:px-4 text-slate-600">${weekdayStr}</td>
+          <td class="py-2.5 px-3 sm:px-4">
+            <div class="relative max-w-[130px] sm:max-w-[140px]">
               <span class="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-slate-400 font-semibold">$</span>
               <input 
                 type="number" 
+                inputmode="decimal"
                 step="0.01" 
                 min="0"
                 id="input-price-${idx}"
                 value="${displayVal}"
                 ${isLocked ? 'readonly' : ''}
                 placeholder="0.00"
-                class="session-price-input w-full pl-6 pr-2 py-1.5 text-xs font-mono font-semibold text-slate-800 rounded-lg border transition-all ${
+                class="mobile-input-safe session-price-input w-full pl-6 pr-2 py-1.5 text-xs font-mono font-semibold text-slate-800 rounded-lg border transition-all ${
                   isLocked 
                     ? 'bg-slate-100/80 border-slate-200 text-slate-500 cursor-not-allowed select-none' 
                     : 'bg-white border-slate-300 hover:border-indigo-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-100'
@@ -914,21 +936,21 @@
               />
             </div>
           </td>
-          <td class="py-2.5 px-4" id="badge-change-${idx}">
+          <td class="py-2.5 px-3 sm:px-4" id="badge-change-${idx}">
             ${changeBadgeHtml}
           </td>
-          <td class="py-2.5 px-4 text-right">
+          <td class="py-2.5 px-3 sm:px-4 text-right">
             <button 
               id="btn-lock-row-${idx}"
               ${isTask2Finalized ? 'disabled' : ''}
-              class="p-1 rounded-lg transition-colors cursor-pointer ${
+              class="w-8 h-8 flex items-center justify-center ml-auto rounded-lg transition-all cursor-pointer active:scale-95 ${
                 isTask2Finalized 
                   ? 'text-slate-300 cursor-not-allowed' 
                   : (s.locked ? 'text-amber-600 hover:bg-amber-50' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100')
               }"
               title="${s.locked ? 'Unlock' : 'Lock'}"
             >
-              <i data-lucide="${s.locked ? 'lock' : 'unlock'}" class="w-3.5 h-3.5"></i>
+              <i data-lucide="${s.locked ? 'lock' : 'unlock'}" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i>
             </button>
           </td>
         `;
@@ -959,14 +981,14 @@
             if (inputEl) {
               if (s.locked) {
                 inputEl.setAttribute('readonly', 'true');
-                inputEl.className = "session-price-input w-full pl-6 pr-2 py-1.5 text-xs font-mono font-semibold text-slate-800 rounded-lg border transition-all bg-slate-100/80 border-slate-200 text-slate-500 cursor-not-allowed select-none";
-                lockBtn.className = "p-1 rounded-lg transition-colors cursor-pointer text-amber-600 hover:bg-amber-50";
-                lockBtn.innerHTML = `<i data-lucide="lock" class="w-3.5 h-3.5"></i>`;
+                inputEl.className = "mobile-input-safe session-price-input w-full pl-6 pr-2 py-1.5 text-xs font-mono font-semibold text-slate-800 rounded-lg border transition-all bg-slate-100/80 border-slate-200 text-slate-500 cursor-not-allowed select-none";
+                lockBtn.className = "w-8 h-8 flex items-center justify-center ml-auto rounded-lg transition-all cursor-pointer text-amber-600 hover:bg-amber-50 active:scale-95";
+                lockBtn.innerHTML = `<i data-lucide="lock" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i>`;
               } else {
                 inputEl.removeAttribute('readonly');
-                inputEl.className = "session-price-input w-full pl-6 pr-2 py-1.5 text-xs font-mono font-semibold text-slate-800 rounded-lg border transition-all bg-white border-slate-300 hover:border-indigo-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-100";
-                lockBtn.className = "p-1 rounded-lg transition-colors cursor-pointer text-slate-400 hover:text-slate-600 hover:bg-slate-100";
-                lockBtn.innerHTML = `<i data-lucide="unlock" class="w-3.5 h-3.5"></i>`;
+                inputEl.className = "mobile-input-safe session-price-input w-full pl-6 pr-2 py-1.5 text-xs font-mono font-semibold text-slate-800 rounded-lg border transition-all bg-white border-slate-300 hover:border-indigo-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-100";
+                lockBtn.className = "w-8 h-8 flex items-center justify-center ml-auto rounded-lg transition-all cursor-pointer text-slate-400 hover:text-slate-600 hover:bg-slate-100 active:scale-95";
+                lockBtn.innerHTML = `<i data-lucide="unlock" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i>`;
               }
               lucide.createIcons();
             }
@@ -984,12 +1006,12 @@
     function updateMergedHistory() {
       const map = new Map();
 
-      // 1. First add static JSON records (marked as isStatic)
+      // 1. Add static JSON records (marked as isStatic)
       staticJsonHistory.forEach(r => {
         map.set(r.id, { ...r, isStatic: true });
       });
 
-      // 2. Add user local records (user edits can override or append)
+      // 2. Add user local records (user edits override or append)
       userLocalHistory.forEach(r => {
         map.set(r.id, { ...r, isStatic: false });
       });
@@ -1014,7 +1036,7 @@
       if (historySourceBadge) {
         if (staticJsonHistory.length > 0) {
           historySourceBadge.classList.remove('hidden');
-          historySourceBadge.textContent = `${translations[currentLang].badgeStatic} Loaded: ${staticJsonHistory.length} Q`;
+          historySourceBadge.textContent = `${translations[currentLang].badgeStatic}: ${staticJsonHistory.length} Q`;
         } else {
           historySourceBadge.classList.add('hidden');
         }
@@ -1022,8 +1044,8 @@
 
       if (mergedHistory.length === 0) {
         historyContainer.innerHTML = `
-          <div id="history-empty" class="text-center py-8 text-slate-400 text-xs">
-            <i data-lucide="inbox" class="w-8 h-8 mx-auto mb-2 text-slate-300"></i>
+          <div id="history-empty" class="text-center py-6 sm:py-8 text-slate-400 text-xs">
+            <i data-lucide="inbox" class="w-7 h-7 sm:w-8 sm:h-8 mx-auto mb-2 text-slate-300"></i>
             <span>${translations[currentLang].historyEmpty}</span>
           </div>
         `;
@@ -1084,41 +1106,41 @@
           }).join('');
 
           detailSectionHtml = `
-            <div class="mt-4 pt-4 border-t border-slate-200 space-y-4">
+            <div class="mt-3.5 sm:mt-4 pt-3.5 sm:pt-4 border-t border-slate-200 space-y-3 sm:space-y-4">
               <!-- Mirroring Task 2 Stats Bar -->
-              <div class="grid grid-cols-2 md:grid-cols-5 gap-2.5">
-                <div class="bg-white p-2.5 rounded-xl border border-slate-200 text-center shadow-2xs">
-                  <span class="text-[9px] font-semibold uppercase tracking-wider text-slate-500 block">${translations[currentLang].firstPriceLabel}</span>
+              <div class="grid grid-cols-2 md:grid-cols-5 gap-2 sm:gap-2.5">
+                <div class="bg-white p-2 sm:p-2.5 rounded-xl border border-slate-200 text-center shadow-2xs">
+                  <span class="text-[9px] font-semibold uppercase tracking-wider text-slate-500 block truncate">${translations[currentLang].firstPriceLabel}</span>
                   <strong class="text-xs font-bold text-slate-800 font-mono mt-0.5 block">${firstDisplay}</strong>
                 </div>
-                <div class="bg-white p-2.5 rounded-xl border border-slate-200 text-center shadow-2xs">
-                  <span class="text-[9px] font-semibold uppercase tracking-wider text-slate-500 block">${translations[currentLang].latestPriceLabel}</span>
+                <div class="bg-white p-2 sm:p-2.5 rounded-xl border border-slate-200 text-center shadow-2xs">
+                  <span class="text-[9px] font-semibold uppercase tracking-wider text-slate-500 block truncate">${translations[currentLang].latestPriceLabel}</span>
                   <strong class="text-xs font-bold text-slate-800 font-mono mt-0.5 block">${latestDisplay}</strong>
                 </div>
-                <div class="col-span-2 md:col-span-1 bg-gradient-to-b from-indigo-50 to-indigo-100/50 p-2.5 rounded-xl border-2 border-indigo-400/60 shadow-xs text-center">
+                <div class="col-span-2 md:col-span-1 bg-gradient-to-b from-indigo-50 to-indigo-100/50 p-2 sm:p-2.5 rounded-xl border-2 border-indigo-400/60 shadow-2xs text-center order-first md:order-none">
                   <span class="text-[10px] font-bold uppercase tracking-wider text-indigo-900 block">${translations[currentLang].avgPriceLabel}</span>
                   <strong class="text-base font-black text-indigo-700 font-mono mt-0.5 block">${avgDisplay}</strong>
                 </div>
-                <div class="bg-white p-2.5 rounded-xl border border-slate-200 text-center shadow-2xs">
-                  <span class="text-[9px] font-semibold uppercase tracking-wider text-slate-500 block">${translations[currentLang].totalChangeLabel}</span>
+                <div class="bg-white p-2 sm:p-2.5 rounded-xl border border-slate-200 text-center shadow-2xs">
+                  <span class="text-[9px] font-semibold uppercase tracking-wider text-slate-500 block truncate">${translations[currentLang].totalChangeLabel}</span>
                   <strong class="text-xs font-bold font-mono mt-0.5 block ${changeClass}">${changeDisplay}</strong>
                 </div>
-                <div class="bg-white p-2.5 rounded-xl border border-slate-200 text-center shadow-2xs">
-                  <span class="text-[9px] font-semibold uppercase tracking-wider text-slate-500 block">${translations[currentLang].activeSessionsLabel}</span>
+                <div class="bg-white p-2 sm:p-2.5 rounded-xl border border-slate-200 text-center shadow-2xs">
+                  <span class="text-[9px] font-semibold uppercase tracking-wider text-slate-500 block truncate">${translations[currentLang].activeSessionsLabel}</span>
                   <strong class="text-xs font-bold text-slate-800 font-mono mt-0.5 block">${rec.activeCount || 0} / ${(rec.sessions || []).length}</strong>
                 </div>
               </div>
 
               <!-- 20-session Detail Table -->
-              <div class="overflow-x-auto rounded-xl border border-slate-200 bg-white">
-                <table class="w-full text-left text-xs text-slate-700">
+              <div class="overflow-x-auto touch-scroll rounded-xl border border-slate-200 bg-white -mx-1 sm:mx-0">
+                <table class="w-full text-left text-xs text-slate-700 min-w-[500px] sm:min-w-full">
                   <thead class="bg-slate-100/80 text-[10px] font-semibold text-slate-600 uppercase tracking-wider border-b border-slate-200">
                     <tr>
                       <th class="py-2 px-3 w-14">${translations[currentLang].thSession}</th>
                       <th class="py-2 px-3 w-28">${translations[currentLang].thDate}</th>
                       <th class="py-2 px-3 w-24">${translations[currentLang].thWeekday}</th>
                       <th class="py-2 px-3">${translations[currentLang].thPrice}</th>
-                      <th class="py-2 px-3 w-32">${translations[currentLang].thChange}</th>
+                      <th class="py-2 px-3 w-28 sm:w-32">${translations[currentLang].thChange}</th>
                     </tr>
                   </thead>
                   <tbody class="divide-y divide-slate-100">
@@ -1131,37 +1153,38 @@
         }
 
         const staticPill = rec.isStatic 
-          ? `<span class="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200">${translations[currentLang].badgeStatic}</span>` 
+          ? `<span class="text-[9px] sm:text-[10px] font-semibold px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">${translations[currentLang].badgeStatic}</span>` 
           : '';
 
         return `
-          <div id="history-card-${rec.id}" class="bg-slate-50 rounded-xl border border-slate-200 p-4 transition-all">
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div>
-                <div class="flex items-center gap-2 flex-wrap">
-                  <span class="text-sm font-bold text-slate-900">${currentLang === 'vi' ? `Quý ${rec.quarter}` : `Q${rec.quarter}`} (${startSlash} - ${endSlash})</span>
-                  <span class="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-700 border border-indigo-200">${rec.year}</span>
+          <div id="history-card-${rec.id}" class="bg-slate-50 rounded-xl border border-slate-200 p-3 sm:p-4 transition-all">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3">
+              <div class="min-w-0">
+                <div class="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                  <span class="text-xs sm:text-sm font-bold text-slate-900">${currentLang === 'vi' ? `Quý ${rec.quarter}` : `Q${rec.quarter}`} (${startSlash} - ${endSlash})</span>
+                  <span class="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-700 border border-indigo-200 shrink-0">${rec.year}</span>
                   ${staticPill}
                 </div>
-                <div class="flex items-center gap-3 text-xs text-slate-500 mt-1">
+                <div class="flex items-center gap-2 sm:gap-3 text-[11px] sm:text-xs text-slate-500 mt-1 flex-wrap">
                   <span>${currentLang === 'vi' ? 'Giá trung bình:' : 'Average Price:'} <strong class="text-indigo-700 font-mono font-bold">${avgDisplay}</strong></span>
                   <span>•</span>
                   <span>${new Date(rec.savedAt).toLocaleDateString()} ${new Date(rec.savedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                 </div>
               </div>
 
-              <div class="flex items-center gap-2 self-end sm:self-auto">
+              <!-- Action buttons for card -->
+              <div class="flex items-center gap-1.5 self-end sm:self-auto shrink-0 pt-1 sm:pt-0">
                 <button 
-                  class="btn-export-pdf-rec px-2.5 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
+                  class="btn-export-pdf-rec px-2.5 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg transition-all flex items-center gap-1 cursor-pointer active:scale-95"
                   data-id="${rec.id}"
                   title="${translations[currentLang].btnExportPdf}"
                 >
-                  <i data-lucide="file-text" class="w-3.5 h-3.5"></i>
+                  <i data-lucide="file-text" class="w-3.5 h-3.5 shrink-0"></i>
                   <span>PDF</span>
                 </button>
 
                 <button 
-                  class="btn-toggle-history-detail p-1.5 text-indigo-600 hover:bg-indigo-50 border border-indigo-200 rounded-lg transition-colors cursor-pointer"
+                  class="btn-toggle-history-detail w-8 h-8 flex items-center justify-center text-indigo-600 hover:bg-indigo-50 border border-indigo-200 rounded-lg transition-all cursor-pointer active:scale-95"
                   data-id="${rec.id}"
                   title="View report"
                 >
@@ -1170,11 +1193,11 @@
 
                 ${!rec.isStatic ? `
                   <button 
-                    class="btn-delete-history-rec p-1.5 text-rose-500 hover:bg-rose-50 border border-rose-200 rounded-lg transition-colors cursor-pointer"
+                    class="btn-delete-history-rec w-8 h-8 flex items-center justify-center text-rose-500 hover:bg-rose-50 border border-rose-200 rounded-lg transition-all cursor-pointer active:scale-95"
                     data-id="${rec.id}"
                     title="Delete record"
                   >
-                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                    <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
                   </button>
                 ` : ''}
               </div>
@@ -1762,7 +1785,7 @@
           if (inputEl) {
             inputEl.value = '';
             inputEl.removeAttribute('readonly');
-            inputEl.className = "session-price-input w-full pl-6 pr-2 py-1.5 text-xs font-mono font-semibold text-slate-800 rounded-lg border transition-all bg-white border-slate-300 hover:border-indigo-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-100";
+            inputEl.className = "mobile-input-safe session-price-input w-full pl-6 pr-2 py-1.5 text-xs font-mono font-semibold text-slate-800 rounded-lg border transition-all bg-white border-slate-300 hover:border-indigo-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-100";
           }
         });
         calculateTask2Stats();
@@ -1781,11 +1804,11 @@
     function setLanguage(lang, triggerSave = true) {
       currentLang = lang;
       if (lang === 'en') {
-        langEnBtn.className = "px-2.5 py-1 rounded-md transition-colors bg-white text-indigo-600 shadow-xs cursor-pointer";
-        langViBtn.className = "px-2.5 py-1 rounded-md transition-colors text-slate-600 hover:text-slate-900 cursor-pointer";
+        langEnBtn.className = "px-2 sm:px-2.5 py-1 rounded-md transition-all bg-white text-indigo-600 shadow-2xs cursor-pointer active:scale-95";
+        langViBtn.className = "px-2 sm:px-2.5 py-1 rounded-md transition-all text-slate-600 hover:text-slate-900 cursor-pointer active:scale-95";
       } else {
-        langViBtn.className = "px-2.5 py-1 rounded-md transition-colors bg-white text-indigo-600 shadow-xs cursor-pointer";
-        langEnBtn.className = "px-2.5 py-1 rounded-md transition-colors text-slate-600 hover:text-slate-900 cursor-pointer";
+        langViBtn.className = "px-2 sm:px-2.5 py-1 rounded-md transition-all bg-white text-indigo-600 shadow-2xs cursor-pointer active:scale-95";
+        langEnBtn.className = "px-2 sm:px-2.5 py-1 rounded-md transition-all text-slate-600 hover:text-slate-900 cursor-pointer active:scale-95";
       }
 
       document.querySelectorAll('[data-i18n]').forEach(el => {
