@@ -9,49 +9,69 @@
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
   <style>
+    /* Cross-browser date picker styling */
     input[type="date"]::-webkit-calendar-picker-indicator {
-      position: absolute; top: 0; left: 0; right: 0; bottom: 0;
-      width: 100%; height: 100%; opacity: 0; cursor: pointer;
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      width: 100%; height: 100%;
+      opacity: 0; cursor: pointer;
     }
     input[type="date"] { position: relative; }
+
+    @media print {
+      body * { visibility: hidden; }
+      #print-area, #print-area * { visibility: visible; }
+      #print-area { position: absolute; left: 0; top: 0; width: 100%; }
+    }
   </style>
 </head>
-<body class="bg-slate-100 text-slate-800 min-h-screen font-sans antialiased pb-24">
+<body class="bg-slate-50 text-slate-800 min-h-screen font-sans antialiased pb-24">
 
-  <!-- ADMIN CONTROL BAR (STICKY) -->
+  <!-- ADMIN CONTROL BAR (STICKY TOP) -->
   <div class="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-40 shadow-md">
     <div class="max-w-5xl mx-auto px-4 py-2.5 flex flex-wrap items-center justify-between gap-3">
       <div class="flex items-center gap-2.5">
         <span class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping"></span>
-        <span class="text-xs font-bold uppercase tracking-wider text-amber-400">ADMINISTRATOR CONSOLE</span>
-        <span class="text-[11px] text-slate-400 hidden sm:inline">• Nhập liệu & Xuất file dữ liệu Git</span>
+        <span class="text-xs font-bold uppercase tracking-wider text-amber-400" data-i18n="adminConsoleTitle">ADMINISTRATOR CONSOLE</span>
+        <span class="text-[11px] text-slate-400 hidden sm:inline" data-i18n="adminConsoleSub">• Data Entry & Git Export Tools</span>
       </div>
 
       <!-- Action Buttons for Admin -->
-      <div class="flex items-center gap-2">
+      <div class="flex items-center gap-2 flex-wrap">
+        <!-- Badge Source Info -->
+        <span id="admin-json-status-badge" class="hidden text-[10px] font-semibold px-2 py-1 rounded bg-slate-800 text-emerald-400 border border-emerald-500/40">
+          <i data-lucide="check-circle" class="w-3 h-3 inline mr-1"></i>history_data.json Loaded
+        </span>
+
+        <!-- Quick Reload JSON from Disk -->
+        <button id="btn-reload-json" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-slate-200 hover:text-white bg-slate-800 hover:bg-slate-700 transition-colors flex items-center gap-1 cursor-pointer border border-slate-700" title="Reload from history_data.json">
+          <i data-lucide="refresh-cw" class="w-3.5 h-3.5 text-indigo-400"></i>
+          <span data-i18n="btnReloadJson">Reload JSON</span>
+        </button>
+
         <!-- Export history_data.json -->
         <button id="btn-export-json" class="px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer">
           <i data-lucide="file-json" class="w-4 h-4 text-indigo-200"></i>
-          <span>Xuất history_data.json</span>
+          <span data-i18n="btnExportJson">Export history_data.json</span>
         </button>
 
         <!-- Export Client HTML -->
         <button id="btn-export-client-html" class="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-900 bg-amber-400 hover:bg-amber-300 active:bg-amber-500 transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer">
           <i data-lucide="code" class="w-4 h-4 text-slate-900"></i>
-          <span>Xuất index.html (Đã nhúng Data)</span>
+          <span data-i18n="btnExportClientHtml">Export index.html (Embedded Data)</span>
         </button>
 
         <!-- Import JSON file if user wants to review -->
         <label for="input-import-json" class="px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 transition-colors flex items-center gap-1 cursor-pointer">
           <i data-lucide="upload" class="w-3.5 h-3.5"></i>
-          <span>Nhập JSON</span>
+          <span data-i18n="btnImportJson">Import JSON</span>
         </label>
         <input type="file" id="input-import-json" accept=".json" class="hidden" />
       </div>
     </div>
   </div>
 
-  <!-- Main App Header -->
+  <!-- Header identical to client web -->
   <header class="bg-white border-b border-slate-200 shadow-xs">
     <div class="max-w-5xl mx-auto px-4 py-3.5 flex items-center justify-between">
       <div class="flex items-center gap-3">
@@ -60,17 +80,16 @@
         </div>
         <div>
           <h1 class="text-base font-bold text-slate-900 leading-tight">Nav Record Stock <span class="text-xs px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 font-bold ml-1">ADMIN MODE</span></h1>
-          <p class="text-xs text-slate-500">Chu kỳ 20 phiên giao dịch chứng khoán Mỹ (NYSE / NASDAQ)</p>
+          <p class="text-xs text-slate-500" data-i18n="appSubtitle">US Stock Market 20-Day Trading Cycle (NYSE / NASDAQ)</p>
         </div>
       </div>
 
-      <!-- Quick Quarter Fast-Select for Admin (Q1, Q2, Q3, Q4 2026) -->
-      <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs font-semibold">
-        <span class="text-[11px] text-slate-500 px-2">2026:</span>
-        <button class="admin-fast-q px-2.5 py-1 rounded-lg hover:bg-white text-slate-700 transition-colors" data-year="2026" data-q="1">Q1</button>
-        <button class="admin-fast-q px-2.5 py-1 rounded-lg hover:bg-white text-slate-700 transition-colors" data-year="2026" data-q="2">Q2</button>
-        <button class="admin-fast-q px-2.5 py-1 rounded-lg hover:bg-white text-slate-700 transition-colors" data-year="2026" data-q="3">Q3</button>
-        <button class="admin-fast-q px-2.5 py-1 rounded-lg hover:bg-white text-slate-700 transition-colors" data-year="2026" data-q="4">Q4</button>
+      <!-- Right controls: Language switch -->
+      <div class="flex items-center gap-3">
+        <div class="flex items-center bg-slate-100 p-1 rounded-lg border border-slate-200 text-xs font-semibold">
+          <button id="lang-en" class="px-2.5 py-1 rounded-md transition-colors bg-white text-indigo-600 shadow-xs cursor-pointer">EN</button>
+          <button id="lang-vi" class="px-2.5 py-1 rounded-md transition-colors text-slate-600 hover:text-slate-900 cursor-pointer">VI</button>
+        </div>
       </div>
     </div>
   </header>
@@ -78,15 +97,16 @@
   <!-- Main Content Container -->
   <main class="max-w-5xl mx-auto px-4 mt-6 space-y-6">
 
-    <!-- TASK 1 PANEL -->
+    <!-- TASK 1 PANEL (Identical to Official Client Web) -->
     <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-6 transition-all duration-300">
       
+      <!-- Panel Header -->
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-slate-100">
         <div>
           <h2 id="task1-title" class="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
             <span id="cycle-quarter-title">Stock Price Cycle: Q4 - 2026</span>
           </h2>
-          <p class="text-xs text-slate-500 mt-0.5">Chọn ngày mốc (mặc định ngày 15 tháng giữa quý)</p>
+          <p class="text-xs text-slate-500 mt-0.5" data-i18n="targetDateSub">Default: 15th day of the mid-quarter month</p>
         </div>
         <div class="self-start sm:self-auto">
           <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
@@ -96,7 +116,7 @@
         </div>
       </div>
 
-      <!-- Target Date Input Bar -->
+      <!-- Target Date Input Bar (Always visible) -->
       <div class="mt-4">
         <div class="relative w-full border border-slate-300 hover:border-indigo-400 focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-100 rounded-xl transition-all bg-white shadow-2xs">
           <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
@@ -110,9 +130,12 @@
         </div>
       </div>
 
-      <!-- Collapsible Task 1 Details -->
-      <div id="task1-collapsible-body" class="mt-4 pt-4 border-t border-slate-100 space-y-4">
+      <!-- Collapsible Task 1 Details (Default hidden, toggleable) -->
+      <div id="task1-collapsible-body" class="hidden mt-4 pt-4 border-t border-slate-100 space-y-4">
+        
+        <!-- Controls: Quarter Pills & Today & Reset -->
         <div class="flex flex-wrap items-center justify-between gap-2">
+          <!-- Quarter Pill Buttons -->
           <div class="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs font-semibold">
             <button class="btn-quarter px-3 py-1 rounded-lg transition-colors text-slate-600 hover:text-slate-900" data-quarter="1">Q1</button>
             <button class="btn-quarter px-3 py-1 rounded-lg transition-colors text-slate-600 hover:text-slate-900" data-quarter="2">Q2</button>
@@ -120,9 +143,10 @@
             <button class="btn-quarter px-3 py-1 rounded-lg transition-colors text-slate-600 hover:text-slate-900" data-quarter="4">Q4</button>
           </div>
 
+          <!-- Quick Action Buttons -->
           <div class="flex items-center gap-2">
-            <button id="btn-today" class="px-3 py-1.5 text-xs font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors border border-indigo-200">
-              Hôm nay
+            <button id="btn-today" class="px-3 py-1.5 text-xs font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors border border-indigo-200" data-i18n="btnToday">
+              Today
             </button>
             <button id="btn-reset-default" class="p-1.5 text-slate-500 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer" title="Reset to Quarter Mid-Date">
               <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
@@ -134,99 +158,168 @@
         <div class="bg-slate-50 rounded-xl p-3 border border-slate-200/80 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div class="flex items-center gap-2 text-slate-600">
             <i data-lucide="info" class="w-4 h-4 text-slate-400 shrink-0"></i>
-            <span>Ngày đã chọn: <strong id="dispTargetWeekday" class="text-slate-800 font-semibold">--</strong>, <span id="dispTargetDate" class="font-mono text-slate-800 font-semibold">--</span></span>
+            <span><span data-i18n="selectedTarget">Selected Date:</span> <strong id="dispTargetWeekday" class="text-slate-800 font-semibold">--</strong>, <span id="dispTargetDate" class="font-mono text-slate-800 font-semibold">--</span></span>
           </div>
           <div id="targetStatusBadgeContainer"></div>
         </div>
 
         <!-- Cycle Days Distribution Panel -->
         <div class="bg-indigo-50/40 rounded-xl p-4 border border-indigo-100/80 space-y-3">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-indigo-900 flex items-center gap-1.5" data-i18n="cycleDistributionTitle">
+            <i data-lucide="calendar-range" class="w-4 h-4 text-indigo-600"></i>
+            Cycle Days Distribution
+          </h3>
+
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <!-- Start Date -->
             <div class="bg-white p-3 rounded-lg border border-slate-200/80 shadow-2xs flex items-center justify-between">
               <div>
-                <span class="text-[10px] uppercase font-bold text-indigo-600 tracking-wider block">Ngày bắt đầu</span>
+                <span class="text-[10px] uppercase font-bold text-indigo-600 tracking-wider block" data-i18n="startDateLabel">Start Date</span>
                 <span id="dispStartDate" class="text-sm font-bold font-mono text-slate-900">--</span>
               </div>
               <span id="dispStartWeekday" class="text-xs font-medium text-slate-500">--</span>
             </div>
 
+            <!-- End Date -->
             <div class="bg-white p-3 rounded-lg border border-slate-200/80 shadow-2xs flex items-center justify-between">
               <div>
-                <span class="text-[10px] uppercase font-bold text-emerald-600 tracking-wider block">Ngày kết thúc</span>
+                <span class="text-[10px] uppercase font-bold text-emerald-600 tracking-wider block" data-i18n="endDateLabel">End Date</span>
                 <span id="dispEndDate" class="text-sm font-bold font-mono text-slate-900">--</span>
               </div>
               <span id="dispEndWeekday" class="text-xs font-medium text-slate-500">--</span>
             </div>
           </div>
+
+          <!-- Cycle Stats -->
+          <div class="grid grid-cols-3 gap-2 pt-1 text-center">
+            <div class="bg-white/80 p-2 rounded-lg border border-slate-200 text-xs">
+              <span class="text-[10px] text-slate-500 block" data-i18n="statTradingDays">Trading Days</span>
+              <strong class="text-slate-900 text-sm font-bold">20</strong>
+            </div>
+            <div class="bg-white/80 p-2 rounded-lg border border-slate-200 text-xs">
+              <span class="text-[10px] text-slate-500 block" data-i18n="statWeekendDays">Weekend Days</span>
+              <strong id="dispWeekendCount" class="text-slate-900 text-sm font-bold">--</strong>
+            </div>
+            <div class="bg-white/80 p-2 rounded-lg border border-slate-200 text-xs">
+              <span class="text-[10px] text-slate-500 block" data-i18n="statHolidays">Holidays</span>
+              <strong id="dispHolidayCount" class="text-slate-900 text-sm font-bold">--</strong>
+            </div>
+          </div>
+
+          <!-- Skipped Holidays List -->
+          <div id="skippedHolidaysContainer" class="hidden text-xs bg-amber-50/70 p-2.5 rounded-lg border border-amber-200 text-amber-800 space-y-1">
+            <div class="font-semibold flex items-center gap-1">
+              <i data-lucide="alert-circle" class="w-3.5 h-3.5 text-amber-600"></i>
+              <span data-i18n="skippedHolidaysTitle">US Market Holidays Skipped:</span>
+            </div>
+            <ul id="skippedHolidaysList" class="list-disc list-inside space-y-0.5 text-[11px] text-amber-900 pl-1"></ul>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Task 1 Footer Action Bar: Apply Cycle & Toggle Details -->
+      <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
+        <div class="text-[11px] text-slate-400 flex items-center gap-1">
+          <i data-lucide="shield-check" class="w-3.5 h-3.5 text-slate-400"></i>
+          <span>SEC/FINRA Holiday Calendar</span>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <!-- Apply Cycle Button -->
+          <button id="btn-apply-cycle" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 shadow-sm transition-all cursor-pointer">
+            <i data-lucide="check" class="w-4 h-4"></i>
+            <span data-i18n="btnApplyCycle">Apply Cycle</span>
+          </button>
+
+          <!-- Toggle Button (Icon only) -->
+          <button id="btn-toggle-task1" class="w-8 h-8 flex items-center justify-center rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors cursor-pointer" title="Toggle Details">
+            <div id="toggleIconContainer">
+              <i data-lucide="chevron-down" class="w-4 h-4"></i>
+            </div>
+          </button>
         </div>
       </div>
 
-      <!-- Action -->
-      <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
-        <span class="text-xs text-slate-500">Nhấn để tải 20 phiên vào Task 2 bên dưới:</span>
-        <button id="btn-apply-cycle" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 shadow-sm transition-all cursor-pointer">
-          <i data-lucide="check" class="w-4 h-4"></i>
-          <span>Áp dụng chu kỳ vào Task 2</span>
-        </button>
-      </div>
     </div>
 
-    <!-- TASK 2 PANEL -->
+    <!-- TASK 2 PANEL (Activated upon cycle apply) -->
     <div id="task2-panel" class="hidden bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-6 transition-all duration-300">
       
+      <!-- Task 2 Header -->
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
         <div>
           <div class="flex items-center gap-2">
             <h2 id="task2-title" class="text-base sm:text-lg font-bold text-slate-900 leading-tight"></h2>
             <span id="finalized-badge" class="hidden px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-800 border border-emerald-300">
-              <i data-lucide="lock" class="w-3 h-3 inline mr-1"></i>Đã chốt
+              <i data-lucide="lock" class="w-3 h-3 inline mr-1"></i><span data-i18n="badgeFinalized">Finalized</span>
             </span>
           </div>
-          <p class="text-xs text-slate-500 mt-0.5">Nhập giá đóng cửa từng phiên và bấm "Lưu dữ liệu" để ghi vào danh sách Admin</p>
+          <p class="text-xs text-slate-500 mt-0.5" data-i18n="task2Subtitle">Daily price input and automatic percentage change tracking</p>
         </div>
 
+        <!-- Action Buttons -->
         <div class="flex flex-wrap items-center gap-2">
           <!-- Batch Autofill helper for quick Admin testing -->
-          <button id="btn-quick-fill" class="px-3 py-1.5 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-xl transition-colors cursor-pointer" title="Điền giá mẫu ngẫu nhiên">
-            Điền nhanh giá mẫu
+          <button id="btn-quick-fill" class="px-2.5 py-1.5 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-xl transition-colors cursor-pointer" title="Auto-fill sample mock prices">
+            <span data-i18n="btnQuickFill">Quick Sample Fill</span>
           </button>
 
-          <!-- Save to History -->
-          <button id="btn-save-history" class="px-4 py-1.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer">
-            <i data-lucide="save" class="w-4 h-4"></i>
-            <span>Lưu dữ liệu quý này</span>
+          <!-- Finalize Cycle Button -->
+          <button id="btn-finalize-cycle" class="px-3 py-1.5 text-xs font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-300 rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer">
+            <i data-lucide="lock" class="w-3.5 h-3.5"></i>
+            <span id="txt-finalize-btn" data-i18n="btnFinalizeCycle">Finalize Cycle</span>
+          </button>
+
+          <!-- Save to Catalog Button -->
+          <button id="btn-save-history" class="px-3.5 py-1.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer">
+            <i data-lucide="save" class="w-3.5 h-3.5"></i>
+            <span data-i18n="btnSaveHistory">Save Quarter Data</span>
+          </button>
+
+          <!-- Clear Table Button -->
+          <button id="btn-clear-task2" class="px-2.5 py-1.5 text-xs font-medium text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 rounded-xl transition-colors border border-rose-200 flex items-center gap-1 cursor-pointer" title="Clear Table">
+            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+            <span data-i18n="btnClearAll">Clear</span>
           </button>
         </div>
       </div>
 
       <!-- Task 2 Summary Statistics -->
       <div class="grid grid-cols-2 md:grid-cols-5 gap-3 my-5">
+        
+        <!-- 1. Initial Price -->
         <div class="bg-slate-50/80 p-3 rounded-xl border border-slate-200 text-center">
-          <span class="text-[10px] font-semibold uppercase tracking-wider text-slate-500 block">Giá đầu kỳ</span>
+          <span class="text-[10px] font-semibold uppercase tracking-wider text-slate-500 block" data-i18n="firstPriceLabel">Initial Price</span>
           <strong id="statFirstPrice" class="text-sm font-bold text-slate-800 font-mono mt-1 block">--</strong>
         </div>
 
+        <!-- 2. Latest Price -->
         <div class="bg-slate-50/80 p-3 rounded-xl border border-slate-200 text-center">
-          <span class="text-[10px] font-semibold uppercase tracking-wider text-slate-500 block">Giá gần nhất</span>
+          <span class="text-[10px] font-semibold uppercase tracking-wider text-slate-500 block" data-i18n="latestPriceLabel">Latest Price</span>
           <strong id="statLatestPrice" class="text-sm font-bold text-slate-800 font-mono mt-1 block">--</strong>
         </div>
 
+        <!-- 3. CURRENT AVG PRICE (Centered & Highlighted) -->
         <div class="col-span-2 md:col-span-1 bg-gradient-to-b from-indigo-50 to-indigo-100/50 p-3.5 rounded-xl border-2 border-indigo-400/60 shadow-xs text-center flex flex-col justify-center items-center">
-          <span class="text-[11px] font-bold uppercase tracking-wider text-indigo-900 block">Giá trung bình hiện tại</span>
+          <span class="text-[11px] font-bold uppercase tracking-wider text-indigo-900 block" data-i18n="avgPriceLabel">Current Avg Price</span>
           <div class="flex items-baseline justify-center gap-1 mt-1">
             <strong id="statAvgPrice" class="text-lg font-black text-indigo-700 font-mono">--</strong>
           </div>
         </div>
 
+        <!-- 4. Period Change -->
         <div class="bg-slate-50/80 p-3 rounded-xl border border-slate-200 text-center">
-          <span class="text-[10px] font-semibold uppercase tracking-wider text-slate-500 block">Tổng biến động</span>
+          <span class="text-[10px] font-semibold uppercase tracking-wider text-slate-500 block" data-i18n="totalChangeLabel">Period Change</span>
           <strong id="statTotalChange" class="text-sm font-bold text-slate-800 font-mono mt-1 block">--</strong>
         </div>
 
+        <!-- 5. Active Sessions -->
         <div class="bg-slate-50/80 p-3 rounded-xl border border-slate-200 text-center">
-          <span class="text-[10px] font-semibold uppercase tracking-wider text-slate-500 block">Phiên có giá</span>
+          <span class="text-[10px] font-semibold uppercase tracking-wider text-slate-500 block" data-i18n="activeSessionsLabel">Active Sessions</span>
           <strong id="statActiveSessions" class="text-sm font-bold text-slate-800 font-mono mt-1 block">0 / 20</strong>
         </div>
+
       </div>
 
       <!-- Task 2 Table Container -->
@@ -234,16 +327,18 @@
         <table class="w-full text-left text-xs text-slate-700">
           <thead class="bg-slate-100/80 text-[11px] font-semibold text-slate-600 uppercase tracking-wider border-b border-slate-200">
             <tr>
-              <th scope="col" class="py-3 px-4 w-16">Phiên</th>
-              <th scope="col" class="py-3 px-4 w-32">Ngày</th>
-              <th scope="col" class="py-3 px-4 w-28">Thứ</th>
-              <th scope="col" class="py-3 px-4 min-w-[150px]">Giá đóng cửa ($)</th>
-              <th scope="col" class="py-3 px-4 min-w-[130px]">Biến động (%)</th>
+              <th scope="col" class="py-3 px-4 w-16" data-i18n="thSession">Session</th>
+              <th scope="col" class="py-3 px-4 w-32" data-i18n="thDate">Date</th>
+              <th scope="col" class="py-3 px-4 w-28" data-i18n="thWeekday">Day</th>
+              <th scope="col" class="py-3 px-4 min-w-[150px]" data-i18n="thPrice">Closing Price ($)</th>
+              <th scope="col" class="py-3 px-4 min-w-[130px]" data-i18n="thChange">Change (%)</th>
+              <th scope="col" class="py-3 px-4 text-right w-20" data-i18n="thAction">Action</th>
             </tr>
           </thead>
           <tbody id="task2-table-body" class="divide-y divide-slate-100"></tbody>
         </table>
       </div>
+
     </div>
 
     <!-- CALCULATION HISTORY (ADMIN RECORD MANAGEMENT) -->
@@ -252,16 +347,16 @@
         <div>
           <h2 class="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
             <i data-lucide="database" class="w-5 h-5 text-indigo-600"></i>
-            <span>Danh mục các quý đã lưu (Sẽ xuất vào history_data.json)</span>
+            <span data-i18n="adminHistoryTitle">Saved Quarters Catalog (Exports to history_data.json)</span>
           </h2>
-          <p class="text-xs text-slate-500 mt-0.5">Sắp xếp tự động từ quý gần nhất đến xa nhất. Nhấn "Xuất history_data.json" để lưu lên Git.</p>
+          <p class="text-xs text-slate-500 mt-0.5" data-i18n="adminHistorySub">Sorted chronologically (newest first). Click "Export history_data.json" to commit to Git.</p>
         </div>
         <div class="flex items-center gap-2">
-          <button id="btn-clear-all-admin" class="px-3 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 border border-rose-200 rounded-lg transition-colors cursor-pointer">
-            Xóa trắng danh sách
+          <button id="btn-clear-all-admin" class="px-3 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 border border-rose-200 rounded-lg transition-colors cursor-pointer" data-i18n="btnClearAllAdmin">
+            Clear All Quarters
           </button>
           <span id="history-count-badge" class="px-2.5 py-1 text-xs font-bold bg-indigo-50 text-indigo-700 rounded-full border border-indigo-200">
-            0 Quý
+            0 Quarters
           </span>
         </div>
       </div>
@@ -282,27 +377,33 @@
 
   <script>
     // State
+    let currentLang = 'en';
     let task1Result = null;
     let task2Sessions = [];
+    let isTask1Collapsed = true;
+    let isTask2Finalized = false;
     let adminHistory = [];
     let openHistoryDetailId = null;
 
+    // DOM Elements
     const targetDateInput = document.getElementById('target-date-input');
     const quarterBtns = document.querySelectorAll('.btn-quarter');
     const btnToday = document.getElementById('btn-today');
     const btnResetDefault = document.getElementById('btn-reset-default');
+    const btnToggleTask1 = document.getElementById('btn-toggle-task1');
+    const toggleIconContainer = document.getElementById('toggleIconContainer');
+    const task1CollapsibleBody = document.getElementById('task1-collapsible-body');
     const btnApplyCycle = document.getElementById('btn-apply-cycle');
+
     const task2Panel = document.getElementById('task2-panel');
     const task2Title = document.getElementById('task2-title');
-    const task2TableBody = document.getElementById('task2-table-body');
+    const finalizedBadge = document.getElementById('finalized-badge');
+    const btnFinalizeCycle = document.getElementById('btn-finalize-cycle');
+    const txtFinalizeBtn = document.getElementById('txt-finalize-btn');
     const btnSaveHistory = document.getElementById('btn-save-history');
+    const btnClearTask2 = document.getElementById('btn-clear-task2');
     const btnQuickFill = document.getElementById('btn-quick-fill');
-    const historyContainer = document.getElementById('history-container');
-    const historyCountBadge = document.getElementById('history-count-badge');
-    const btnExportJson = document.getElementById('btn-export-json');
-    const btnExportClientHtml = document.getElementById('btn-export-client-html');
-    const inputImportJson = document.getElementById('input-import-json');
-    const btnClearAllAdmin = document.getElementById('btn-clear-all-admin');
+    const task2TableBody = document.getElementById('task2-table-body');
 
     const statFirstPrice = document.getElementById('statFirstPrice');
     const statLatestPrice = document.getElementById('statLatestPrice');
@@ -310,12 +411,144 @@
     const statTotalChange = document.getElementById('statTotalChange');
     const statActiveSessions = document.getElementById('statActiveSessions');
 
+    const historyContainer = document.getElementById('history-container');
+    const historyCountBadge = document.getElementById('history-count-badge');
+    const btnClearAllAdmin = document.getElementById('btn-clear-all-admin');
+
+    const btnExportJson = document.getElementById('btn-export-json');
+    const btnExportClientHtml = document.getElementById('btn-export-client-html');
+    const inputImportJson = document.getElementById('input-import-json');
+    const btnReloadJson = document.getElementById('btn-reload-json');
+    const adminJsonStatusBadge = document.getElementById('admin-json-status-badge');
+
     const toast = document.getElementById('toast');
     const toastMessage = document.getElementById('toast-message');
 
-    const weekdaysVi = ["Chủ Nhật", "Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy"];
+    const langEnBtn = document.getElementById('lang-en');
+    const langViBtn = document.getElementById('lang-vi');
 
-    function setElText(el, t) { if (el) el.textContent = t; }
+    // Multilingual Translations Dictionary
+    const translations = {
+      en: {
+        adminConsoleTitle: "ADMINISTRATOR CONSOLE",
+        adminConsoleSub: "• Data Entry & Git Export Tools",
+        btnExportJson: "Export history_data.json",
+        btnExportClientHtml: "Export index.html (Embedded Data)",
+        btnImportJson: "Import JSON",
+        btnReloadJson: "Reload JSON",
+        appSubtitle: "US Stock Market 20-Day Trading Cycle (NYSE / NASDAQ)",
+        targetDateSub: "Default: 15th day of the mid-quarter month",
+        btnToday: "Today",
+        selectedTarget: "Selected Date:",
+        cycleDistributionTitle: "Cycle Days Distribution",
+        startDateLabel: "Start Date",
+        endDateLabel: "End Date",
+        statTradingDays: "Trading Days",
+        statWeekendDays: "Weekend Days",
+        statHolidays: "Holidays",
+        skippedHolidaysTitle: "US Market Holidays Skipped:",
+        btnApplyCycle: "Apply Cycle",
+        task2Subtitle: "Daily price input and automatic percentage change tracking",
+        btnFinalizeCycle: "Finalize Cycle",
+        btnUnfinalizeCycle: "Unlock Cycle",
+        badgeFinalized: "Finalized",
+        btnQuickFill: "Quick Sample Fill",
+        btnSaveHistory: "Save Quarter Data",
+        btnClearAll: "Clear",
+        firstPriceLabel: "Initial Price",
+        latestPriceLabel: "Latest Price",
+        avgPriceLabel: "Current Avg Price",
+        totalChangeLabel: "Period Change",
+        activeSessionsLabel: "Active Sessions",
+        thSession: "Session",
+        thDate: "Date",
+        thWeekday: "Day",
+        thPrice: "Closing Price ($)",
+        thChange: "Change (%)",
+        thAction: "Action",
+        adminHistoryTitle: "Saved Quarters Catalog (Exports to history_data.json)",
+        adminHistorySub: "Sorted chronologically (newest first). Click \"Export history_data.json\" to commit to Git.",
+        btnClearAllAdmin: "Clear All Quarters",
+        historyEmptyAdmin: "No quarters saved yet. Select a quarter, enter prices in Task 2 and click \"Save Quarter Data\".",
+        recordsUnit: "Quarters",
+        msgLoadedSessions: "Loaded 20 sessions for Q{quarter} - {year}",
+        msgSampleFilled: "Quickly populated sample prices for 20 sessions!",
+        msgUpdatedQuarter: "Updated data for Q{quarter} - {year}!",
+        msgSavedQuarter: "Saved Q{quarter} - {year} to Admin catalog!",
+        msgDeletedQuarter: "Deleted quarter from Admin catalog!",
+        msgClearedAll: "Cleared all records in Admin list!",
+        msgExportJsonSuccess: "Successfully exported history_data.json!",
+        msgExportHtmlSuccess: "Successfully exported index.html with embedded data!",
+        msgCatalogEmpty: "Catalog is empty! Please enter and save at least one quarter.",
+        msgImportSuccess: "Successfully imported {count} quarters from JSON file!",
+        msgImportInvalid: "Invalid JSON file structure (array of quarters expected).",
+        msgJsonAutoLoaded: "Automatically loaded {count} quarters from history_data.json!",
+        msgJsonLoadNotFound: "No history_data.json found on server. Using local storage."
+      },
+      vi: {
+        adminConsoleTitle: "BẢNG ĐIỀU KHIỂN QUẢN TRỊ",
+        adminConsoleSub: "• Nhập liệu & Xuất file dữ liệu Git",
+        btnExportJson: "Xuất history_data.json",
+        btnExportClientHtml: "Xuất index.html (Đã nhúng Data)",
+        btnImportJson: "Nhập JSON",
+        btnReloadJson: "Nạp lại JSON",
+        appSubtitle: "Chu kỳ 20 phiên giao dịch chứng khoán Mỹ (NYSE / NASDAQ)",
+        targetDateSub: "Mặc định: Ngày 15 của tháng giữa quý",
+        btnToday: "Hôm nay",
+        selectedTarget: "Ngày đã chọn:",
+        cycleDistributionTitle: "Phân bổ số ngày trong chu kỳ",
+        startDateLabel: "Ngày bắt đầu",
+        endDateLabel: "Ngày kết thúc",
+        statTradingDays: "Số ngày GD",
+        statWeekendDays: "Ngày cuối tuần",
+        statHolidays: "Ngày nghỉ lễ",
+        skippedHolidaysTitle: "Các ngày nghỉ lễ sàn Mỹ đã bỏ qua:",
+        btnApplyCycle: "Áp dụng chu kỳ",
+        task2Subtitle: "Nhập giá đóng cửa mỗi ngày và tự động tính phần trăm biến động",
+        btnFinalizeCycle: "Chốt chu kỳ",
+        btnUnfinalizeCycle: "Mở khóa chu kỳ",
+        badgeFinalized: "Đã chốt",
+        btnQuickFill: "Điền nhanh giá mẫu",
+        btnSaveHistory: "Lưu dữ liệu quý này",
+        btnClearAll: "Xóa toàn bộ",
+        firstPriceLabel: "Giá đầu kỳ",
+        latestPriceLabel: "Giá gần nhất",
+        avgPriceLabel: "Giá trung bình hiện tại",
+        totalChangeLabel: "Tổng biến động",
+        activeSessionsLabel: "Phiên có giá",
+        thSession: "Phiên",
+        thDate: "Ngày",
+        thWeekday: "Thứ",
+        thPrice: "Giá đóng cửa ($)",
+        thChange: "Biến động (%)",
+        thAction: "Thao tác",
+        adminHistoryTitle: "Danh mục các quý đã lưu (Sẽ xuất vào history_data.json)",
+        adminHistorySub: "Sắp xếp tự động từ quý gần nhất đến xa nhất. Nhấn \"Xuất history_data.json\" để lưu lên Git.",
+        btnClearAllAdmin: "Xóa trắng danh sách",
+        historyEmptyAdmin: "Chưa có quý nào được lưu. Hãy chọn quý, nhập giá ở Task 2 và bấm \"Lưu dữ liệu quý này\".",
+        recordsUnit: "Quý",
+        msgLoadedSessions: "Đã tải 20 phiên cho Quý {quarter} - {year}",
+        msgSampleFilled: "Đã điền nhanh giá cho 20 phiên!",
+        msgUpdatedQuarter: "Đã cập nhật dữ liệu Quý {quarter} - {year}!",
+        msgSavedQuarter: "Đã lưu Quý {quarter} - {year} vào danh mục Admin!",
+        msgDeletedQuarter: "Đã xóa quý khỏi danh sách Admin!",
+        msgClearedAll: "Đã xóa trắng danh sách!",
+        msgExportJsonSuccess: "Đã xuất file history_data.json thành công!",
+        msgExportHtmlSuccess: "Đã xuất index.html đồng bộ sẵn dữ liệu!",
+        msgCatalogEmpty: "Danh mục trống! Hãy nhập và lưu ít nhất một quý.",
+        msgImportSuccess: "Đã nhập thành công {count} quý từ file JSON!",
+        msgImportInvalid: "Định dạng file JSON không hợp lệ (cần là danh sách mảng).",
+        msgJsonAutoLoaded: "Đã tự động tải {count} quý từ file history_data.json!",
+        msgJsonLoadNotFound: "Chưa tìm thấy file history_data.json. Đang dùng dữ liệu bộ nhớ."
+      }
+    };
+
+    const weekdaysMap = {
+      en: ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+      vi: ["Chủ Nhật", "Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy"]
+    };
+
+    function setElText(el, text) { if (el) el.textContent = text; }
     function parseISODate(isoStr) {
       const parts = isoStr.split('-');
       return new Date(Date.UTC(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10)));
@@ -338,7 +571,9 @@
       setTimeout(() => { toast.classList.add('opacity-0', 'translate-y-20'); }, 3000);
     }
 
-    // US Market Holidays
+    // -------------------------------------------------------------
+    // US Market Holidays (NYSE / NASDAQ)
+    // -------------------------------------------------------------
     function getNthDayOfWeek(year, monthIndex, targetDayOfWeek, n) {
       let count = 0;
       for (let day = 1; day <= 31; day++) {
@@ -392,24 +627,30 @@
     }
     function getUSHolidaysForYear(year) {
       const holidays = {};
-      function add(d) { if (d) holidays[formatDateKey(d)] = true; }
-      add(adjustObservedHoliday(new Date(Date.UTC(year, 0, 1))));
-      add(getNthDayOfWeek(year, 0, 1, 3));
-      add(getNthDayOfWeek(year, 1, 1, 3));
-      add(getGoodFriday(year));
-      add(getLastDayOfWeek(year, 4, 1));
-      add(adjustObservedHoliday(new Date(Date.UTC(year, 5, 19))));
-      add(adjustObservedHoliday(new Date(Date.UTC(year, 6, 4))));
-      add(getNthDayOfWeek(year, 8, 1, 1));
-      add(getNthDayOfWeek(year, 10, 1, 4));
-      add(adjustObservedHoliday(new Date(Date.UTC(year, 11, 25))));
+      function add(d, nameEn, nameVi) {
+        if (!d) return;
+        holidays[formatDateKey(d)] = { en: nameEn, vi: nameVi };
+      }
+      add(adjustObservedHoliday(new Date(Date.UTC(year, 0, 1))), "New Year's Day", "Tết Dương lịch");
+      add(getNthDayOfWeek(year, 0, 1, 3), "Martin Luther King Jr. Day", "Ngày Martin Luther King Jr.");
+      add(getNthDayOfWeek(year, 1, 1, 3), "Presidents' Day", "Ngày Tổng thống Mỹ");
+      add(getGoodFriday(year), "Good Friday", "Thứ Sáu Tuần Thánh");
+      add(getLastDayOfWeek(year, 4, 1), "Memorial Day", "Ngày Tưởng niệm Chiến sĩ trận vong");
+      add(adjustObservedHoliday(new Date(Date.UTC(year, 5, 19))), "Juneteenth", "Ngày Giải phóng Nô lệ (Juneteenth)");
+      add(adjustObservedHoliday(new Date(Date.UTC(year, 6, 4))), "Independence Day", "Ngày Quốc khánh Mỹ (4/7)");
+      add(getNthDayOfWeek(year, 8, 1, 1), "Labor Day", "Ngày Quốc tế Lao động Mỹ");
+      add(getNthDayOfWeek(year, 10, 1, 4), "Thanksgiving Day", "Lễ Tạ ơn");
+      add(adjustObservedHoliday(new Date(Date.UTC(year, 11, 25))), "Christmas Day", "Lễ Giáng sinh");
       return holidays;
+    }
+    function isUSMarketHoliday(d) {
+      const holidays = getUSHolidaysForYear(d.getUTCFullYear());
+      return holidays[formatDateKey(d)] || null;
     }
     function isTradingDay(d) {
       const dow = d.getUTCDay();
       if (dow === 0 || dow === 6) return false;
-      const hol = getUSHolidaysForYear(d.getUTCFullYear());
-      if (hol[formatDateKey(d)]) return false;
+      if (isUSMarketHoliday(d)) return false;
       return true;
     }
     function getNextTradingDay(d) {
@@ -421,25 +662,55 @@
     function calculateTask1(initialTargetDate) {
       const validEndTradingDay = getNextTradingDay(initialTargetDate);
       const tradingSessions = [];
+      const skippedHolidays = [];
+      let weekendDaysCount = 0;
+      let holidaysCount = 0;
+
       const cursor = new Date(validEndTradingDay.getTime());
       while (tradingSessions.length < 20) {
-        if (isTradingDay(cursor)) {
-          tradingSessions.unshift(new Date(cursor.getTime()));
+        const dow = cursor.getUTCDay();
+        if (dow === 0 || dow === 6) {
+          weekendDaysCount++;
+        } else {
+          const hol = isUSMarketHoliday(cursor);
+          if (hol) {
+            holidaysCount++;
+            skippedHolidays.push({ date: new Date(cursor.getTime()), name: hol });
+          } else {
+            tradingSessions.unshift(new Date(cursor.getTime()));
+          }
         }
         cursor.setUTCDate(cursor.getUTCDate() - 1);
       }
+
       const startDate = tradingSessions[0];
       const endDate = tradingSessions[tradingSessions.length - 1];
       const year = endDate.getUTCFullYear();
       const quarter = getQuarterFromDate(endDate);
 
-      return { targetDate: initialTargetDate, validEndTradingDay, startDate, endDate, year, quarter, tradingSessions };
+      return {
+        targetDate: initialTargetDate,
+        validEndTradingDay,
+        startDate,
+        endDate,
+        year,
+        quarter,
+        tradingSessions,
+        weekendDaysCount,
+        holidaysCount,
+        skippedHolidays
+      };
     }
 
     function renderTask1UI() {
       if (!task1Result) return;
       const r = task1Result;
-      document.getElementById('cycle-quarter-title').textContent = `Stock Price Cycle: Quý ${r.quarter} - ${r.year}`;
+      const quarterTitle = document.getElementById('cycle-quarter-title');
+      if (quarterTitle) {
+        quarterTitle.textContent = currentLang === 'vi' 
+          ? `Chu kỳ giá cổ phiếu: Quý ${r.quarter} - ${r.year}`
+          : `Stock Price Cycle: Q${r.quarter} - ${r.year}`;
+      }
 
       quarterBtns.forEach(btn => {
         const q = parseInt(btn.getAttribute('data-quarter'), 10);
@@ -448,20 +719,65 @@
           : "btn-quarter px-3 py-1 rounded-lg transition-colors text-slate-600 hover:text-slate-900";
       });
 
-      setElText(document.getElementById('dispTargetWeekday'), weekdaysVi[r.targetDate.getUTCDay()]);
+      setElText(document.getElementById('dispTargetWeekday'), weekdaysMap[currentLang][r.targetDate.getUTCDay()]);
       setElText(document.getElementById('dispTargetDate'), formatDateKey(r.targetDate));
+
+      const statusBadgeContainer = document.getElementById('targetStatusBadgeContainer');
+      if (statusBadgeContainer) {
+        const isOriginalDayTrading = isTradingDay(r.targetDate);
+        statusBadgeContainer.innerHTML = isOriginalDayTrading
+          ? `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200"><i data-lucide="check-circle" class="w-3 h-3"></i><span>${currentLang === 'vi' ? 'Phiên giao dịch hợp lệ' : 'Active Trading Day'}</span></span>`
+          : `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200"><i data-lucide="arrow-right" class="w-3 h-3"></i><span>${currentLang === 'vi' ? 'Chuyển sang:' : 'Rolled to:'} ${formatDateKey(r.validEndTradingDay)}</span></span>`;
+      }
+
       setElText(document.getElementById('dispStartDate'), formatDateKey(r.startDate));
-      setElText(document.getElementById('dispStartWeekday'), weekdaysVi[r.startDate.getUTCDay()]);
+      setElText(document.getElementById('dispStartWeekday'), weekdaysMap[currentLang][r.startDate.getUTCDay()]);
       setElText(document.getElementById('dispEndDate'), formatDateKey(r.endDate));
-      setElText(document.getElementById('dispEndWeekday'), weekdaysVi[r.endDate.getUTCDay()]);
+      setElText(document.getElementById('dispEndWeekday'), weekdaysMap[currentLang][r.endDate.getUTCDay()]);
+      setElText(document.getElementById('dispWeekendCount'), r.weekendDaysCount);
+      setElText(document.getElementById('dispHolidayCount'), r.holidaysCount);
+
+      const skippedContainer = document.getElementById('skippedHolidaysContainer');
+      const skippedList = document.getElementById('skippedHolidaysList');
+      if (skippedContainer && skippedList) {
+        if (r.skippedHolidays.length > 0) {
+          skippedContainer.classList.remove('hidden');
+          skippedList.innerHTML = r.skippedHolidays.map(h => `<li>${formatDateKey(h.date)}: ${h.name[currentLang] || h.name.en}</li>`).join('');
+        } else {
+          skippedContainer.classList.add('hidden');
+        }
+      }
       lucide.createIcons();
+    }
+
+    function updateToggleTask1ButtonUI() {
+      if (!task1CollapsibleBody || !toggleIconContainer) return;
+      if (isTask1Collapsed) {
+        task1CollapsibleBody.classList.add('hidden');
+        toggleIconContainer.innerHTML = `<i data-lucide="chevron-down" class="w-4 h-4"></i>`;
+      } else {
+        task1CollapsibleBody.classList.remove('hidden');
+        toggleIconContainer.innerHTML = `<i data-lucide="chevron-up" class="w-4 h-4"></i>`;
+      }
+      lucide.createIcons();
+    }
+
+    function updateTask2Title(quarter, startStr, endStr) {
+      if (!task2Title) return;
+      const startSlash = startStr.replace(/-/g, '/');
+      const endSlash = endStr.replace(/-/g, '/');
+      task2Title.textContent = currentLang === 'vi'
+        ? `Dữ liệu quý ${quarter} (${startSlash} - ${endSlash})`
+        : `Quarter ${quarter} Data (${startSlash} - ${endSlash})`;
     }
 
     function calculateTask2Stats() {
       if (!task2Sessions || task2Sessions.length === 0) return { avg: null, first: null, latest: null, changePct: null, activeCount: 0 };
       const valid = task2Sessions.filter(s => s.price !== null && !isNaN(s.price));
 
-      setElText(statActiveSessions, `${valid.length} / ${task2Sessions.length}`);
+      if (statActiveSessions) {
+        statActiveSessions.textContent = `${valid.length} / ${task2Sessions.length}`;
+      }
 
       if (valid.length > 0) {
         const first = valid[0].price;
@@ -481,12 +797,14 @@
             ? "text-sm font-bold font-mono mt-1 block text-emerald-600" 
             : (changePct < 0 ? "text-sm font-bold font-mono mt-1 block text-rose-600" : "text-sm font-bold font-mono mt-1 block text-slate-800");
         }
+
         return { avg, first, latest, changePct, activeCount: valid.length };
       } else {
         setElText(statFirstPrice, '--');
         setElText(statLatestPrice, '--');
         setElText(statAvgPrice, '--');
         setElText(statTotalChange, '--');
+        if (statTotalChange) statTotalChange.className = "text-sm font-bold font-mono mt-1 block text-slate-800";
         return { avg: null, first: null, latest: null, changePct: null, activeCount: 0 };
       }
     }
@@ -519,6 +837,17 @@
       lucide.createIcons();
     }
 
+    function updateFinalizedUI() {
+      if (!finalizedBadge || !txtFinalizeBtn) return;
+      if (isTask2Finalized) {
+        finalizedBadge.classList.remove('hidden');
+        txtFinalizeBtn.textContent = translations[currentLang].btnUnfinalizeCycle;
+      } else {
+        finalizedBadge.classList.add('hidden');
+        txtFinalizeBtn.textContent = translations[currentLang].btnFinalizeCycle;
+      }
+    }
+
     function renderTask2Table() {
       if (!task2TableBody) return;
       task2TableBody.innerHTML = '';
@@ -530,7 +859,8 @@
 
         const d = s.date;
         const dateKey = formatDateKey(d);
-        const weekdayStr = weekdaysVi[d.getUTCDay()];
+        const weekdayStr = weekdaysMap[currentLang][d.getUTCDay()];
+        const isLocked = isTask2Finalized || s.locked;
         const displayVal = (s.price !== null && !isNaN(s.price)) ? s.price : '';
 
         let changeBadgeHtml = `<span class="text-slate-400 font-mono text-xs">--</span>`;
@@ -566,13 +896,32 @@
                 min="0"
                 id="input-price-${idx}"
                 value="${displayVal}"
+                ${isLocked ? 'readonly' : ''}
                 placeholder="0.00"
-                class="session-price-input w-full pl-6 pr-2 py-1.5 text-xs font-mono font-semibold text-slate-800 rounded-lg border bg-white border-slate-300 hover:border-indigo-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-100"
+                class="session-price-input w-full pl-6 pr-2 py-1.5 text-xs font-mono font-semibold text-slate-800 rounded-lg border transition-all ${
+                  isLocked 
+                    ? 'bg-slate-100/80 border-slate-200 text-slate-500 cursor-not-allowed select-none' 
+                    : 'bg-white border-slate-300 hover:border-indigo-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-100'
+                }"
               />
             </div>
           </td>
           <td class="py-2.5 px-4" id="badge-change-${idx}">
             ${changeBadgeHtml}
+          </td>
+          <td class="py-2.5 px-4 text-right">
+            <button 
+              id="btn-lock-row-${idx}"
+              ${isTask2Finalized ? 'disabled' : ''}
+              class="p-1 rounded-lg transition-colors cursor-pointer ${
+                isTask2Finalized 
+                  ? 'text-slate-300 cursor-not-allowed' 
+                  : (s.locked ? 'text-amber-600 hover:bg-amber-50' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100')
+              }"
+              title="${s.locked ? 'Unlock' : 'Lock'}"
+            >
+              <i data-lucide="${s.locked ? 'lock' : 'unlock'}" class="w-3.5 h-3.5"></i>
+            </button>
           </td>
         `;
 
@@ -588,6 +937,27 @@
           });
           inputEl.addEventListener('blur', (e) => {
             if (s.price !== null && !isNaN(s.price)) e.target.value = Number(s.price).toFixed(2);
+          });
+        }
+
+        const lockBtn = tr.querySelector(`#btn-lock-row-${idx}`);
+        if (lockBtn && !isTask2Finalized) {
+          lockBtn.addEventListener('click', () => {
+            s.locked = !s.locked;
+            if (inputEl) {
+              if (s.locked) {
+                inputEl.setAttribute('readonly', 'true');
+                inputEl.className = "session-price-input w-full pl-6 pr-2 py-1.5 text-xs font-mono font-semibold text-slate-800 rounded-lg border transition-all bg-slate-100/80 border-slate-200 text-slate-500 cursor-not-allowed select-none";
+                lockBtn.className = "p-1 rounded-lg transition-colors cursor-pointer text-amber-600 hover:bg-amber-50";
+                lockBtn.innerHTML = `<i data-lucide="lock" class="w-3.5 h-3.5"></i>`;
+              } else {
+                inputEl.removeAttribute('readonly');
+                inputEl.className = "session-price-input w-full pl-6 pr-2 py-1.5 text-xs font-mono font-semibold text-slate-800 rounded-lg border transition-all bg-white border-slate-300 hover:border-indigo-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-100";
+                lockBtn.className = "p-1 rounded-lg transition-colors cursor-pointer text-slate-400 hover:text-slate-600 hover:bg-slate-100";
+                lockBtn.innerHTML = `<i data-lucide="unlock" class="w-3.5 h-3.5"></i>`;
+              }
+              lucide.createIcons();
+            }
           });
         }
       });
@@ -607,13 +977,14 @@
       if (!historyContainer || !historyCountBadge) return;
       sortAdminHistory();
 
-      historyCountBadge.textContent = `${adminHistory.length} Quý`;
+      const unitText = translations[currentLang].recordsUnit || "Quarters";
+      historyCountBadge.textContent = `${adminHistory.length} ${unitText}`;
 
       if (adminHistory.length === 0) {
         historyContainer.innerHTML = `
           <div class="text-center py-8 text-slate-400 text-xs">
             <i data-lucide="inbox" class="w-8 h-8 mx-auto mb-2 text-slate-300"></i>
-            <span>Chưa có quý nào được lưu. Hãy chọn quý, nhập giá ở Task 2 và bấm "Lưu dữ liệu quý này".</span>
+            <span>${translations[currentLang].historyEmptyAdmin}</span>
           </div>
         `;
         lucide.createIcons();
@@ -638,7 +1009,7 @@
           const rows = (rec.sessions || []).map((s) => {
             const d = parseISODate(s.dateIso);
             const dateStr = formatDateKey(d);
-            const weekdayStr = weekdaysVi[d.getUTCDay()];
+            const weekdayStr = weekdaysMap[currentLang][d.getUTCDay()];
             let changeCell = `<span class="text-slate-400 font-mono text-xs">--</span>`;
 
             if (s.price !== null && !isNaN(s.price)) {
@@ -676,23 +1047,23 @@
             <div class="mt-4 pt-4 border-t border-slate-200 space-y-4">
               <div class="grid grid-cols-2 md:grid-cols-5 gap-2.5">
                 <div class="bg-white p-2.5 rounded-xl border border-slate-200 text-center shadow-2xs">
-                  <span class="text-[9px] font-semibold uppercase tracking-wider text-slate-500 block">Giá đầu kỳ</span>
+                  <span class="text-[9px] font-semibold uppercase tracking-wider text-slate-500 block">${translations[currentLang].firstPriceLabel}</span>
                   <strong class="text-xs font-bold text-slate-800 font-mono mt-0.5 block">${firstDisplay}</strong>
                 </div>
                 <div class="bg-white p-2.5 rounded-xl border border-slate-200 text-center shadow-2xs">
-                  <span class="text-[9px] font-semibold uppercase tracking-wider text-slate-500 block">Giá gần nhất</span>
+                  <span class="text-[9px] font-semibold uppercase tracking-wider text-slate-500 block">${translations[currentLang].latestPriceLabel}</span>
                   <strong class="text-xs font-bold text-slate-800 font-mono mt-0.5 block">${latestDisplay}</strong>
                 </div>
                 <div class="col-span-2 md:col-span-1 bg-gradient-to-b from-indigo-50 to-indigo-100/50 p-2.5 rounded-xl border-2 border-indigo-400/60 shadow-xs text-center">
-                  <span class="text-[10px] font-bold uppercase tracking-wider text-indigo-900 block">Giá TB</span>
+                  <span class="text-[10px] font-bold uppercase tracking-wider text-indigo-900 block">${translations[currentLang].avgPriceLabel}</span>
                   <strong class="text-base font-black text-indigo-700 font-mono mt-0.5 block">${avgDisplay}</strong>
                 </div>
                 <div class="bg-white p-2.5 rounded-xl border border-slate-200 text-center shadow-2xs">
-                  <span class="text-[9px] font-semibold uppercase tracking-wider text-slate-500 block">Biến động</span>
+                  <span class="text-[9px] font-semibold uppercase tracking-wider text-slate-500 block">${translations[currentLang].totalChangeLabel}</span>
                   <strong class="text-xs font-bold font-mono mt-0.5 block ${changeClass}">${changeDisplay}</strong>
                 </div>
                 <div class="bg-white p-2.5 rounded-xl border border-slate-200 text-center shadow-2xs">
-                  <span class="text-[9px] font-semibold uppercase tracking-wider text-slate-500 block">Số phiên</span>
+                  <span class="text-[9px] font-semibold uppercase tracking-wider text-slate-500 block">${translations[currentLang].activeSessionsLabel}</span>
                   <strong class="text-xs font-bold text-slate-800 font-mono mt-0.5 block">${rec.activeCount || 0} / ${(rec.sessions || []).length}</strong>
                 </div>
               </div>
@@ -701,11 +1072,11 @@
                 <table class="w-full text-left text-xs text-slate-700">
                   <thead class="bg-slate-100/80 text-[10px] font-semibold text-slate-600 uppercase tracking-wider border-b border-slate-200">
                     <tr>
-                      <th class="py-2 px-3 w-14">Phiên</th>
-                      <th class="py-2 px-3 w-28">Ngày</th>
-                      <th class="py-2 px-3 w-24">Thứ</th>
-                      <th class="py-2 px-3">Giá ($)</th>
-                      <th class="py-2 px-3 w-32">Biến động (%)</th>
+                      <th class="py-2 px-3 w-14">${translations[currentLang].thSession}</th>
+                      <th class="py-2 px-3 w-28">${translations[currentLang].thDate}</th>
+                      <th class="py-2 px-3 w-24">${translations[currentLang].thWeekday}</th>
+                      <th class="py-2 px-3">${translations[currentLang].thPrice}</th>
+                      <th class="py-2 px-3 w-32">${translations[currentLang].thChange}</th>
                     </tr>
                   </thead>
                   <tbody class="divide-y divide-slate-100">
@@ -717,26 +1088,29 @@
           `;
         }
 
+        const quarterPrefix = currentLang === 'vi' ? 'Quý' : 'Q';
+        const avgLabelText = currentLang === 'vi' ? 'Giá TB:' : 'Avg:';
+
         return `
           <div class="bg-slate-50 rounded-xl border border-slate-200 p-4 transition-all">
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <div class="flex items-center gap-2">
-                  <span class="text-sm font-bold text-slate-900">Quý ${rec.quarter} (${startSlash} - ${endSlash})</span>
+                  <span class="text-sm font-bold text-slate-900">${quarterPrefix} ${rec.quarter} (${startSlash} - ${endSlash})</span>
                   <span class="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-700 border border-indigo-200">${rec.year}</span>
                 </div>
                 <div class="flex items-center gap-3 text-xs text-slate-500 mt-1">
-                  <span>Giá TB: <strong class="text-indigo-700 font-mono font-bold">${avgDisplay}</strong></span>
+                  <span>${avgLabelText} <strong class="text-indigo-700 font-mono font-bold">${avgDisplay}</strong></span>
                   <span>•</span>
                   <span>${new Date(rec.savedAt).toLocaleDateString()}</span>
                 </div>
               </div>
 
               <div class="flex items-center gap-2">
-                <button class="btn-toggle-detail p-1.5 text-indigo-600 hover:bg-indigo-50 border border-indigo-200 rounded-lg cursor-pointer" data-id="${rec.id}" title="Xem chi tiết">
+                <button class="btn-toggle-detail p-1.5 text-indigo-600 hover:bg-indigo-50 border border-indigo-200 rounded-lg cursor-pointer" data-id="${rec.id}" title="Toggle Details">
                   <i data-lucide="${isExpanded ? 'chevron-up' : 'eye'}" class="w-4 h-4"></i>
                 </button>
-                <button class="btn-delete-record p-1.5 text-rose-500 hover:bg-rose-50 border border-rose-200 rounded-lg cursor-pointer" data-id="${rec.id}" title="Xóa quý này">
+                <button class="btn-delete-record p-1.5 text-rose-500 hover:bg-rose-50 border border-rose-200 rounded-lg cursor-pointer" data-id="${rec.id}" title="Delete Quarter">
                   <i data-lucide="trash-2" class="w-4 h-4"></i>
                 </button>
               </div>
@@ -760,7 +1134,7 @@
           adminHistory = adminHistory.filter(r => r.id !== id);
           saveAdminState();
           renderHistoryList();
-          showToast("Đã xóa quý khỏi danh sách Admin!");
+          showToast(translations[currentLang].msgDeletedQuarter);
         });
       });
 
@@ -775,6 +1149,11 @@
 
     function loadAdminState() {
       try {
+        const savedLang = localStorage.getItem('NAV_ADMIN_LANG');
+        if (savedLang && (savedLang === 'en' || savedLang === 'vi')) {
+          currentLang = savedLang;
+        }
+
         const saved = localStorage.getItem('NAV_ADMIN_HISTORY_DATA');
         if (saved) {
           adminHistory = JSON.parse(saved);
@@ -782,7 +1161,50 @@
       } catch (err) {}
     }
 
-    // Events
+    // -------------------------------------------------------------
+    // Auto Load history_data.json on startup
+    // -------------------------------------------------------------
+    async function autoLoadHistoryDataJson(silent = false) {
+      try {
+        const res = await fetch('./history_data.json', { cache: 'no-cache' });
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data) && data.length > 0) {
+            const map = new Map();
+            data.forEach(item => {
+              if (item && item.id) map.set(item.id, item);
+            });
+            adminHistory.forEach(item => {
+              if (item && item.id) map.set(item.id, item);
+            });
+
+            adminHistory = Array.from(map.values());
+            sortAdminHistory();
+            saveAdminState();
+            renderHistoryList();
+
+            if (adminJsonStatusBadge) {
+              adminJsonStatusBadge.classList.remove('hidden');
+              adminJsonStatusBadge.innerHTML = `<i data-lucide="check-circle" class="w-3 h-3 inline mr-1"></i>JSON: ${data.length} Q`;
+              lucide.createIcons();
+            }
+
+            if (!silent) {
+              const msg = translations[currentLang].msgJsonAutoLoaded.replace('{count}', data.length);
+              showToast(msg);
+            }
+            return true;
+          }
+        }
+      } catch (err) {
+        if (!silent) {
+          console.debug("history_data.json auto-load skipped or not available via fetch:", err);
+        }
+      }
+      return false;
+    }
+
+    // Handlers
     function handleDateChange(isoDateStr) {
       if (!isoDateStr) return;
       const d = parseISODate(isoDateStr);
@@ -802,17 +1224,6 @@
       });
     });
 
-    document.querySelectorAll('.admin-fast-q').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        const y = parseInt(e.currentTarget.getAttribute('data-year'), 10);
-        const q = parseInt(e.currentTarget.getAttribute('data-q'), 10);
-        const dateKey = formatDateKey(getQuarterMidDate(y, q));
-        targetDateInput.value = dateKey;
-        handleDateChange(dateKey);
-        btnApplyCycle.click();
-      });
-    });
-
     btnToday.addEventListener('click', () => {
       const today = formatDateKey(new Date());
       targetDateInput.value = today;
@@ -827,6 +1238,11 @@
       handleDateChange(dateKey);
     });
 
+    btnToggleTask1.addEventListener('click', () => {
+      isTask1Collapsed = !isTask1Collapsed;
+      updateToggleTask1ButtonUI();
+    });
+
     btnApplyCycle.addEventListener('click', () => {
       if (!task1Result) return;
       task2Sessions = task1Result.tradingSessions.map((d, index) => ({
@@ -836,18 +1252,34 @@
         locked: false
       }));
 
-      const startSlash = formatDateKey(task1Result.startDate).replace(/-/g, '/');
-      const endSlash = formatDateKey(task1Result.endDate).replace(/-/g, '/');
-      task2Title.textContent = `Dữ liệu quý ${task1Result.quarter} (${startSlash} - ${endSlash})`;
+      isTask2Finalized = false;
+      updateFinalizedUI();
+
+      updateTask2Title(
+        task1Result.quarter, 
+        formatDateKey(task1Result.startDate), 
+        formatDateKey(task1Result.endDate)
+      );
 
       task2Panel.classList.remove('hidden');
       calculateTask2Stats();
       renderTask2Table();
       task2Panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      showToast(`Đã tải 20 phiên cho Quý ${task1Result.quarter} - ${task1Result.year}`);
+
+      const msg = translations[currentLang].msgLoadedSessions
+        .replace('{quarter}', task1Result.quarter)
+        .replace('{year}', task1Result.year);
+      showToast(msg);
     });
 
-    // Quick fill helper for Admin testing
+    btnFinalizeCycle.addEventListener('click', () => {
+      if (!task2Sessions || task2Sessions.length === 0) return;
+      isTask2Finalized = !isTask2Finalized;
+      updateFinalizedUI();
+      renderTask2Table();
+      showToast(isTask2Finalized ? translations[currentLang].badgeFinalized : translations[currentLang].btnUnfinalizeCycle);
+    });
+
     btnQuickFill.addEventListener('click', () => {
       let base = 50 + Math.random() * 20;
       task2Sessions.forEach((s) => {
@@ -857,8 +1289,27 @@
       calculateTask2Stats();
       updateRowPercentageChanges();
       renderTask2Table();
-      showToast("Đã điền nhanh giá cho 20 phiên!");
+      showToast(translations[currentLang].msgSampleFilled);
     });
+
+    if (btnClearTask2) {
+      btnClearTask2.addEventListener('click', () => {
+        if (isTask2Finalized) return;
+        task2Sessions.forEach((s, idx) => {
+          s.price = null;
+          s.locked = false;
+          const inputEl = document.getElementById(`input-price-${idx}`);
+          if (inputEl) {
+            inputEl.value = '';
+            inputEl.removeAttribute('readonly');
+            inputEl.className = "session-price-input w-full pl-6 pr-2 py-1.5 text-xs font-mono font-semibold text-slate-800 rounded-lg border transition-all bg-white border-slate-300 hover:border-indigo-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-100";
+          }
+        });
+        calculateTask2Stats();
+        updateRowPercentageChanges();
+        showToast(currentLang === 'vi' ? 'Đã xóa dữ liệu bảng!' : 'Table data cleared!');
+      });
+    }
 
     btnSaveHistory.addEventListener('click', () => {
       if (!task1Result || !task2Sessions || task2Sessions.length === 0) return;
@@ -892,10 +1343,16 @@
       const idx = adminHistory.findIndex(r => r.id === recordKey);
       if (idx >= 0) {
         adminHistory[idx] = record;
-        showToast(`Đã cập nhật dữ liệu Quý ${record.quarter} - ${record.year}!`);
+        const msg = translations[currentLang].msgUpdatedQuarter
+          .replace('{quarter}', record.quarter)
+          .replace('{year}', record.year);
+        showToast(msg);
       } else {
         adminHistory.unshift(record);
-        showToast(`Đã lưu Quý ${record.quarter} - ${record.year} vào danh mục Admin!`);
+        const msg = translations[currentLang].msgSavedQuarter
+          .replace('{quarter}', record.quarter)
+          .replace('{year}', record.year);
+        showToast(msg);
       }
 
       saveAdminState();
@@ -906,8 +1363,31 @@
       adminHistory = [];
       saveAdminState();
       renderHistoryList();
-      showToast("Đã xóa trắng danh sách!");
+      showToast(translations[currentLang].msgClearedAll);
     });
+
+    if (btnReloadJson) {
+      btnReloadJson.addEventListener('click', async () => {
+        try {
+          const res = await fetch('./history_data.json', { cache: 'no-cache' });
+          if (res.ok) {
+            const data = await res.json();
+            if (Array.isArray(data)) {
+              adminHistory = data;
+              sortAdminHistory();
+              saveAdminState();
+              renderHistoryList();
+              const msg = translations[currentLang].msgJsonAutoLoaded.replace('{count}', data.length);
+              showToast(msg);
+              return;
+            }
+          }
+          showToast(translations[currentLang].msgJsonLoadNotFound);
+        } catch (err) {
+          showToast((currentLang === 'vi' ? "Lỗi tải file JSON: " : "Error loading JSON: ") + err.message);
+        }
+      });
+    }
 
     // -------------------------------------------------------------
     // Export File Functions (JSON & Embedded HTML)
@@ -928,16 +1408,15 @@
 
     btnExportJson.addEventListener('click', () => {
       if (adminHistory.length === 0) {
-        showToast("Danh mục trống! Hãy nhập và lưu ít nhất một quý.");
+        showToast(translations[currentLang].msgCatalogEmpty);
         return;
       }
       sortAdminHistory();
       const jsonStr = JSON.stringify(adminHistory, null, 2);
       downloadFile('history_data.json', jsonStr, 'application/json');
-      showToast("Đã xuất file history_data.json thành công!");
+      showToast(translations[currentLang].msgExportJsonSuccess);
     });
 
-    // Export Client HTML with pre-embedded data for seamless offline usage
     btnExportClientHtml.addEventListener('click', async () => {
       try {
         let clientHtml = '';
@@ -945,7 +1424,7 @@
         if (res.ok) {
           clientHtml = await res.text();
         } else {
-          showToast("Không tìm thấy tệp trading_days_calculator.html gốc.");
+          showToast(currentLang === 'vi' ? "Không tìm thấy tệp trading_days_calculator.html gốc." : "Source file trading_days_calculator.html not found.");
           return;
         }
 
@@ -959,13 +1438,12 @@
         }
 
         downloadFile('index.html', clientHtml, 'text/html');
-        showToast("Đã xuất index.html đồng bộ sẵn dữ liệu!");
+        showToast(translations[currentLang].msgExportHtmlSuccess);
       } catch (err) {
-        showToast("Lỗi khi tạo file HTML khách hàng: " + err.message);
+        showToast((currentLang === 'vi' ? "Lỗi khi tạo file HTML: " : "Error generating HTML file: ") + err.message);
       }
     });
 
-    // Import external JSON
     inputImportJson.addEventListener('change', (e) => {
       const file = e.target.files[0];
       if (!file) return;
@@ -977,28 +1455,77 @@
             adminHistory = parsed;
             saveAdminState();
             renderHistoryList();
-            showToast(`Đã nhập thành công ${parsed.length} quý từ file JSON!`);
+            const msg = translations[currentLang].msgImportSuccess.replace('{count}', parsed.length);
+            showToast(msg);
           } else {
-            showToast("Định dạng file JSON không hợp lệ (cần là danh sách mảng).");
+            showToast(translations[currentLang].msgImportInvalid);
           }
         } catch (err) {
-          showToast("Không thể đọc file JSON: " + err.message);
+          showToast((currentLang === 'vi' ? "Không thể đọc file JSON: " : "Failed to read JSON: ") + err.message);
         }
       };
       reader.readAsText(file);
     });
 
-    // Init
-    window.addEventListener('DOMContentLoaded', () => {
-      loadAdminState();
+    // Language switcher
+    function setLanguage(lang) {
+      currentLang = lang;
+      if (lang === 'en') {
+        langEnBtn.className = "px-2.5 py-1 rounded-md transition-colors bg-white text-indigo-600 shadow-xs cursor-pointer";
+        langViBtn.className = "px-2.5 py-1 rounded-md transition-colors text-slate-600 hover:text-slate-900 cursor-pointer";
+      } else {
+        langViBtn.className = "px-2.5 py-1 rounded-md transition-colors bg-white text-indigo-600 shadow-xs cursor-pointer";
+        langEnBtn.className = "px-2.5 py-1 rounded-md transition-colors text-slate-600 hover:text-slate-900 cursor-pointer";
+      }
 
-      // Preload 2026 Q1 by default for easy input
-      const initialDate = getQuarterMidDate(2026, 1);
-      const initialDateStr = formatDateKey(initialDate);
-      targetDateInput.value = initialDateStr;
-      handleDateChange(initialDateStr);
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (translations[lang] && translations[lang][key] !== undefined) {
+          el.textContent = translations[lang][key];
+        }
+      });
+
+      renderTask1UI();
+      updateFinalizedUI();
+
+      if (task1Result && !task2Panel.classList.contains('hidden')) {
+        updateTask2Title(
+          task1Result.quarter, 
+          formatDateKey(task1Result.startDate), 
+          formatDateKey(task1Result.endDate)
+        );
+        calculateTask2Stats();
+        renderTask2Table();
+      }
 
       renderHistoryList();
+
+      try {
+        localStorage.setItem('NAV_ADMIN_LANG', lang);
+      } catch (err) {}
+    }
+
+    langEnBtn.addEventListener('click', () => setLanguage('en'));
+    langViBtn.addEventListener('click', () => setLanguage('vi'));
+
+    // Init
+    window.addEventListener('DOMContentLoaded', async () => {
+      loadAdminState();
+
+      const now = new Date();
+      const currentYear = now.getUTCFullYear();
+      const currentQuarter = getQuarterFromDate(now);
+      const initialDate = getQuarterMidDate(currentYear, currentQuarter);
+      const initialDateStr = formatDateKey(initialDate);
+
+      targetDateInput.value = initialDateStr;
+      handleDateChange(initialDateStr);
+      updateToggleTask1ButtonUI();
+
+      setLanguage(currentLang);
+
+      // Auto fetch history_data.json from the same directory
+      await autoLoadHistoryDataJson(false);
     });
   </script>
 </body>
