@@ -1,0 +1,407 @@
+[
+  {
+    "id": "2026-Q3-2026-07-21-2026-08-17",
+    "quarter": 3,
+    "year": 2026,
+    "startDate": "2026-07-21",
+    "endDate": "2026-08-17",
+    "avgPrice": 266.74949999999995,
+    "firstPrice": 289.73,
+    "latestPrice": 271.43,
+    "totalChangePct": -6.316225451282231,
+    "activeCount": 20,
+    "sessions": [
+      {
+        "sessionNumber": 1,
+        "dateIso": "2026-07-21",
+        "price": 289.73,
+        "locked": true
+      },
+      {
+        "sessionNumber": 2,
+        "dateIso": "2026-07-22",
+        "price": 283.4,
+        "locked": true
+      },
+      {
+        "sessionNumber": 3,
+        "dateIso": "2026-07-23",
+        "price": 283.04,
+        "locked": true
+      },
+      {
+        "sessionNumber": 4,
+        "dateIso": "2026-07-24",
+        "price": 260.01,
+        "locked": true
+      },
+      {
+        "sessionNumber": 5,
+        "dateIso": "2026-07-27",
+        "price": 266.33,
+        "locked": true
+      },
+      {
+        "sessionNumber": 6,
+        "dateIso": "2026-07-28",
+        "price": 244.74,
+        "locked": true
+      },
+      {
+        "sessionNumber": 7,
+        "dateIso": "2026-07-29",
+        "price": 224.89,
+        "locked": true
+      },
+      {
+        "sessionNumber": 8,
+        "dateIso": "2026-07-30",
+        "price": 241.54,
+        "locked": true
+      },
+      {
+        "sessionNumber": 9,
+        "dateIso": "2026-07-31",
+        "price": 239.69,
+        "locked": true
+      },
+      {
+        "sessionNumber": 10,
+        "dateIso": "2026-08-03",
+        "price": 239.06,
+        "locked": true
+      },
+      {
+        "sessionNumber": 11,
+        "dateIso": "2026-08-04",
+        "price": 280.56,
+        "locked": true
+      },
+      {
+        "sessionNumber": 12,
+        "dateIso": "2026-08-05",
+        "price": 274.58,
+        "locked": true
+      },
+      {
+        "sessionNumber": 13,
+        "dateIso": "2026-08-06",
+        "price": 286.68,
+        "locked": true
+      },
+      {
+        "sessionNumber": 14,
+        "dateIso": "2026-08-07",
+        "price": 282.57,
+        "locked": true
+      },
+      {
+        "sessionNumber": 15,
+        "dateIso": "2026-08-10",
+        "price": 267.85,
+        "locked": true
+      },
+      {
+        "sessionNumber": 16,
+        "dateIso": "2026-08-11",
+        "price": 268.93,
+        "locked": true
+      },
+      {
+        "sessionNumber": 17,
+        "dateIso": "2026-08-12",
+        "price": 271.87,
+        "locked": true
+      },
+      {
+        "sessionNumber": 18,
+        "dateIso": "2026-08-13",
+        "price": 278.65,
+        "locked": true
+      },
+      {
+        "sessionNumber": 19,
+        "dateIso": "2026-08-14",
+        "price": 279.44,
+        "locked": true
+      },
+      {
+        "sessionNumber": 20,
+        "dateIso": "2026-08-17",
+        "price": 271.43,
+        "locked": true
+      }
+    ],
+    "savedAt": "2026-10-25T13:08:24.895Z"
+  },
+  {
+    "id": "2026-Q2-2026-04-20-2026-05-15",
+    "quarter": 2,
+    "year": 2026,
+    "startDate": "2026-04-20",
+    "endDate": "2026-05-15",
+    "avgPrice": 208.98600000000005,
+    "firstPrice": 175.1,
+    "latestPrice": 209.16,
+    "totalChangePct": 19.451741861793263,
+    "activeCount": 20,
+    "sessions": [
+      {
+        "sessionNumber": 1,
+        "dateIso": "2026-04-20",
+        "price": 175.1,
+        "locked": true
+      },
+      {
+        "sessionNumber": 2,
+        "dateIso": "2026-04-21",
+        "price": 175.49,
+        "locked": true
+      },
+      {
+        "sessionNumber": 3,
+        "dateIso": "2026-04-22",
+        "price": 196.57,
+        "locked": true
+      },
+      {
+        "sessionNumber": 4,
+        "dateIso": "2026-04-23",
+        "price": 204.61,
+        "locked": true
+      },
+      {
+        "sessionNumber": 5,
+        "dateIso": "2026-04-24",
+        "price": 234.81,
+        "locked": true
+      },
+      {
+        "sessionNumber": 6,
+        "dateIso": "2026-04-27",
+        "price": 215.88,
+        "locked": true
+      },
+      {
+        "sessionNumber": 7,
+        "dateIso": "2026-04-28",
+        "price": 198.65,
+        "locked": true
+      },
+      {
+        "sessionNumber": 8,
+        "dateIso": "2026-04-29",
+        "price": 201.69,
+        "locked": true
+      },
+      {
+        "sessionNumber": 9,
+        "dateIso": "2026-04-30",
+        "price": 210.32,
+        "locked": true
+      },
+      {
+        "sessionNumber": 10,
+        "dateIso": "2026-05-01",
+        "price": 211.18,
+        "locked": true
+      },
+      {
+        "sessionNumber": 11,
+        "dateIso": "2026-05-04",
+        "price": 203.26,
+        "locked": true
+      },
+      {
+        "sessionNumber": 12,
+        "dateIso": "2026-05-05",
+        "price": 208.84,
+        "locked": true
+      },
+      {
+        "sessionNumber": 13,
+        "dateIso": "2026-05-06",
+        "price": 237.3,
+        "locked": true
+      },
+      {
+        "sessionNumber": 14,
+        "dateIso": "2026-05-07",
+        "price": 213.31,
+        "locked": true
+      },
+      {
+        "sessionNumber": 15,
+        "dateIso": "2026-05-08",
+        "price": 213.27,
+        "locked": true
+      },
+      {
+        "sessionNumber": 16,
+        "dateIso": "2026-05-11",
+        "price": 212.65,
+        "locked": true
+      },
+      {
+        "sessionNumber": 17,
+        "dateIso": "2026-05-12",
+        "price": 207.92,
+        "locked": true
+      },
+      {
+        "sessionNumber": 18,
+        "dateIso": "2026-05-13",
+        "price": 221.21,
+        "locked": true
+      },
+      {
+        "sessionNumber": 19,
+        "dateIso": "2026-05-14",
+        "price": 228.5,
+        "locked": true
+      },
+      {
+        "sessionNumber": 20,
+        "dateIso": "2026-05-15",
+        "price": 209.16,
+        "locked": true
+      }
+    ],
+    "savedAt": "2026-10-25T13:04:15.011Z"
+  },
+  {
+    "id": "2026-Q1-2026-01-20-2026-02-17",
+    "quarter": 1,
+    "year": 2026,
+    "startDate": "2026-01-20",
+    "endDate": "2026-02-17",
+    "avgPrice": 115.54400000000001,
+    "firstPrice": 107.17,
+    "latestPrice": 126.89,
+    "totalChangePct": 18.400671829803112,
+    "activeCount": 20,
+    "sessions": [
+      {
+        "sessionNumber": 1,
+        "dateIso": "2026-01-20",
+        "price": 107.17,
+        "locked": true
+      },
+      {
+        "sessionNumber": 2,
+        "dateIso": "2026-01-21",
+        "price": 113.92,
+        "locked": true
+      },
+      {
+        "sessionNumber": 3,
+        "dateIso": "2026-01-22",
+        "price": 119.2,
+        "locked": true
+      },
+      {
+        "sessionNumber": 4,
+        "dateIso": "2026-01-23",
+        "price": 116.07,
+        "locked": true
+      },
+      {
+        "sessionNumber": 5,
+        "dateIso": "2026-01-26",
+        "price": 114.73,
+        "locked": true
+      },
+      {
+        "sessionNumber": 6,
+        "dateIso": "2026-01-27",
+        "price": 114.88,
+        "locked": true
+      },
+      {
+        "sessionNumber": 7,
+        "dateIso": "2026-01-28",
+        "price": 109.96,
+        "locked": true
+      },
+      {
+        "sessionNumber": 8,
+        "dateIso": "2026-01-29",
+        "price": 108.43,
+        "locked": true
+      },
+      {
+        "sessionNumber": 9,
+        "dateIso": "2026-01-30",
+        "price": 105.36,
+        "locked": true
+      },
+      {
+        "sessionNumber": 10,
+        "dateIso": "2026-02-02",
+        "price": 106.93,
+        "locked": true
+      },
+      {
+        "sessionNumber": 11,
+        "dateIso": "2026-02-03",
+        "price": 104.55,
+        "locked": true
+      },
+      {
+        "sessionNumber": 12,
+        "dateIso": "2026-02-04",
+        "price": 104.9,
+        "locked": true
+      },
+      {
+        "sessionNumber": 13,
+        "dateIso": "2026-02-05",
+        "price": 110.88,
+        "locked": true
+      },
+      {
+        "sessionNumber": 14,
+        "dateIso": "2026-02-06",
+        "price": 123.7,
+        "locked": true
+      },
+      {
+        "sessionNumber": 15,
+        "dateIso": "2026-02-09",
+        "price": 124.61,
+        "locked": true
+      },
+      {
+        "sessionNumber": 16,
+        "dateIso": "2026-02-10",
+        "price": 125.95,
+        "locked": true
+      },
+      {
+        "sessionNumber": 17,
+        "dateIso": "2026-02-11",
+        "price": 125.28,
+        "locked": true
+      },
+      {
+        "sessionNumber": 18,
+        "dateIso": "2026-02-12",
+        "price": 122.19,
+        "locked": true
+      },
+      {
+        "sessionNumber": 19,
+        "dateIso": "2026-02-13",
+        "price": 125.28,
+        "locked": true
+      },
+      {
+        "sessionNumber": 20,
+        "dateIso": "2026-02-17",
+        "price": 126.89,
+        "locked": true
+      }
+    ],
+    "savedAt": "2026-10-25T12:55:16.574Z"
+  }
+]
