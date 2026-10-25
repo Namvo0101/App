@@ -1,0 +1,272 @@
+[
+  {
+    "id": "2026-Q3-2026-07-20-2026-08-14",
+    "quarter": 3,
+    "year": 2026,
+    "startDate": "2026-07-20",
+    "endDate": "2026-08-14",
+    "avgPrice": 18.25,
+    "firstPrice": 17.5,
+    "latestPrice": 19.1,
+    "totalChangePct": 9.14,
+    "activeCount": 20,
+    "savedAt": "2026-08-14T20:00:00.000Z",
+    "sessions": [
+      {
+        "sessionNumber": 1,
+        "dateIso": "2026-07-20",
+        "price": 17.5,
+        "locked": true
+      },
+      {
+        "sessionNumber": 2,
+        "dateIso": "2026-07-21",
+        "price": 17.65,
+        "locked": true
+      },
+      {
+        "sessionNumber": 3,
+        "dateIso": "2026-07-22",
+        "price": 17.8,
+        "locked": true
+      },
+      {
+        "sessionNumber": 4,
+        "dateIso": "2026-07-23",
+        "price": 17.75,
+        "locked": true
+      },
+      {
+        "sessionNumber": 5,
+        "dateIso": "2026-07-24",
+        "price": 17.9,
+        "locked": true
+      },
+      {
+        "sessionNumber": 6,
+        "dateIso": "2026-07-27",
+        "price": 18.05,
+        "locked": true
+      },
+      {
+        "sessionNumber": 7,
+        "dateIso": "2026-07-28",
+        "price": 18.2,
+        "locked": true
+      },
+      {
+        "sessionNumber": 8,
+        "dateIso": "2026-07-29",
+        "price": 18.15,
+        "locked": true
+      },
+      {
+        "sessionNumber": 9,
+        "dateIso": "2026-07-30",
+        "price": 18.35,
+        "locked": true
+      },
+      {
+        "sessionNumber": 10,
+        "dateIso": "2026-07-31",
+        "price": 18.4,
+        "locked": true
+      },
+      {
+        "sessionNumber": 11,
+        "dateIso": "2026-08-03",
+        "price": 18.25,
+        "locked": true
+      },
+      {
+        "sessionNumber": 12,
+        "dateIso": "2026-08-04",
+        "price": 18.3,
+        "locked": true
+      },
+      {
+        "sessionNumber": 13,
+        "dateIso": "2026-08-05",
+        "price": 18.5,
+        "locked": true
+      },
+      {
+        "sessionNumber": 14,
+        "dateIso": "2026-08-06",
+        "price": 18.6,
+        "locked": true
+      },
+      {
+        "sessionNumber": 15,
+        "dateIso": "2026-08-07",
+        "price": 18.45,
+        "locked": true
+      },
+      {
+        "sessionNumber": 16,
+        "dateIso": "2026-08-10",
+        "price": 18.7,
+        "locked": true
+      },
+      {
+        "sessionNumber": 17,
+        "dateIso": "2026-08-11",
+        "price": 18.85,
+        "locked": true
+      },
+      {
+        "sessionNumber": 18,
+        "dateIso": "2026-08-12",
+        "price": 18.8,
+        "locked": true
+      },
+      {
+        "sessionNumber": 19,
+        "dateIso": "2026-08-13",
+        "price": 18.95,
+        "locked": true
+      },
+      {
+        "sessionNumber": 20,
+        "dateIso": "2026-08-14",
+        "price": 19.1,
+        "locked": true
+      }
+    ]
+  },
+  {
+    "id": "2026-Q1-2026-01-20-2026-02-17",
+    "quarter": 1,
+    "year": 2026,
+    "startDate": "2026-01-20",
+    "endDate": "2026-02-17",
+    "avgPrice": 15.1,
+    "firstPrice": 14.5,
+    "latestPrice": 15.7,
+    "totalChangePct": 8.28,
+    "activeCount": 20,
+    "savedAt": "2026-02-17T20:00:00.000Z",
+    "sessions": [
+      {
+        "sessionNumber": 1,
+        "dateIso": "2026-01-20",
+        "price": 14.5,
+        "locked": true
+      },
+      {
+        "sessionNumber": 2,
+        "dateIso": "2026-01-21",
+        "price": 14.6,
+        "locked": true
+      },
+      {
+        "sessionNumber": 3,
+        "dateIso": "2026-01-22",
+        "price": 14.75,
+        "locked": true
+      },
+      {
+        "sessionNumber": 4,
+        "dateIso": "2026-01-23",
+        "price": 14.7,
+        "locked": true
+      },
+      {
+        "sessionNumber": 5,
+        "dateIso": "2026-01-26",
+        "price": 14.85,
+        "locked": true
+      },
+      {
+        "sessionNumber": 6,
+        "dateIso": "2026-01-27",
+        "price": 14.9,
+        "locked": true
+      },
+      {
+        "sessionNumber": 7,
+        "dateIso": "2026-01-28",
+        "price": 15,
+        "locked": true
+      },
+      {
+        "sessionNumber": 8,
+        "dateIso": "2026-01-29",
+        "price": 15.1,
+        "locked": true
+      },
+      {
+        "sessionNumber": 9,
+        "dateIso": "2026-01-30",
+        "price": 15.05,
+        "locked": true
+      },
+      {
+        "sessionNumber": 10,
+        "dateIso": "2026-02-02",
+        "price": 15.2,
+        "locked": true
+      },
+      {
+        "sessionNumber": 11,
+        "dateIso": "2026-02-03",
+        "price": 15.15,
+        "locked": true
+      },
+      {
+        "sessionNumber": 12,
+        "dateIso": "2026-02-04",
+        "price": 15.3,
+        "locked": true
+      },
+      {
+        "sessionNumber": 13,
+        "dateIso": "2026-02-05",
+        "price": 15.25,
+        "locked": true
+      },
+      {
+        "sessionNumber": 14,
+        "dateIso": "2026-02-06",
+        "price": 15.4,
+        "locked": true
+      },
+      {
+        "sessionNumber": 15,
+        "dateIso": "2026-02-09",
+        "price": 15.35,
+        "locked": true
+      },
+      {
+        "sessionNumber": 16,
+        "dateIso": "2026-02-10",
+        "price": 15.5,
+        "locked": true
+      },
+      {
+        "sessionNumber": 17,
+        "dateIso": "2026-02-11",
+        "price": 15.45,
+        "locked": true
+      },
+      {
+        "sessionNumber": 18,
+        "dateIso": "2026-02-12",
+        "price": 15.6,
+        "locked": true
+      },
+      {
+        "sessionNumber": 19,
+        "dateIso": "2026-02-13",
+        "price": 15.55,
+        "locked": true
+      },
+      {
+        "sessionNumber": 20,
+        "dateIso": "2026-02-17",
+        "price": 15.7,
+        "locked": true
+      }
+    ]
+  }
+]
