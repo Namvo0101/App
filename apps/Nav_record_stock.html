@@ -1156,9 +1156,9 @@
                 <button 
                   class="btn-toggle-history-detail p-1.5 text-indigo-600 hover:bg-indigo-50 border border-indigo-200 rounded-lg transition-colors cursor-pointer"
                   data-id="${rec.id}"
-                  title="Toggle details"
+                  title="${isExpanded ? 'Collapse report' : 'View report'}"
                 >
-                  <i data-lucide="${isExpanded ? 'chevron-up' : 'info'}" class="w-4 h-4"></i>
+                  <i data-lucide="${isExpanded ? 'chevron-up' : 'eye'}" class="w-4 h-4"></i>
                 </button>
 
                 <button 
@@ -1455,14 +1455,12 @@
     function triggerDocumentPrintExport(fullHtml) {
       showToast(translations[currentLang].pdfExporting);
 
-      // Cách 1: Mở popup / tab in độc lập
       const printWin = window.open('', '_blank');
       if (printWin) {
         printWin.document.open();
         printWin.document.write(fullHtml);
         printWin.document.close();
       } else {
-        // Cách 2: Sử dụng iframe ẩn dự phòng nếu trình duyệt chặn popup
         let printIframe = document.getElementById('export-print-iframe');
         if (!printIframe) {
           printIframe = document.createElement('iframe');
