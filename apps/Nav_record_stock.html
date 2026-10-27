@@ -406,6 +406,43 @@
     </div>
   </div>
 
+  <!-- Unsaved Changes Warning Modal Popup -->
+  <div id="unsaved-modal" class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs hidden transition-all duration-300">
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-xl max-w-sm sm:max-w-md w-full p-4 sm:p-6 space-y-3.5 sm:space-y-4 transform scale-95 transition-all">
+      <div class="flex items-start gap-3">
+        <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+          <i data-lucide="alert-octagon" class="w-5 h-5"></i>
+        </div>
+        <div class="space-y-1 min-w-0">
+          <h3 class="text-sm sm:text-base font-bold text-slate-900 leading-tight" data-i18n="modalUnsavedTitle">
+            Discard In-Progress Data?
+          </h3>
+          <p id="modal-unsaved-desc" class="text-xs text-slate-600 leading-relaxed"></p>
+        </div>
+      </div>
+
+      <div class="bg-rose-50/70 border border-rose-200/80 rounded-xl p-3 text-xs text-rose-800 space-y-1">
+        <div class="flex items-center justify-between font-mono font-bold">
+          <span id="modal-current-quarter-info">--</span>
+          <span id="modal-current-active-count" class="text-rose-700 font-bold">--</span>
+        </div>
+        <p class="text-[11px] text-rose-900/80 leading-normal" data-i18n="modalUnsavedNote">
+          Applying a new cycle will reset the table and permanently clear these prices.
+        </p>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="flex items-center justify-end gap-2 pt-1 sm:pt-2">
+        <button id="btn-unsaved-cancel" class="flex-1 sm:flex-none px-3.5 py-2 text-xs font-semibold text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all cursor-pointer active:scale-95" data-i18n="btnCancel">
+          Keep My Data
+        </button>
+        <button id="btn-unsaved-confirm" class="flex-1 sm:flex-none px-4 py-2 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 active:bg-rose-800 rounded-xl shadow-2xs transition-all cursor-pointer flex items-center justify-center gap-1.5 active:scale-95" data-i18n="btnDiscardProceed">
+          Discard & Load New
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Notification Toast -->
   <div id="toast" class="fixed bottom-4 inset-x-4 sm:inset-x-auto sm:right-5 sm:bottom-5 z-50 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none">
     <div class="bg-slate-900/95 text-white text-xs font-medium px-4 py-2.5 rounded-xl shadow-lg flex items-center justify-center sm:justify-start gap-2 border border-slate-700/50 backdrop-blur-md">
@@ -471,6 +508,13 @@
     const btnModalClose = document.getElementById('btn-modal-close');
     const btnModalViewExisting = document.getElementById('btn-modal-view-existing');
 
+    const unsavedModal = document.getElementById('unsaved-modal');
+    const modalUnsavedDesc = document.getElementById('modal-unsaved-desc');
+    const modalCurrentQuarterInfo = document.getElementById('modal-current-quarter-info');
+    const modalCurrentActiveCount = document.getElementById('modal-current-active-count');
+    const btnUnsavedCancel = document.getElementById('btn-unsaved-cancel');
+    const btnUnsavedConfirm = document.getElementById('btn-unsaved-confirm');
+
     const toast = document.getElementById('toast');
     const toastMessage = document.getElementById('toast-message');
 
@@ -515,6 +559,12 @@
         modalAvgRecorded: "Saved Average Price:",
         btnModalClose: "Close",
         btnModalViewHistory: "View Archived Data",
+        modalUnsavedTitle: "Discard In-Progress Data?",
+        modalUnsavedDesc: "You currently have entered price data in the table for {activeCycle}. Are you sure you want to discard this data and load a new cycle?",
+        modalUnsavedNote: "Applying a new cycle will reset the table and permanently clear these prices.",
+        btnCancel: "Keep My Data",
+        btnDiscardProceed: "Discard & Load New",
+        cycleAlreadyActive: "This cycle is already loaded in Task 2. Your entered data is preserved.",
         pdfExporting: "Preparing document for PDF export / print...",
         cycleConfirmed: "Cycle confirmed! 20 trading sessions loaded into Task 2.",
         cycleFinalizedMsg: "Cycle has been finalized and locked.",
@@ -562,6 +612,12 @@
         modalAvgRecorded: "Giá trung bình đã lưu:",
         btnModalClose: "Đóng",
         btnModalViewHistory: "Xem dữ liệu lịch sử",
+        modalUnsavedTitle: "Hủy bỏ dữ liệu đang nhập?",
+        modalUnsavedDesc: "Bạn đang có dữ liệu giá chưa lưu ở chu kỳ {activeCycle}. Bạn có chắc chắn muốn hủy bỏ dữ liệu này để tải chu kỳ mới?",
+        modalUnsavedNote: "Áp dụng chu kỳ mới sẽ xóa trắng bảng nhập và làm mất số liệu bạn đã điền.",
+        btnCancel: "Giữ lại dữ liệu",
+        btnDiscardProceed: "Xóa & Tải chu kỳ mới",
+        cycleAlreadyActive: "Chu kỳ này đang được mở ở Task 2. Dữ liệu bạn đã nhập được giữ nguyên vẹn.",
         pdfExporting: "Đang mở tài liệu để in / lưu PDF...",
         cycleConfirmed: "Đã áp dụng chu kỳ! 20 phiên giao dịch đã được nạp vào Task 2.",
         cycleFinalizedMsg: "Đã chốt chu kỳ tính giá! Tất cả ô nhập đã được khóa.",
@@ -1696,19 +1752,77 @@
       });
     }
 
+    // Modal xử lý bảo vệ dữ liệu chưa lưu (Unsaved Changes)
+    function showUnsavedModal(activeCount) {
+      const t = translations[currentLang];
+      const startSlash = formatDateKey(task2Sessions[0].date).replace(/-/g, '/');
+      const endSlash = formatDateKey(task2Sessions[task2Sessions.length - 1].date).replace(/-/g, '/');
+      const activeCycleText = `${startSlash} - ${endSlash}`;
+
+      modalUnsavedDesc.textContent = t.modalUnsavedDesc.replace('{activeCycle}', activeCycleText);
+      setElText(modalCurrentQuarterInfo, activeCycleText);
+      setElText(modalCurrentActiveCount, currentLang === 'vi' ? `${activeCount}/20 phiên có giá` : `${activeCount}/20 sessions with price`);
+
+      unsavedModal.classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function hideUnsavedModal() {
+      unsavedModal.classList.add('hidden');
+    }
+
+    if (btnUnsavedCancel) {
+      btnUnsavedCancel.addEventListener('click', () => {
+        hideUnsavedModal();
+        task2Panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    }
+
+    if (btnUnsavedConfirm) {
+      btnUnsavedConfirm.addEventListener('click', () => {
+        hideUnsavedModal();
+        executeLoadTask2();
+      });
+    }
+
     btnApplyCycle.addEventListener('click', () => {
       if (!task1Result) return;
       const targetQuarter = task1Result.quarter;
       const targetYear = task1Result.year;
 
+      // 1. Kiểm tra xem quý này đã được lưu vào Lịch sử chưa (Chặn trùng lặp)
       updateMergedHistory();
       const existing = mergedHistory.find(r => r.quarter === targetQuarter && r.year === targetYear);
-
       if (existing) {
         showDuplicateModal(existing);
-      } else {
-        executeLoadTask2();
+        return;
       }
+
+      // 2. Kiểm tra nếu Task 2 đang mở
+      const isTask2Open = !task2Panel.classList.contains('hidden') && task2Sessions.length > 0;
+      if (isTask2Open) {
+        const currentTask2Start = formatDateKey(task2Sessions[0].date);
+        const currentTask2End = formatDateKey(task2Sessions[task2Sessions.length - 1].date);
+        const newTask1Start = formatDateKey(task1Result.startDate);
+        const newTask1End = formatDateKey(task1Result.endDate);
+
+        // A. Nếu người dùng bấm Apply cho đúng chu kỳ đang mở hiện tại -> GIỮ NGUYÊN DỮ LIỆU
+        if (currentTask2Start === newTask1Start && currentTask2End === newTask1End) {
+          showToast(translations[currentLang].cycleAlreadyActive);
+          task2Panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          return;
+        }
+
+        // B. Nếu chu kỳ mới KHÁC chu kỳ hiện tại và người dùng đã nhập ít nhất 1 phiên giá -> CẢNH BÁO
+        const enteredCount = task2Sessions.filter(s => s.price !== null && !isNaN(s.price)).length;
+        if (enteredCount > 0) {
+          showUnsavedModal(enteredCount);
+          return;
+        }
+      }
+
+      // 3. Nếu chưa nhập giá nào hoặc Task 2 chưa mở -> Nạp chu kỳ mới bình thường
+      executeLoadTask2();
     });
 
     btnFinalizeCycle.addEventListener('click', () => {
