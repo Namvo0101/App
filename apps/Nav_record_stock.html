@@ -258,7 +258,7 @@
           </button>
 
           <!-- Clear Table Button -->
-          <button id="btn-clear-task2" class="w-full sm:w-auto px-2 py-1.5 text-xs font-medium text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 rounded-xl transition-all border border-rose-200 flex items-center justify-center gap-1 cursor-pointer active:scale-95" title="Clear Table">
+          <button id="btn-clear-task2" class="w-full sm:w-auto px-2 py-1.5 text-xs font-medium text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 rounded-xl transition-all border border-rose-200 flex items-center justify-center gap-1 cursor-pointer active:scale-95" title="Clear Unlocked Rows">
             <i data-lucide="trash-2" class="w-3.5 h-3.5 shrink-0"></i>
             <span class="truncate" data-i18n="btnClearAll">Clear</span>
           </button>
@@ -1018,8 +1018,7 @@
 
       mergedHistory = Array.from(map.values());
 
-      // 3. Sort chronologically from newest to oldest:
-      // Compare by year DESC, then quarter DESC, then endDate DESC
+      // 3. Sort chronologically from newest to oldest
       mergedHistory.sort((a, b) => {
         if (b.year !== a.year) return b.year - a.year;
         if (b.quarter !== a.quarter) return b.quarter - a.quarter;
@@ -1778,20 +1777,37 @@
     if (btnClearTask2) {
       btnClearTask2.addEventListener('click', () => {
         if (isTask2Finalized) return;
+
+        // Chỉ xóa các dòng không bị khóa (unlocked)
+        let clearedCount = 0;
+        let lockedCount = 0;
+
         task2Sessions.forEach((s, idx) => {
-          s.price = null;
-          s.locked = false;
-          const inputEl = document.getElementById(`input-price-${idx}`);
-          if (inputEl) {
-            inputEl.value = '';
-            inputEl.removeAttribute('readonly');
-            inputEl.className = "mobile-input-safe session-price-input w-full pl-6 pr-2 py-1.5 text-xs font-mono font-semibold text-slate-800 rounded-lg border transition-all bg-white border-slate-300 hover:border-indigo-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-100";
+          if (!s.locked) {
+            s.price = null;
+            clearedCount++;
+            const inputEl = document.getElementById(`input-price-${idx}`);
+            if (inputEl) {
+              inputEl.value = '';
+              inputEl.removeAttribute('readonly');
+              inputEl.className = "mobile-input-safe session-price-input w-full pl-6 pr-2 py-1.5 text-xs font-mono font-semibold text-slate-800 rounded-lg border transition-all bg-white border-slate-300 hover:border-indigo-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-100";
+            }
+          } else {
+            lockedCount++;
           }
         });
+
         calculateTask2Stats();
         updateRowPercentageChanges();
         saveStateToLocalStorage();
-        showToast(currentLang === 'vi' ? 'Đã xóa dữ liệu bảng!' : 'Table data cleared!');
+
+        if (clearedCount === 0 && lockedCount > 0) {
+          showToast(currentLang === 'vi' ? 'Tất cả các dòng đều đã bị khóa, không có nội dung nào bị xóa!' : 'All rows are locked, no content was cleared!');
+        } else if (lockedCount > 0) {
+          showToast(currentLang === 'vi' ? `Đã xóa các dòng mở khóa (giữ nguyên ${lockedCount} dòng đã khóa)!` : `Cleared unlocked rows (preserved ${lockedCount} locked rows)!`);
+        } else {
+          showToast(currentLang === 'vi' ? 'Đã xóa dữ liệu bảng!' : 'Table data cleared!');
+        }
       });
     }
 
