@@ -2047,43 +2047,100 @@
       }
     }
 
-    // Auto Load history_data.json on startup
+    // Auto Load history_data.json on startup & Reload
     async function autoLoadHistoryDataJson(silent = false) {
       try {
         const res = await fetch('./history_data.json', { cache: 'no-cache' });
         if (res.ok) {
-          const data = await res.json();
-          if (Array.isArray(data) && data.length > 0) {
-            const map = new Map();
-            data.forEach(item => {
-              if (item && item.id) map.set(item.id, item);
-            });
-            adminHistory.forEach(item => {
-              if (item && item.id) map.set(item.id, item);
-            });
+          const payload = await res.json();
+          let loadedQuarters = 0;
+          let incomingHistory = [];
 
-            adminHistory = Array.from(map.values());
+          if (Array.isArray(payload)) {
+            // Trường hợp file JSON là mảng thuần
+            incomingHistory = payload;
+          } else if (payload && typeof payload === 'object') {
+            // Trường hợp file JSON là gói { activeCycle, history }
+            if (Array.isArray(payload.history)) {
+              incomingHistory = payload.history;
+            }
+            if (payload.activeCycle && Array.isArray(payload.activeCycle.sessions)) {
+              loadActiveCycleFromPackage(payload.activeCycle);
+            }
+          }
+
+          if (incomingHistory.length > 0) {
+            // Ưu tiên nạp chuẩn xác từ file JSON
+            adminHistory = incomingHistory;
+            loadedQuarters = adminHistory.length;
             sortAdminHistory();
             saveAdminState();
             renderHistoryList();
-
-            if (adminJsonStatusBadge) {
-              adminJsonStatusBadge.classList.remove('hidden');
-              adminJsonStatusBadge.innerHTML = `<i data-lucide="check-circle" class="w-3 h-3 inline mr-1"></i>JSON: ${data.length} Q`;
-              lucide.createIcons();
-            }
-
-            if (!silent) {
-              const msg = translations[currentLang].msgJsonAutoLoaded.replace('{count}', data.length);
-              showToast(msg);
-            }
-            return true;
           }
+
+          if (adminJsonStatusBadge) {
+            adminJsonStatusBadge.classList.remove('hidden');
+            adminJsonStatusBadge.innerHTML = `<i data-lucide="check-circle" class="w-3 h-3 inline mr-1"></i>JSON: ${loadedQuarters} Q`;
+            lucide.createIcons();
+          }
+
+          if (!silent) {
+            const msg = translations[currentLang].msgJsonAutoLoaded.replace('{count}', loadedQuarters);
+            showToast(msg);
+          }
+          return true;
         }
       } catch (err) {
         if (!silent) console.debug("history_data.json fetch skipped:", err);
       }
       return false;
+    }
+
+    function loadActiveCycleFromPackage(cycle) {
+      if (!cycle || !Array.isArray(cycle.sessions)) return;
+
+      const startDate = parseISODate(cycle.startDate);
+      const endDate = parseISODate(cycle.endDate);
+      currentTicker = cycle.ticker || 'ARM';
+      if (inputStockTicker) inputStockTicker.value = currentTicker;
+
+      task1Result = {
+        targetDate: endDate,
+        validEndTradingDay: endDate,
+        startDate,
+        endDate,
+        year: cycle.year,
+        quarter: cycle.quarter,
+        tradingSessions: cycle.sessions.map(s => parseISODate(s.dateIso)),
+        weekendDaysCount: 0,
+        holidaysCount: 0,
+        skippedHolidays: []
+      };
+
+      targetDateInput.value = formatDateKey(endDate);
+      renderTask1UI();
+
+      task2Sessions = cycle.sessions.map(s => ({
+        sessionNumber: s.sessionNumber,
+        date: parseISODate(s.dateIso),
+        price: (s.price !== null && !isNaN(s.price)) ? Number(s.price) : null,
+        locked: !!s.locked
+      }));
+
+      isTask2Finalized = !!cycle.isFinalized;
+      activeCycleMeta = {
+        id: cycle.id,
+        year: cycle.year,
+        quarter: cycle.quarter,
+        startDate: cycle.startDate,
+        endDate: cycle.endDate
+      };
+
+      updateFinalizedUI();
+      updateTask2Title(cycle.quarter, cycle.startDate, cycle.endDate);
+      task2Panel.classList.remove('hidden');
+      calculateTask2Stats();
+      renderTask2Table();
     }
 
     // Handlers
@@ -2288,24 +2345,10 @@
 
     if (btnReloadJson) {
       btnReloadJson.addEventListener('click', async () => {
-        try {
-          const res = await fetch('./history_data.json', { cache: 'no-cache' });
-          if (res.ok) {
-            const data = await res.json();
-            if (Array.isArray(data)) {
-              createBackupSnapshot("Before reloading from Git");
-              adminHistory = data;
-              sortAdminHistory();
-              saveAdminState();
-              renderHistoryList();
-              const msg = translations[currentLang].msgJsonAutoLoaded.replace('{count}', data.length);
-              showToast(msg);
-              return;
-            }
-          }
+        createBackupSnapshot("Before reloading from Git");
+        const success = await autoLoadHistoryDataJson(false);
+        if (!success) {
           showToast(translations[currentLang].msgJsonLoadNotFound);
-        } catch (err) {
-          showToast((currentLang === 'vi' ? "Lỗi tải file JSON: " : "Error loading JSON: ") + err.message);
         }
       });
     }
