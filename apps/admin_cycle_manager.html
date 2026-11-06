@@ -370,15 +370,37 @@
 
       </div>
 
-      <!-- Anomaly Check Bar (Removed instructional Tip) -->
-      <div class="mb-2 text-[11px] text-slate-500 flex items-center justify-end px-1">
+      <!-- MINI SPARKLINE TREND CHART CONTAINER (With Date Axis) -->
+      <div class="mb-4 bg-slate-50/70 rounded-xl border border-slate-200 p-3">
+        <div class="flex items-center justify-between text-xs mb-2">
+          <div class="flex items-center gap-1.5 font-bold text-slate-700">
+            <i data-lucide="trending-up" class="w-3.5 h-3.5 text-indigo-600"></i>
+            <span data-i18n="chartTitle">20-Session Price Trend & Benchmark</span>
+          </div>
+          <div class="flex items-center gap-3 text-[11px] text-slate-500">
+            <span class="flex items-center gap-1"><span class="w-3 h-0.5 bg-indigo-600 inline-block"></span> <span>Price</span></span>
+            <span class="flex items-center gap-1"><span class="w-3 h-0.5 border-t border-dashed border-rose-500 inline-block"></span> <span>Avg Price</span></span>
+          </div>
+        </div>
+        <div id="sparkline-chart-container" class="w-full h-24 sm:h-28">
+          <div class="h-full flex items-center justify-center text-slate-400 text-xs">
+            Price trend chart will appear here
+          </div>
+        </div>
+      </div>
+
+      <!-- Anomaly Check Bar -->
+      <div class="mb-2 text-[11px] text-slate-500 flex items-center justify-between px-1">
+        <span class="text-slate-500 text-[11px]">
+          <i data-lucide="shield" class="w-3.5 h-3.5 inline mr-1 text-indigo-600"></i>Master Control: Rows locked here will be locked for users.
+        </span>
         <span id="anomalyStatusText" class="text-emerald-600 font-semibold text-[11px] flex items-center gap-1">
           <i data-lucide="shield-check" class="w-3.5 h-3.5"></i>
           <span data-i18n="validationNormal">Prices Normal</span>
         </span>
       </div>
 
-      <!-- Task 2 Table Container: Smooth horizontal touch scroll on mobile -->
+      <!-- Task 2 Table Container -->
       <div class="overflow-x-auto touch-scroll rounded-xl border border-slate-200 -mx-1 sm:mx-0">
         <table class="w-full text-left text-xs text-slate-700 min-w-[560px] sm:min-w-full">
           <thead class="bg-slate-100/80 text-[10px] sm:text-[11px] font-semibold text-slate-600 uppercase tracking-wider border-b border-slate-200">
@@ -520,6 +542,7 @@
     let task2Sessions = [];
     let isTask1Collapsed = true;
     let isTask2Finalized = false;
+    let activeCycleMeta = null;
     let editingRecordId = null;
     let adminHistory = [];
     let backupSnapshots = [];
@@ -554,6 +577,7 @@
     const btnClearTask2 = document.getElementById('btn-clear-task2');
     const task2TableBody = document.getElementById('task2-table-body');
     const anomalyStatusText = document.getElementById('anomalyStatusText');
+    const sparklineChartContainer = document.getElementById('sparkline-chart-container');
 
     const statFirstPrice = document.getElementById('statFirstPrice');
     const statLatestPrice = document.getElementById('statLatestPrice');
@@ -987,6 +1011,8 @@
             : (changePct < 0 ? "text-xs sm:text-sm font-bold font-mono mt-0.5 block text-rose-600" : "text-xs sm:text-sm font-bold font-mono mt-0.5 block text-slate-800");
         }
 
+        renderSparklineChart(valid.map(v => ({ price: v.price, dateStr: formatDateKey(v.date), sessionNumber: v.sessionNumber })), avg);
+
         return { avg, first, latest, changePct, activeCount: valid.length };
       } else {
         setElText(statFirstPrice, '--');
@@ -994,8 +1020,101 @@
         setElText(statAvgPrice, '--');
         setElText(statTotalChange, '--');
         if (statTotalChange) statTotalChange.className = "text-xs sm:text-sm font-bold font-mono mt-0.5 block text-slate-800";
+        if (sparklineChartContainer) {
+          sparklineChartContainer.innerHTML = `<div class="h-full flex items-center justify-center text-slate-400 text-xs">Enter prices to display chart</div>`;
+        }
         return { avg: null, first: null, latest: null, changePct: null, activeCount: 0 };
       }
+    }
+
+    // Interactive SVG Sparkline Trend Generator with Date Labels
+    function generateVectorSparklineSvg(pointsData, avgVal, width = 740, height = 95) {
+      if (!pointsData || pointsData.length < 2) return '';
+      const prices = pointsData.map(p => p.price);
+      const minP = Math.min(...prices, avgVal !== null ? avgVal : prices[0]);
+      const maxP = Math.max(...prices, avgVal !== null ? avgVal : prices[0]);
+      const range = (maxP - minP) === 0 ? 1 : (maxP - minP);
+      
+      const paddingLeft = 36;
+      const paddingRight = 16;
+      const paddingTop = 12;
+      const paddingBottom = 24;
+
+      const plotW = width - paddingLeft - paddingRight;
+      const plotH = height - paddingTop - paddingBottom;
+
+      const stepX = plotW / (pointsData.length - 1);
+      const points = pointsData.map((pt, i) => {
+        const x = paddingLeft + (i * stepX);
+        const y = paddingTop + plotH - ((pt.price - minP) / range) * plotH;
+        return { 
+          x: Number(x.toFixed(1)), 
+          y: Number(y.toFixed(1)), 
+          price: pt.price, 
+          idx: pt.sessionNumber || (i + 1),
+          dateStr: pt.dateStr || ''
+        };
+      });
+
+      const polylinePoints = points.map(pt => `${pt.x},${pt.y}`).join(' ');
+
+      let avgLineY = paddingTop + (plotH / 2);
+      if (avgVal !== null) {
+        avgLineY = paddingTop + plotH - ((avgVal - minP) / range) * plotH;
+      }
+      avgLineY = Number(avgLineY.toFixed(1));
+
+      const firstX = points[0].x;
+      const lastX = points[points.length - 1].x;
+      const bottomY = paddingTop + plotH;
+      const areaPoints = `${firstX},${bottomY} ${polylinePoints} ${lastX},${bottomY}`;
+
+      const labelIndices = [];
+      labelIndices.push(0);
+      if (points.length >= 6) {
+        labelIndices.push(Math.floor((points.length - 1) / 2));
+      }
+      labelIndices.push(points.length - 1);
+
+      return `
+        <svg viewBox="0 0 ${width} ${height}" class="w-full h-full overflow-visible" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="adminChartGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="#4f46e5" stop-opacity="0.22"/>
+              <stop offset="100%" stop-color="#4f46e5" stop-opacity="0.0"/>
+            </linearGradient>
+          </defs>
+
+          <line x1="${paddingLeft}" y1="${bottomY}" x2="${width - paddingRight}" y2="${bottomY}" stroke="#e2e8f0" stroke-width="1" />
+          <polygon points="${areaPoints}" fill="url(#adminChartGradient)" />
+
+          <line x1="${paddingLeft}" y1="${avgLineY}" x2="${width - paddingRight}" y2="${avgLineY}" stroke="#f43f5e" stroke-width="1.5" stroke-dasharray="4,4" />
+          <text x="${paddingLeft - 4}" y="${avgLineY + 3}" text-anchor="end" font-size="8.5" fill="#f43f5e" font-family="monospace" font-weight="700">Avg</text>
+
+          <polyline fill="none" stroke="#4f46e5" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" points="${polylinePoints}" />
+
+          ${points.map(pt => `
+            <circle cx="${pt.x}" cy="${pt.y}" r="3" fill="#ffffff" stroke="#4f46e5" stroke-width="2" class="cursor-pointer">
+              <title>Session ${pt.idx} (${pt.dateStr}): $${pt.price.toFixed(2)}</title>
+            </circle>
+          `).join('')}
+
+          ${labelIndices.map(idx => {
+            const p = points[idx];
+            const anchor = idx === 0 ? 'start' : (idx === points.length - 1 ? 'end' : 'middle');
+            return `<text x="${p.x}" y="${height - 6}" text-anchor="${anchor}" font-size="9" fill="#64748b" font-family="monospace" font-weight="600">${p.dateStr}</text>`;
+          }).join('')}
+        </svg>
+      `;
+    }
+
+    function renderSparklineChart(pointsData, avgVal) {
+      if (!sparklineChartContainer) return;
+      if (!pointsData || pointsData.length < 2) {
+        sparklineChartContainer.innerHTML = `<div class="h-full flex items-center justify-center text-slate-400 text-xs">Enter prices to display chart</div>`;
+        return;
+      }
+      sparklineChartContainer.innerHTML = generateVectorSparklineSvg(pointsData, avgVal, 740, 95);
     }
 
     // -------------------------------------------------------------
@@ -1063,6 +1182,215 @@
       }
 
       lucide.createIcons();
+    }
+
+    // -------------------------------------------------------------
+    // Full JSON Payload Packaging: activeCycle + history
+    // -------------------------------------------------------------
+    function buildFullJsonPackage() {
+      sortAdminHistory();
+
+      let activeCycleObj = null;
+      if (task2Sessions && task2Sessions.length > 0 && task1Result) {
+        const stats = calculateTask2Stats();
+        activeCycleObj = {
+          id: activeCycleMeta ? activeCycleMeta.id : `${task1Result.year}-Q${task1Result.quarter}-${formatDateKey(task1Result.startDate)}-${formatDateKey(task1Result.endDate)}`,
+          ticker: currentTicker || 'ARM',
+          quarter: task1Result.quarter,
+          year: task1Result.year,
+          startDate: formatDateKey(task1Result.startDate),
+          endDate: formatDateKey(task1Result.endDate),
+          isFinalized: isTask2Finalized,
+          avgPrice: stats.avg,
+          firstPrice: stats.first,
+          latestPrice: stats.latest,
+          totalChangePct: stats.changePct,
+          activeCount: stats.activeCount,
+          sessions: task2Sessions.map(s => ({
+            sessionNumber: s.sessionNumber,
+            dateIso: formatDateKey(s.date),
+            price: (s.price !== null && !isNaN(s.price)) ? Number(s.price) : null,
+            locked: !!s.locked
+          })),
+          updatedAt: new Date().toISOString()
+        };
+      }
+
+      return {
+        activeCycle: activeCycleObj,
+        history: adminHistory
+      };
+    }
+
+    // Direct GitHub REST API Commit Engine
+    async function commitJsonDirectToGitHub() {
+      if (!gitConfig.token || !gitConfig.repo) {
+        modalGitConfig.classList.remove('hidden');
+        showToast(translations[currentLang].msgGitConfigRequired);
+        return;
+      }
+
+      // 1. Take a snapshot backup first!
+      createBackupSnapshot("Auto-backup before Git Push");
+
+      showToast(translations[currentLang].msgGitPushing);
+      btnPushGit.disabled = true;
+      btnPushGit.classList.add('opacity-70');
+
+      try {
+        const packageData = buildFullJsonPackage();
+        const jsonContentStr = JSON.stringify(packageData, null, 2);
+        const encodedContent = btoa(unescape(encodeURIComponent(jsonContentStr)));
+
+        const cleanRepo = gitConfig.repo.trim();
+        const cleanPath = gitConfig.path.trim().replace(/^\//, '');
+        const cleanBranch = gitConfig.branch.trim() || 'main';
+
+        const apiUrl = `https://api.github.com/repos/${cleanRepo}/contents/${cleanPath}`;
+
+        // Step 1: GET existing file SHA to allow overwrite
+        let existingSha = null;
+        try {
+          const getRes = await fetch(`${apiUrl}?ref=${cleanBranch}`, {
+            headers: {
+              'Authorization': `Bearer ${gitConfig.token}`,
+              'Accept': 'application/vnd.github.v3+json'
+            }
+          });
+          if (getRes.ok) {
+            const getData = await getRes.json();
+            existingSha = getData.sha;
+          }
+        } catch (e) {
+          console.debug("File might be new, proceed without SHA");
+        }
+
+        // Step 2: PUT commit directly to GitHub
+        const commitMessage = `Update history_data.json (Active Cycle & History) via Admin [${new Date().toISOString().replace('T', ' ').substring(0, 19)}]`;
+        
+        const payload = {
+          message: commitMessage,
+          content: encodedContent,
+          branch: cleanBranch
+        };
+        if (existingSha) payload.sha = existingSha;
+
+        const putRes = await fetch(apiUrl, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${gitConfig.token}`,
+            'Accept': 'application/vnd.github.v3+json',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        });
+
+        if (putRes.ok) {
+          const putData = await putRes.json();
+          const shortSha = putData.commit ? putData.commit.sha.substring(0, 7) : 'OK';
+          const msg = translations[currentLang].msgGitPushSuccess.replace('{sha}', shortSha);
+          showToast(msg);
+        } else {
+          const errData = await putRes.json();
+          throw new Error(errData.message || `HTTP ${putRes.status}`);
+        }
+      } catch (err) {
+        showToast("Git Commit Error: " + err.message);
+      } finally {
+        btnPushGit.disabled = false;
+        btnPushGit.classList.remove('opacity-70');
+      }
+    }
+
+    // Auto Load history_data.json on startup
+    async function autoLoadHistoryDataJson(silent = false) {
+      try {
+        const res = await fetch('./history_data.json', { cache: 'no-cache' });
+        if (res.ok) {
+          const payload = await res.json();
+          let loadedQuarters = 0;
+
+          if (Array.isArray(payload)) {
+            // Backward compatibility
+            adminHistory = payload;
+            loadedQuarters = payload.length;
+          } else if (payload && typeof payload === 'object') {
+            if (Array.isArray(payload.history)) {
+              adminHistory = payload.history;
+              loadedQuarters = payload.history.length;
+            }
+            if (payload.activeCycle && Array.isArray(payload.activeCycle.sessions)) {
+              loadActiveCycleFromPackage(payload.activeCycle);
+            }
+          }
+
+          sortAdminHistory();
+          saveAdminState();
+          renderHistoryList();
+
+          if (adminJsonStatusBadge) {
+            adminJsonStatusBadge.classList.remove('hidden');
+            adminJsonStatusBadge.innerHTML = `<i data-lucide="check-circle" class="w-3 h-3 inline mr-1"></i>JSON: ${loadedQuarters} Q`;
+            lucide.createIcons();
+          }
+
+          if (!silent) {
+            const msg = translations[currentLang].msgJsonAutoLoaded.replace('{count}', loadedQuarters);
+            showToast(msg);
+          }
+          return true;
+        }
+      } catch (err) {
+        if (!silent) console.debug("history_data.json fetch skipped:", err);
+      }
+      return false;
+    }
+
+    function loadActiveCycleFromPackage(cycle) {
+      if (!cycle || !Array.isArray(cycle.sessions)) return;
+
+      const startDate = parseISODate(cycle.startDate);
+      const endDate = parseISODate(cycle.endDate);
+      currentTicker = cycle.ticker || 'ARM';
+      if (inputStockTicker) inputStockTicker.value = currentTicker;
+
+      task1Result = {
+        targetDate: endDate,
+        validEndTradingDay: endDate,
+        startDate,
+        endDate,
+        year: cycle.year,
+        quarter: cycle.quarter,
+        tradingSessions: cycle.sessions.map(s => parseISODate(s.dateIso)),
+        weekendDaysCount: 0,
+        holidaysCount: 0,
+        skippedHolidays: []
+      };
+
+      targetDateInput.value = formatDateKey(endDate);
+      renderTask1UI();
+
+      task2Sessions = cycle.sessions.map(s => ({
+        sessionNumber: s.sessionNumber,
+        date: parseISODate(s.dateIso),
+        price: (s.price !== null && !isNaN(s.price)) ? Number(s.price) : null,
+        locked: !!s.locked
+      }));
+
+      isTask2Finalized = !!cycle.isFinalized;
+      activeCycleMeta = {
+        id: cycle.id,
+        year: cycle.year,
+        quarter: cycle.quarter,
+        startDate: cycle.startDate,
+        endDate: cycle.endDate
+      };
+
+      updateFinalizedUI();
+      updateTask2Title(cycle.quarter, cycle.startDate, cycle.endDate);
+      task2Panel.classList.remove('hidden');
+      calculateTask2Stats();
+      renderTask2Table();
     }
 
     function updateFinalizedUI() {
@@ -1823,6 +2151,14 @@
       isTask2Finalized = false;
       updateFinalizedUI();
 
+      activeCycleMeta = {
+        id: `${task1Result.year}-Q${task1Result.quarter}-${formatDateKey(task1Result.startDate)}-${formatDateKey(task1Result.endDate)}`,
+        year: task1Result.year,
+        quarter: task1Result.quarter,
+        startDate: formatDateKey(task1Result.startDate),
+        endDate: formatDateKey(task1Result.endDate)
+      };
+
       updateTask2Title(
         task1Result.quarter, 
         formatDateKey(task1Result.startDate), 
@@ -2036,10 +2372,10 @@
     }
 
     btnExportJson.addEventListener('click', () => {
-      if (adminHistory.length === 0) return;
-      sortAdminHistory();
-      const jsonStr = JSON.stringify(adminHistory, null, 2);
+      const packageData = buildFullJsonPackage();
+      const jsonStr = JSON.stringify(packageData, null, 2);
       downloadFile('history_data.json', jsonStr, 'application/json');
+      showToast(currentLang === 'vi' ? 'Đã xuất file history_data.json (Active Cycle & History)!' : 'Exported history_data.json (Active Cycle & History)!');
     });
 
     // Language switcher
