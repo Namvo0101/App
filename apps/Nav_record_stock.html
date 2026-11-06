@@ -458,38 +458,38 @@
     </div>
   </div>
 
-  <!-- Unsaved Changes Warning Modal Popup -->
+  <!-- Unsaved Changes / End Current Cycle Warning Modal Popup -->
   <div id="unsaved-modal" class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs hidden transition-all duration-300">
     <div class="bg-white rounded-2xl border border-slate-200 shadow-xl max-w-sm sm:max-w-md w-full p-4 sm:p-6 space-y-3.5 sm:space-y-4 transform scale-95 transition-all">
       <div class="flex items-start gap-3">
-        <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
-          <i data-lucide="alert-octagon" class="w-5 h-5"></i>
+        <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center shrink-0">
+          <i data-lucide="help-circle" class="w-5 h-5"></i>
         </div>
         <div class="space-y-1 min-w-0">
-          <h3 class="text-sm sm:text-base font-bold text-slate-900 leading-tight" data-i18n="modalUnsavedTitle">
-            Discard In-Progress Data?
+          <h3 class="text-sm sm:text-base font-bold text-slate-900 leading-tight" data-i18n="modalEndCycleTitle">
+            Kết thúc chu kỳ hiện tại?
           </h3>
           <p id="modal-unsaved-desc" class="text-xs text-slate-600 leading-relaxed"></p>
         </div>
       </div>
 
-      <div class="bg-rose-50/70 border border-rose-200/80 rounded-xl p-3 text-xs text-rose-800 space-y-1">
+      <div class="bg-indigo-50/70 border border-indigo-200/80 rounded-xl p-3 text-xs text-indigo-900 space-y-1">
         <div class="flex items-center justify-between font-mono font-bold">
           <span id="modal-current-quarter-info">--</span>
-          <span id="modal-current-active-count" class="text-rose-700 font-bold">--</span>
+          <span id="modal-current-active-count" class="text-indigo-700 font-bold">--</span>
         </div>
-        <p class="text-[11px] text-rose-900/80 leading-normal" data-i18n="modalUnsavedNote">
-          Applying a new cycle will reset the table and permanently clear these prices.
+        <p class="text-[11px] text-indigo-800/80 leading-normal" data-i18n="modalEndCycleNote">
+          Nếu đồng ý kết thúc, chu kỳ hiện tại sẽ được lưu trữ vào Lịch sử và hệ thống sẽ mở chu kỳ mới theo mốc bạn đã chọn.
         </p>
       </div>
 
       <!-- Action Buttons -->
       <div class="flex items-center justify-end gap-2 pt-1 sm:pt-2">
-        <button id="btn-unsaved-cancel" class="flex-1 sm:flex-none px-3.5 py-2 text-xs font-semibold text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all cursor-pointer active:scale-95" data-i18n="btnCancel">
-          Keep My Data
+        <button id="btn-unsaved-cancel" class="flex-1 sm:flex-none px-3.5 py-2 text-xs font-semibold text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all cursor-pointer active:scale-95" data-i18n="btnKeepCycle">
+          Không, tiếp tục chu kỳ này
         </button>
-        <button id="btn-unsaved-confirm" class="flex-1 sm:flex-none px-4 py-2 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 active:bg-rose-800 rounded-xl shadow-2xs transition-all cursor-pointer flex items-center justify-center gap-1.5 active:scale-95" data-i18n="btnDiscardProceed">
-          Discard & Load New
+        <button id="btn-unsaved-confirm" class="flex-1 sm:flex-none px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 rounded-xl shadow-2xs transition-all cursor-pointer flex items-center justify-center gap-1.5 active:scale-95" data-i18n="btnEndAndOpenNew">
+          Có, lưu & mở chu kỳ mới
         </button>
       </div>
     </div>
@@ -516,6 +516,8 @@
     let task2Sessions = [];
     let isTask1Collapsed = true;
     let isTask2Finalized = false;
+    let activeCycleMeta = null;
+    let masterJsonActiveCycle = null;
     let userLocalHistory = [];
     let staticJsonHistory = [];
     let mergedHistory = [];
@@ -615,19 +617,22 @@
         thPrice: "Closing Price ($)",
         thChange: "Change (%)",
         thAction: "Action",
+        tooltipMasterLocked: "Official price locked by Admin (cannot be edited)",
+        tooltipUserLocked: "Locked by you (Click to unlock)",
+        tooltipUserUnlocked: "Click to lock and protect this row",
         historyTitle: "Calculation History",
         historySubtitle: "Archived stock price cycles sorted chronologically (newest first)",
         historyEmpty: "No saved cycles yet. Click \"Save Data\" in Task 2 to archive a completed cycle.",
         modalDuplicateTitle: "Quarter Data Already Exists!",
-        modalDuplicateDesc: "Data for {quarterYear} has already been saved to History. Creation of duplicate records is disabled. You can inspect the archived records or select a different date.",
+        modalDuplicateDesc: "Data for {quarterYear} has already been recorded in History or Active Cycle. Creation of duplicate records is disabled. You can inspect the archived records or select a different date.",
         modalAvgRecorded: "Saved Average Price:",
         btnModalClose: "Close",
         btnModalViewHistory: "View Archived Data",
-        modalUnsavedTitle: "Discard In-Progress Data?",
-        modalUnsavedDesc: "You currently have entered price data in the table for {activeCycle}. Are you sure you want to discard this data and load a new cycle?",
-        modalUnsavedNote: "Applying a new cycle will reset the table and permanently clear these prices.",
-        btnCancel: "Keep My Data",
-        btnDiscardProceed: "Discard & Load New",
+        modalEndCycleTitle: "End Current Active Cycle?",
+        modalEndCycleDesc: "You have an ongoing cycle for {activeCycle}. Do you want to finalize & archive this cycle to History and open the new cycle?",
+        modalEndCycleNote: "Confirming will safely archive current data into History before loading the new cycle.",
+        btnKeepCycle: "No, keep current cycle",
+        btnEndAndOpenNew: "Yes, archive & open new",
         cycleAlreadyActive: "This cycle is already loaded in Task 2. Your entered data is preserved.",
         pdfExporting: "Preparing document for PDF export / print...",
         cycleConfirmed: "Cycle confirmed! 20 trading sessions loaded into Task 2.",
@@ -674,19 +679,22 @@
         thPrice: "Giá đóng cửa ($)",
         thChange: "Biến động (%)",
         thAction: "Thao tác",
+        tooltipMasterLocked: "Giá chính thức đã khóa bởi Admin (không thể chỉnh sửa)",
+        tooltipUserLocked: "Đã khóa bởi bạn (Bấm để mở khóa)",
+        tooltipUserUnlocked: "Bấm để khóa bảo vệ dòng này",
         historyTitle: "Lịch sử tính giá cổ phiếu",
         historySubtitle: "Danh sách các chu kỳ đã lưu (sắp xếp từ mới nhất đến cũ nhất)",
         historyEmpty: "Chưa có chu kỳ nào được lưu. Bấm \"Lưu dữ liệu\" ở Task 2 để lưu trữ vào đây.",
         modalDuplicateTitle: "Dữ liệu quý đã tồn tại!",
-        modalDuplicateDesc: "Dữ liệu của {quarterYear} đã được lưu trữ trong Lịch sử. Hệ thống không cho phép tạo trùng lặp. Vui lòng xem lại dữ liệu cũ hoặc chọn mốc thời gian khác.",
+        modalDuplicateDesc: "Dữ liệu của {quarterYear} đã được lưu trữ trong Lịch sử hoặc đang chạy. Hệ thống không cho phép tạo trùng lặp. Vui lòng xem lại dữ liệu cũ hoặc chọn mốc thời gian khác.",
         modalAvgRecorded: "Giá trung bình đã lưu:",
         btnModalClose: "Đóng",
         btnModalViewHistory: "Xem dữ liệu lịch sử",
-        modalUnsavedTitle: "Hủy bỏ dữ liệu đang nhập?",
-        modalUnsavedDesc: "Bạn đang có dữ liệu giá chưa lưu ở chu kỳ {activeCycle}. Bạn có chắc chắn muốn hủy bỏ dữ liệu này để tải chu kỳ mới?",
-        modalUnsavedNote: "Áp dụng chu kỳ mới sẽ xóa trắng bảng nhập và làm mất số liệu bạn đã điền.",
-        btnCancel: "Giữ lại dữ liệu",
-        btnDiscardProceed: "Xóa & Tải chu kỳ mới",
+        modalEndCycleTitle: "Kết thúc chu kỳ hiện tại?",
+        modalEndCycleDesc: "Bạn đang có chu kỳ hoạt động {activeCycle}. Bạn có muốn lưu trữ kết thúc chu kỳ này vào Lịch sử và mở chu kỳ mới không?",
+        modalEndCycleNote: "Nếu chọn kết thúc, toàn bộ dữ liệu của chu kỳ hiện tại sẽ được lưu trữ an toàn vào Lịch sử trước khi mở chu kỳ mới.",
+        btnKeepCycle: "Không, tiếp tục chu kỳ hiện tại",
+        btnEndAndOpenNew: "Có, lưu & mở chu kỳ mới",
         cycleAlreadyActive: "Chu kỳ này đang được mở ở Task 2. Dữ liệu bạn đã nhập được giữ nguyên vẹn.",
         pdfExporting: "Đang mở tài liệu để in / lưu PDF...",
         cycleConfirmed: "Đã áp dụng chu kỳ! 20 phiên giao dịch đã được nạp vào Task 2.",
@@ -1235,13 +1243,15 @@
           <td class="py-2.5 px-3 sm:px-4 text-right">
             <button 
               id="btn-lock-row-${idx}"
-              ${isTask2Finalized ? 'disabled' : ''}
-              class="w-8 h-8 flex items-center justify-center ml-auto rounded-lg transition-all cursor-pointer active:scale-95 ${
-                isTask2Finalized 
-                  ? 'text-slate-300 cursor-not-allowed' 
-                  : (s.locked ? 'text-amber-600 hover:bg-amber-50' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100')
+              ${isTask2Finalized || s.masterLocked ? 'disabled' : ''}
+              class="w-8 h-8 flex items-center justify-center ml-auto rounded-lg transition-all ${
+                s.masterLocked 
+                  ? 'text-amber-600 bg-amber-50/50 cursor-not-allowed' 
+                  : (isTask2Finalized 
+                      ? 'text-slate-300 cursor-not-allowed' 
+                      : (s.locked ? 'text-amber-600 hover:bg-amber-50 cursor-pointer active:scale-95' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100 cursor-pointer active:scale-95'))
               }"
-              title="${s.locked ? 'Unlock' : 'Lock'}"
+              title="${s.masterLocked ? 'Locked by Admin' : (s.locked ? 'Unlock' : 'Lock')}"
             >
               <i data-lucide="${s.locked ? 'lock' : 'unlock'}" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i>
             </button>
@@ -1251,8 +1261,22 @@
         task2TableBody.appendChild(tr);
 
         const inputEl = tr.querySelector(`#input-price-${idx}`);
+        const lockBtn = tr.querySelector(`#btn-lock-row-${idx}`);
+
+        // Update tooltip dynamically
+        if (lockBtn) {
+          if (s.masterLocked) {
+            lockBtn.title = translations[currentLang].tooltipMasterLocked;
+          } else if (s.locked) {
+            lockBtn.title = translations[currentLang].tooltipUserLocked;
+          } else {
+            lockBtn.title = translations[currentLang].tooltipUserUnlocked;
+          }
+        }
+
         if (inputEl) {
           inputEl.addEventListener('input', (e) => {
+            if (s.locked || isTask2Finalized) return;
             const raw = e.target.value;
             s.price = (raw !== '' && !isNaN(raw)) ? parseFloat(raw) : null;
             calculateTask2Stats();
@@ -1284,9 +1308,9 @@
           });
         }
 
-        const lockBtn = tr.querySelector(`#btn-lock-row-${idx}`);
-        if (lockBtn && !isTask2Finalized) {
+        if (lockBtn && !isTask2Finalized && !s.masterLocked) {
           lockBtn.addEventListener('click', () => {
+            // User toggles their own lock state
             s.locked = !s.locked;
             if (inputEl) {
               if (s.locked) {
@@ -1294,11 +1318,13 @@
                 inputEl.className = "mobile-input-safe session-price-input w-full pl-6 pr-2 py-1.5 text-xs font-mono font-semibold text-slate-800 rounded-lg border transition-all bg-slate-100/80 border-slate-200 text-slate-500 cursor-not-allowed select-none";
                 lockBtn.className = "w-8 h-8 flex items-center justify-center ml-auto rounded-lg transition-all cursor-pointer text-amber-600 hover:bg-amber-50 active:scale-95";
                 lockBtn.innerHTML = `<i data-lucide="lock" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i>`;
+                lockBtn.title = translations[currentLang].tooltipUserLocked;
               } else {
                 inputEl.removeAttribute('readonly');
                 inputEl.className = "mobile-input-safe session-price-input w-full pl-6 pr-2 py-1.5 text-xs font-mono font-semibold text-slate-800 rounded-lg border transition-all bg-white border-slate-300 hover:border-indigo-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-100";
                 lockBtn.className = "w-8 h-8 flex items-center justify-center ml-auto rounded-lg transition-all cursor-pointer text-slate-400 hover:text-slate-600 hover:bg-slate-100 active:scale-95";
                 lockBtn.innerHTML = `<i data-lucide="unlock" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i>`;
+                lockBtn.title = translations[currentLang].tooltipUserUnlocked;
               }
               lucide.createIcons();
             }
@@ -1575,22 +1601,124 @@
 
     // -------------------------------------------------------------
     // Fetch External Static JSON (history_data.json)
+    // Hybrid Master State: Ingest activeCycle + history
     // -------------------------------------------------------------
     async function loadStaticJsonHistory() {
       try {
         const response = await fetch('./history_data.json', { cache: 'no-cache' });
         if (response.ok) {
-          const data = await response.json();
-          if (Array.isArray(data)) {
-            staticJsonHistory = data;
-          }
+          const payload = await response.json();
+          ingestMasterJsonPayload(payload);
         }
       } catch (err) {
-        if (window.STATIC_EMBEDDED_HISTORY && window.STATIC_EMBEDDED_HISTORY.length > 0) {
-          staticJsonHistory = window.STATIC_EMBEDDED_HISTORY;
+        if (window.STATIC_EMBEDDED_HISTORY) {
+          ingestMasterJsonPayload(window.STATIC_EMBEDDED_HISTORY);
         }
       }
       renderHistoryList();
+    }
+
+    function ingestMasterJsonPayload(payload) {
+      if (!payload) return;
+      if (Array.isArray(payload)) {
+        // Backward compatibility for array-only history
+        staticJsonHistory = payload;
+      } else if (typeof payload === 'object') {
+        if (Array.isArray(payload.history)) {
+          staticJsonHistory = payload.history;
+        }
+        if (payload.activeCycle && payload.activeCycle.sessions) {
+          masterJsonActiveCycle = payload.activeCycle;
+          applyMasterActiveCycleToClient(masterJsonActiveCycle);
+        }
+      }
+    }
+
+    // Apply JSON Active Cycle with Master Locked Precedence
+    function applyMasterActiveCycleToClient(masterCycle) {
+      if (!masterCycle || !Array.isArray(masterCycle.sessions)) return;
+
+      // Check if user has local cache for this active cycle
+      let userCachedSessions = [];
+      try {
+        const saved = localStorage.getItem('NAV_RECORD_STOCK_STATE');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed && parsed.activeCycleId === masterCycle.id && Array.isArray(parsed.sessions)) {
+            userCachedSessions = parsed.sessions;
+          }
+        }
+      } catch (e) {}
+
+      // Populate Task 1 Context
+      const startDate = parseISODate(masterCycle.startDate);
+      const endDate = parseISODate(masterCycle.endDate);
+      currentTicker = masterCycle.ticker || 'ARM';
+      if (inputStockTicker) inputStockTicker.value = currentTicker;
+
+      task1Result = {
+        targetDate: endDate,
+        validEndTradingDay: endDate,
+        startDate,
+        endDate,
+        year: masterCycle.year,
+        quarter: masterCycle.quarter,
+        tradingSessions: masterCycle.sessions.map(s => parseISODate(s.dateIso)),
+        weekendDaysCount: 0,
+        holidaysCount: 0,
+        skippedHolidays: []
+      };
+
+      targetDateInput.value = formatDateKey(endDate);
+      renderTask1UI();
+
+      // Merge master sessions with user local inputs
+      task2Sessions = masterCycle.sessions.map((mSession, idx) => {
+        const uSession = userCachedSessions.find(u => u.sessionNumber === mSession.sessionNumber);
+        const isMasterLocked = !!mSession.locked;
+        
+        let price = null;
+        let locked = isMasterLocked;
+
+        if (isMasterLocked) {
+          // Master Admin locked -> Master always wins
+          price = (mSession.price !== null && !isNaN(mSession.price)) ? Number(mSession.price) : null;
+          locked = true;
+        } else {
+          // Unlocked by Admin -> Check user local cache (preserves user price and user lock)
+          if (uSession && uSession.price !== null && !isNaN(uSession.price)) {
+            price = Number(uSession.price);
+            locked = !!uSession.locked; // Preserves user's self-lock state!
+          } else if (mSession.price !== null && !isNaN(mSession.price)) {
+            price = Number(mSession.price);
+            locked = false;
+          }
+        }
+
+        return {
+          sessionNumber: mSession.sessionNumber,
+          date: parseISODate(mSession.dateIso),
+          price: price,
+          locked: locked,
+          masterLocked: isMasterLocked
+        };
+      });
+
+      isTask2Finalized = !!masterCycle.isFinalized;
+      activeCycleMeta = {
+        id: masterCycle.id,
+        year: masterCycle.year,
+        quarter: masterCycle.quarter,
+        startDate: masterCycle.startDate,
+        endDate: masterCycle.endDate
+      };
+
+      updateFinalizedUI();
+      updateTask2Title(masterCycle.quarter, masterCycle.startDate, masterCycle.endDate);
+      task2Panel.classList.remove('hidden');
+      calculateTask2Stats();
+      renderTask2Table();
+      saveStateToLocalStorage();
     }
 
     // Local Storage State Persistence
@@ -1601,6 +1729,7 @@
           currentTicker,
           isTask1Collapsed,
           isTask2Finalized,
+          activeCycleId: activeCycleMeta ? activeCycleMeta.id : (task1Result ? `${task1Result.year}-Q${task1Result.quarter}-${formatDateKey(task1Result.startDate)}-${formatDateKey(task1Result.endDate)}` : null),
           userHistory: userLocalHistory,
           task2Active: !task2Panel.classList.contains('hidden'),
           targetDate: task1Result ? formatDateKey(task1Result.targetDate) : null,
@@ -1608,7 +1737,8 @@
             sessionNumber: s.sessionNumber,
             dateIso: formatDateKey(s.date),
             price: s.price,
-            locked: s.locked
+            locked: s.locked,
+            masterLocked: !!s.masterLocked
           }))
         };
         localStorage.setItem('NAV_RECORD_STOCK_STATE', JSON.stringify(state));
@@ -1643,12 +1773,14 @@
         }
         updateToggleTask1ButtonUI();
 
-        if (state.task2Active && Array.isArray(state.sessions) && state.sessions.length > 0 && task1Result) {
+        // If no master cycle has loaded yet, restore local session
+        if (!masterJsonActiveCycle && state.task2Active && Array.isArray(state.sessions) && state.sessions.length > 0 && task1Result) {
           task2Sessions = state.sessions.map(s => ({
             sessionNumber: s.sessionNumber,
             date: parseISODate(s.dateIso),
             price: s.price,
-            locked: !!s.locked
+            locked: !!s.locked,
+            masterLocked: !!s.masterLocked
           }));
           isTask2Finalized = !!state.isTask2Finalized;
           updateFinalizedUI();
@@ -2024,11 +2156,20 @@
         sessionNumber: index + 1,
         date: d,
         price: null,
-        locked: false
+        locked: false,
+        masterLocked: false
       }));
 
       isTask2Finalized = false;
       updateFinalizedUI();
+
+      activeCycleMeta = {
+        id: `${task1Result.year}-Q${task1Result.quarter}-${formatDateKey(task1Result.startDate)}-${formatDateKey(task1Result.endDate)}`,
+        year: task1Result.year,
+        quarter: task1Result.quarter,
+        startDate: formatDateKey(task1Result.startDate),
+        endDate: formatDateKey(task1Result.endDate)
+      };
 
       updateTask2Title(
         task1Result.quarter, 
@@ -2043,6 +2184,50 @@
       task2Panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
       showToast(translations[currentLang].cycleConfirmed);
       saveStateToLocalStorage();
+    }
+
+    function archiveCurrentActiveCycleToHistory() {
+      if (!task2Sessions || task2Sessions.length === 0 || !task1Result) return;
+
+      const stats = calculateTask2Stats();
+      const startKey = formatDateKey(task1Result.startDate);
+      const endKey = formatDateKey(task1Result.endDate);
+      const recordKey = `${task1Result.year}-Q${task1Result.quarter}-${startKey}-${endKey}`;
+
+      const serializedSessions = task2Sessions.map(s => ({
+        sessionNumber: s.sessionNumber,
+        dateIso: formatDateKey(s.date),
+        price: (s.price !== null && !isNaN(s.price)) ? Number(s.price) : null,
+        locked: true
+      }));
+
+      const record = {
+        id: recordKey,
+        ticker: currentTicker || 'ARM',
+        quarter: task1Result.quarter,
+        year: task1Result.year,
+        startDate: startKey,
+        endDate: endKey,
+        avgPrice: stats.avg,
+        firstPrice: stats.first,
+        latestPrice: stats.latest,
+        totalChangePct: stats.changePct,
+        activeCount: stats.activeCount,
+        high: stats.high,
+        low: stats.low,
+        sessions: serializedSessions,
+        savedAt: new Date().toISOString()
+      };
+
+      const existingIdx = userLocalHistory.findIndex(r => r.id === recordKey);
+      if (existingIdx >= 0) {
+        userLocalHistory[existingIdx] = record;
+      } else {
+        userLocalHistory.unshift(record);
+      }
+
+      saveStateToLocalStorage();
+      renderHistoryList();
     }
 
     function showDuplicateModal(existingRecord) {
@@ -2088,13 +2273,14 @@
       });
     }
 
-    function showUnsavedModal(activeCount) {
+    // Modal asking if user wants to end current cycle
+    function showEndCycleModal(activeCount) {
       const t = translations[currentLang];
       const startSlash = formatDateKey(task2Sessions[0].date).replace(/-/g, '/');
       const endSlash = formatDateKey(task2Sessions[task2Sessions.length - 1].date).replace(/-/g, '/');
       const activeCycleText = `${startSlash} - ${endSlash}`;
 
-      modalUnsavedDesc.textContent = t.modalUnsavedDesc.replace('{activeCycle}', activeCycleText);
+      modalUnsavedDesc.textContent = t.modalEndCycleDesc.replace('{activeCycle}', activeCycleText);
       setElText(modalCurrentQuarterInfo, activeCycleText);
       setElText(modalCurrentActiveCount, currentLang === 'vi' ? `${activeCount}/20 phiên có giá` : `${activeCount}/20 sessions with price`);
 
@@ -2116,6 +2302,10 @@
     if (btnUnsavedConfirm) {
       btnUnsavedConfirm.addEventListener('click', () => {
         hideUnsavedModal();
+        // Archive current active cycle to History
+        archiveCurrentActiveCycleToHistory();
+        showToast(currentLang === 'vi' ? 'Đã lưu trữ chu kỳ cũ vào Lịch sử!' : 'Archived previous cycle to History!');
+        // Now open the brand new cycle
         executeLoadTask2();
       });
     }
@@ -2125,6 +2315,7 @@
       const targetQuarter = task1Result.quarter;
       const targetYear = task1Result.year;
 
+      // 1. Check duplicate with History or Master active
       updateMergedHistory();
       const existing = mergedHistory.find(r => r.quarter === targetQuarter && r.year === targetYear);
       if (existing) {
@@ -2132,6 +2323,7 @@
         return;
       }
 
+      // 2. Check if this is already the currently active cycle
       const isTask2Open = !task2Panel.classList.contains('hidden') && task2Sessions.length > 0;
       if (isTask2Open) {
         const currentTask2Start = formatDateKey(task2Sessions[0].date);
@@ -2145,13 +2337,13 @@
           return;
         }
 
+        // Cycle is different, prompt to end current cycle and archive to history
         const enteredCount = task2Sessions.filter(s => s.price !== null && !isNaN(s.price)).length;
-        if (enteredCount > 0) {
-          showUnsavedModal(enteredCount);
-          return;
-        }
+        showEndCycleModal(enteredCount);
+        return;
       }
 
+      // 3. Fresh load
       executeLoadTask2();
     });
 
