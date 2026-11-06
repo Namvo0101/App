@@ -17,7 +17,7 @@
         "sessionNumber": 1,
         "dateIso": "2026-10-19",
         "price": 228.05,
-        "locked": false
+        "locked": true
       },
       {
         "sessionNumber": 2,
@@ -134,7 +134,7 @@
         "locked": false
       }
     ],
-    "updatedAt": "2026-11-06T07:21:40.468Z"
+    "updatedAt": "2026-11-06T07:25:07.027Z"
   },
   "history": [
     {
