@@ -495,6 +495,49 @@
     </div>
   </div>
 
+  <!-- Cycle Conflict Modal (When Master JSON has same quarter but different dates) -->
+  <div id="conflict-modal" class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs hidden transition-all duration-300">
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-xl max-w-sm sm:max-w-md w-full p-4 sm:p-6 space-y-3.5 sm:space-y-4 transform scale-95 transition-all">
+      <div class="flex items-start gap-3">
+        <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center shrink-0">
+          <i data-lucide="git-merge" class="w-5 h-5"></i>
+        </div>
+        <div class="space-y-1 min-w-0">
+          <h3 class="text-sm sm:text-base font-bold text-slate-900 leading-tight">
+            Phát hiện Chu kỳ mới từ Admin
+          </h3>
+          <p class="text-xs text-slate-600 leading-relaxed">
+            Admin vừa cập nhật chu kỳ cùng quý nhưng có khung ngày khác với dữ liệu bạn đang nhập dở:
+          </p>
+        </div>
+      </div>
+
+      <div class="space-y-2 text-xs">
+        <div class="p-2.5 bg-slate-50 border border-slate-200 rounded-xl">
+          <div class="font-bold text-slate-700">Dữ liệu bạn đang nhập:</div>
+          <div class="font-mono text-slate-600 text-[11px]" id="conflict-user-range">--</div>
+          <div class="text-[10px] text-indigo-600 font-semibold mt-0.5" id="conflict-user-count">0 phiên có giá</div>
+        </div>
+
+        <div class="p-2.5 bg-amber-50/70 border border-amber-200 rounded-xl">
+          <div class="font-bold text-amber-800">Chu kỳ chính thức từ Admin:</div>
+          <div class="font-mono text-amber-900 text-[11px]" id="conflict-master-range">--</div>
+          <div class="text-[10px] text-amber-700 font-semibold mt-0.5">Dữ liệu chuẩn từ hệ thống</div>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="flex flex-col sm:flex-row items-center justify-end gap-2 pt-1 sm:pt-2">
+        <button id="btn-conflict-keep-user" class="w-full sm:w-auto px-3 py-2 text-xs font-semibold text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all cursor-pointer active:scale-95">
+          Tiếp tục số liệu của tôi
+        </button>
+        <button id="btn-conflict-accept-master" class="w-full sm:w-auto px-3.5 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 rounded-xl shadow-2xs transition-all cursor-pointer flex items-center justify-center gap-1 active:scale-95">
+          Lưu bản nháp & Đổi sang Admin
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Notification Toast -->
   <div id="toast" class="fixed bottom-4 inset-x-4 sm:inset-x-auto sm:right-5 sm:bottom-5 z-50 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none">
     <div class="bg-slate-900/95 text-white text-xs font-medium px-4 py-2.5 rounded-xl shadow-lg flex items-center justify-center sm:justify-start gap-2 border border-slate-700/50 backdrop-blur-md">
@@ -574,6 +617,13 @@
     const modalCurrentActiveCount = document.getElementById('modal-current-active-count');
     const btnUnsavedCancel = document.getElementById('btn-unsaved-cancel');
     const btnUnsavedConfirm = document.getElementById('btn-unsaved-confirm');
+
+    const conflictModal = document.getElementById('conflict-modal');
+    const conflictUserRange = document.getElementById('conflict-user-range');
+    const conflictUserCount = document.getElementById('conflict-user-count');
+    const conflictMasterRange = document.getElementById('conflict-master-range');
+    const btnConflictKeepUser = document.getElementById('btn-conflict-keep-user');
+    const btnConflictAcceptMaster = document.getElementById('btn-conflict-accept-master');
 
     const toast = document.getElementById('toast');
     const toastMessage = document.getElementById('toast-message');
@@ -1599,46 +1649,92 @@
       lucide.createIcons();
     }
 
-    // -------------------------------------------------------------
-    // Fetch External Static JSON (history_data.json)
-    // Hybrid Master State: Ingest activeCycle + history
-    // -------------------------------------------------------------
+    // Fetch External Static JSON (history_data.json) & Master Active Cycle
     async function loadStaticJsonHistory() {
       try {
         const response = await fetch('./history_data.json', { cache: 'no-cache' });
         if (response.ok) {
           const payload = await response.json();
-          ingestMasterJsonPayload(payload);
+          if (Array.isArray(payload)) {
+            staticJsonHistory = payload;
+          } else if (payload && typeof payload === 'object') {
+            if (Array.isArray(payload.history)) {
+              staticJsonHistory = payload.history;
+            }
+            if (payload.activeCycle && Array.isArray(payload.activeCycle.sessions)) {
+              masterJsonActiveCycle = payload.activeCycle;
+              applyMasterActiveCycleToClient(masterJsonActiveCycle);
+            }
+          }
         }
       } catch (err) {
-        if (window.STATIC_EMBEDDED_HISTORY) {
-          ingestMasterJsonPayload(window.STATIC_EMBEDDED_HISTORY);
+        if (window.STATIC_EMBEDDED_HISTORY && window.STATIC_EMBEDDED_HISTORY.length > 0) {
+          staticJsonHistory = window.STATIC_EMBEDDED_HISTORY;
         }
       }
       renderHistoryList();
     }
 
-    function ingestMasterJsonPayload(payload) {
-      if (!payload) return;
-      if (Array.isArray(payload)) {
-        // Backward compatibility for array-only history
-        staticJsonHistory = payload;
-      } else if (typeof payload === 'object') {
-        if (Array.isArray(payload.history)) {
-          staticJsonHistory = payload.history;
-        }
-        if (payload.activeCycle && payload.activeCycle.sessions) {
-          masterJsonActiveCycle = payload.activeCycle;
-          applyMasterActiveCycleToClient(masterJsonActiveCycle);
-        }
-      }
-    }
-
-    // Apply JSON Active Cycle with Master Locked Precedence
+    // Apply JSON Active Cycle with Master Locked Precedence & Quarter Divergence Check
     function applyMasterActiveCycleToClient(masterCycle) {
       if (!masterCycle || !Array.isArray(masterCycle.sessions)) return;
 
-      // Check if user has local cache for this active cycle
+      // Check user local cache
+      let userCached = null;
+      try {
+        const saved = localStorage.getItem('NAV_RECORD_STOCK_STATE');
+        if (saved) {
+          userCached = JSON.parse(saved);
+        }
+      } catch (e) {}
+
+      // Check if user is currently working on the SAME quarter but DIFFERENT dates (Divergence)
+      if (userCached && userCached.task2Active && Array.isArray(userCached.sessions) && userCached.sessions.length > 0) {
+        const enteredPrices = userCached.sessions.filter(s => s.price !== null && !isNaN(s.price));
+        
+        // If user has entered data for this quarter but IDs or dates differ
+        if (enteredPrices.length > 0 && userCached.activeCycleId && userCached.activeCycleId !== masterCycle.id) {
+          // Check if same year & quarter
+          const uStart = userCached.sessions[0].dateIso;
+          const uEnd = userCached.sessions[userCached.sessions.length - 1].dateIso;
+          
+          // Show conflict modal so user data is NOT silently wiped out
+          showConflictModal(masterCycle, userCached, uStart, uEnd, enteredPrices.length);
+          return;
+        }
+      }
+
+      // Normal ingestion when there is no conflict
+      forceApplyMasterCycle(masterCycle);
+    }
+
+    function showConflictModal(masterCycle, userCached, uStart, uEnd, userEnteredCount) {
+      if (!conflictModal) return;
+
+      conflictUserRange.textContent = `${uStart.replace(/-/g, '/')} - ${uEnd.replace(/-/g, '/')}`;
+      conflictUserCount.textContent = `${userEnteredCount}/20 phiên có giá`;
+
+      conflictMasterRange.textContent = `${masterCycle.startDate.replace(/-/g, '/')} - ${masterCycle.endDate.replace(/-/g, '/')}`;
+
+      conflictModal.classList.remove('hidden');
+      lucide.createIcons();
+
+      btnConflictKeepUser.onclick = () => {
+        conflictModal.classList.add('hidden');
+        showToast(currentLang === 'vi' ? 'Tiếp tục chu kỳ của bạn!' : 'Kept your local cycle!');
+      };
+
+      btnConflictAcceptMaster.onclick = () => {
+        conflictModal.classList.add('hidden');
+        // Archive user current draft into History first
+        archiveCurrentActiveCycleToHistory();
+        // Load master cycle
+        forceApplyMasterCycle(masterCycle);
+        showToast(currentLang === 'vi' ? 'Đã lưu bản nháp vào Lịch sử và nạp chu kỳ Admin!' : 'Saved local draft to History and loaded Admin cycle!');
+      };
+    }
+
+    function forceApplyMasterCycle(masterCycle) {
       let userCachedSessions = [];
       try {
         const saved = localStorage.getItem('NAV_RECORD_STOCK_STATE');
@@ -1650,7 +1746,6 @@
         }
       } catch (e) {}
 
-      // Populate Task 1 Context
       const startDate = parseISODate(masterCycle.startDate);
       const endDate = parseISODate(masterCycle.endDate);
       currentTicker = masterCycle.ticker || 'ARM';
@@ -1673,7 +1768,7 @@
       renderTask1UI();
 
       // Merge master sessions with user local inputs
-      task2Sessions = masterCycle.sessions.map((mSession, idx) => {
+      task2Sessions = masterCycle.sessions.map((mSession) => {
         const uSession = userCachedSessions.find(u => u.sessionNumber === mSession.sessionNumber);
         const isMasterLocked = !!mSession.locked;
         
@@ -1681,14 +1776,12 @@
         let locked = isMasterLocked;
 
         if (isMasterLocked) {
-          // Master Admin locked -> Master always wins
           price = (mSession.price !== null && !isNaN(mSession.price)) ? Number(mSession.price) : null;
           locked = true;
         } else {
-          // Unlocked by Admin -> Check user local cache (preserves user price and user lock)
           if (uSession && uSession.price !== null && !isNaN(uSession.price)) {
             price = Number(uSession.price);
-            locked = !!uSession.locked; // Preserves user's self-lock state!
+            locked = !!uSession.locked;
           } else if (mSession.price !== null && !isNaN(mSession.price)) {
             price = Number(mSession.price);
             locked = false;
