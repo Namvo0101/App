@@ -41,16 +41,17 @@ input{width:150px}
 <h1>🪔 Thắp Nhang Cầu Nguyện 🪔</h1>
 <div id="count-setup"><label for="person-count">Số người cầu nguyện</label><select id="person-count"><option value="1">1 người</option><option value="2">2 người</option><option value="3">3 người</option><option value="4">4 người</option><option value="5">5 người</option></select><button id="count-confirm" type="button">Tiếp tục</button></div>
 <div id="people-form" hidden><button id="count-back" type="button">Đổi số người</button><div id="people-fields"></div></div>
+<div id="vs"></div>
 <button id="go" type="button" hidden>🔥 Thắp nhang</button>
 </div></div>
-<button id="snd" type="button" title="Bật/Tắt nhạc nền" aria-label="Tắt nhạc nền" aria-pressed="true">🔊</button>
+<button id="snd" type="button" title="Bật/Tắt nhạc nền và giọng cầu nguyện" aria-label="Tắt âm thanh" aria-pressed="true">🔊</button>
 <div id="error" role="alert" hidden>Không thể khởi tạo cảnh 3D. Hãy kiểm tra kết nối mạng, bật WebGL trong trình duyệt hoặc thử trình duyệt khác rồi tải lại trang.</div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
 const $=id=>document.getElementById(id);
 let muted=false,musicRequested=true,musicBlocked=false;
 const music=new Audio('https://www.dropbox.com/scl/fi/v97i1bm55ctsgtdwzgm4y/Nh-c-Thi-n-T-nh-T-m.mp3?rlkey=mx3adj0a5wpu2skw57kn6xyx1&st=3nmx1f3a&raw=1');
-music.loop=true;music.preload='auto';music.autoplay=true;music.playsInline=true;music.volume=.28;
+music.loop=true;music.preload='auto';music.autoplay=true;music.volume=.28;
 function startMusic(fromGesture=false){
  if(muted||document.hidden||(musicBlocked&&!fromGesture))return;
  musicRequested=true;
@@ -62,27 +63,13 @@ function startMusic(fromGesture=false){
   });
  }catch(e){console.warn('Không phát được nhạc nền Dropbox:',e)}
 }
-// Chống iOS Safari tự ngắt loop với stream Dropbox
-music.addEventListener('ended',()=>{if(!muted&&musicRequested&&!document.hidden){music.currentTime=0;startMusic(true)}});
-music.addEventListener('pause',()=>{
- if(!muted&&musicRequested&&!document.hidden&&!musicBlocked){
-  setTimeout(()=>{if(!muted&&musicRequested&&!document.hidden&&music.paused)startMusic(true)},250);
- }
-});
-setInterval(()=>{
- if(!muted&&musicRequested&&!document.hidden&&!musicBlocked&&music.paused){
-  startMusic(true);
- }
-},1200);
 function setMusicButtonBlocked(blocked){
  const button=document.getElementById('snd');if(!button||muted)return;
  button.textContent=blocked?'▶️':'🔊';
- button.title=blocked?'Chạm hoặc nhấn để bắt đầu nhạc nền':'Bật/Tắt nhạc nền';
- button.setAttribute('aria-label',blocked?'Bắt đầu nhạc nền':'Tắt nhạc nền');
+ button.title=blocked?'Chạm hoặc nhấn để bắt đầu nhạc nền':'Bật/Tắt nhạc nền và giọng cầu nguyện';
+ button.setAttribute('aria-label',blocked?'Bắt đầu nhạc nền và giọng cầu nguyện':'Tắt nhạc nền và giọng cầu nguyện');
 }
-function retryMusicAfterGesture(){
- if(!muted&&musicRequested&&(musicBlocked||music.paused))startMusic(true);
-}
+function retryMusicAfterGesture(){if(musicBlocked&&!muted)startMusic(true)}
 addEventListener('pointerdown',retryMusicAfterGesture);
 addEventListener('keydown',retryMusicAfterGesture);
 // Thử phát ngay, trước khi dựng toàn bộ cảnh 3D để giảm độ trễ khi vào trang.
@@ -224,9 +211,9 @@ const sm=[];for(let i=0;i<80;i++){const s=new THREE.Sprite(new THREE.SpriteMater
 const _v=new THREE.Vector3();
 function emit(t){const s=sm.find(a=>a.userData.l<=0);if(!s)return;t.getWorldPosition(_v);s.position.copy(_v);s.userData={l:1,v:.3+Math.random()*.2,ph:Math.random()*6}}
 
-/* ---------- Nhạc nền ---------- */
+/* ---------- Nhạc nền & giọng cầu nguyện ---------- */
 function stopMusic(){music.pause()}
-$('snd').onclick=()=>{if(musicBlocked&&!muted){startMusic(true);return}muted=!muted;$('snd').textContent=muted?'🔇':'🔊';$('snd').setAttribute('aria-pressed',String(!muted));$('snd').setAttribute('aria-label',muted?'Bật nhạc nền':'Tắt nhạc nền');if(muted){cancelSpeech();stopMusic()}else startMusic(true)};
+$('snd').onclick=()=>{if(musicBlocked&&!muted){startMusic(true);return}muted=!muted;$('snd').textContent=muted?'🔇':'🔊';$('snd').setAttribute('aria-pressed',String(!muted));$('snd').setAttribute('aria-label',muted?'Bật nhạc nền và giọng cầu nguyện':'Tắt nhạc nền và giọng cầu nguyện');if(muted){cancelSpeech();stopMusic()}else startMusic(true)};
 
 /* ---------- Nhân vật & Tối ưu bảng tên ---------- */
 let ch=null,P,held,actors=[],people=[],activeIndex=0,phase='idle',groupWalkFrom=[];
@@ -262,7 +249,6 @@ function build(person={name:'',gender:'m'},replace=true){
  const root=new THREE.Group(),hip=new THREE.Group();hip.position.y=.75;root.add(hip);scene.add(root);
  const torso=new THREE.Group();hip.add(torso);
  mk(C(.26,.31,.72),top,0,.36,0,torso);
- // Viền cổ áo chữ V, hàng khuy và đai lưng tạo dáng áo lam chibi.
  const collarL=mk(B(.075,.24,.035),trim,-.075,.61,.28,torso);collarL.rotation.z=-.42;
  const collarR=mk(B(.075,.24,.035),trim,.075,.61,.28,torso);collarR.rotation.z=.42;
  mk(C(.30,.33,.085,24),sash,0,.065,0,torso);
@@ -271,7 +257,6 @@ function build(person={name:'',gender:'m'},replace=true){
  addFlower(torso,-.14,.47,.321,.075,M(f?0xffd2df:0xffe8ab),M(0xffd15a));
  const leg=x=>{
   const g=new THREE.Group();g.position.set(x,0,0);hip.add(g);
-  // Các khớp bo tròn phủ lên đầu và giữa ống quần để chân không bị chia khúc.
   mk(Sp(.12),bot,0,-.035,0,g).scale.set(1,.82,1);
   mk(C(.115,.105,.68,16),bot,0,-.37,0,g);
   mk(Sp(.108),bot,0,-.39,0,g);
@@ -285,7 +270,6 @@ function build(person={name:'',gender:'m'},replace=true){
  }
  const arm=x=>{
   const g=new THREE.Group();g.position.set(x,.6,0);torso.add(g);
-  // Vai và khuỷu tay bo tròn, cùng chất liệu với tay áo để che các đường ráp.
   const shoulder=mk(Sp(.135),top,x,.6,0,torso);shoulder.scale.set(1,.88,.92);
   mk(C(.105,.095,.52,16),top,0,-.27,0,g);
   const elbow=mk(Sp(.102),top,0,-.3,0,g);elbow.scale.set(1,.95,.95);
@@ -357,23 +341,29 @@ $('people-fields').addEventListener('click',e=>{
  people=readPeopleForm();makeParticipants(people);
 });
 
-/* ---------- Hiệu ứng chữ lời cầu nguyện bay lên & Giọng đọc (chỉ bật trên máy tính) ---------- */
-const isMobile=/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
-let sb=false,viV=null,speechToken=0,ttsAud=null,ttsTimer=null;
+/* ---------- Đọc lời cầu nguyện đa nền tảng (System TTS + Online Audio Fallback cho Chrome & iOS) ---------- */
+const IS_IOS=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+let sb=false,viV=null,speechToken=0,ttsAud=null,ttsTimer=null,ttsKeepAlive=null;
 function pickVoice(){
- if(isMobile)return;
  try{const a=speechSynthesis.getVoices();viV=a.find(v=>/^vi([-_]|$)/i.test(v.lang))||a.find(v=>/vietnam|hoaimy|namminh|linh/i.test(v.name))||null}catch(e){viV=null}
+ const e=$('vs');
+ if(e)e.textContent=viV?'🔊 Giọng đọc tiếng Việt: '+viV.name:(IS_IOS?'⚠️ iPhone chưa có giọng tiếng Việt. Vào Cài đặt → Trợ năng → Nội dung được đọc → Giọng nói → Tiếng Việt để tải giọng, rồi mở lại trang.':'🔊 Giọng đọc tiếng Việt trực tuyến: Sẵn sàng (Chrome & Edge)');
 }
-if(!isMobile&&window.speechSynthesis){speechSynthesis.onvoiceschanged=pickVoice;pickVoice();setTimeout(pickVoice,400);setTimeout(pickVoice,1500)}
+if(window.speechSynthesis){speechSynthesis.onvoiceschanged=pickVoice;pickVoice();setTimeout(pickVoice,400);setTimeout(pickVoice,1500)}else pickVoice();
+
 function setDuck(on){
  sb=on;
- if(!muted)music.volume=on?.08:.28;
+ if(muted)return;
+ if(IS_IOS){ // iOS bỏ qua music.volume, nên tạm dừng nhạc khi đọc
+  if(on){if(!music.paused)music.pause()}
+  else if(musicRequested&&!document.hidden){const p=music.play();if(p&&p.catch)p.catch(()=>{})}
+ }else music.volume=on?.08:.28;
 }
 function cancelSpeech(){
  speechToken++;
  clearTimeout(ttsTimer);
+ clearInterval(ttsKeepAlive);
  setDuck(false);
- if(isMobile)return;
  try{speechSynthesis.cancel()}catch(e){}
  if(ttsAud){try{ttsAud.pause();ttsAud.onended=ttsAud.onerror=null;ttsAud.removeAttribute('src');ttsAud.load()}catch(e){}}
 }
@@ -381,24 +371,45 @@ function splitChunks(t){
  return t.match(/[^.!?,;]+[.!?,;]?/g)?.map(s=>s.trim()).filter(Boolean)||[t];
 }
 function playOnlineTTS(text,token){
- const chunks=splitChunks(text);let idx=0;
+ const chunks=splitChunks(text);let idx=0,alt=false;
  setDuck(true);
  const next=()=>{
   if(muted||token!==speechToken||idx>=chunks.length){if(token===speechToken)setDuck(false);return}
-  const q=encodeURIComponent(chunks[idx++].slice(0,180));
-  if(!ttsAud){ttsAud=new Audio();ttsAud.playsInline=true}
-  ttsAud.src=`https://translate.googleapis.com/translate_tts?ie=UTF-8&client=gtx&tl=vi&q=${q}`;
+  const q=encodeURIComponent(chunks[idx].slice(0,180));
+  if(!ttsAud){ttsAud=new Audio();ttsAud.playsInline=true;ttsAud.referrerPolicy='no-referrer'}
+  ttsAud.src=alt
+   ?`https://translate.googleapis.com/translate_tts?ie=UTF-8&client=gtx&tl=vi&q=${q}`
+   :`https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=vi&q=${q}`;
   ttsAud.playbackRate=.95;
-  ttsAud.onended=next;
-  ttsAud.onerror=()=>{if(token===speechToken)setDuck(false)};
+  ttsAud.onended=()=>{alt=false;idx++;next()};
+  ttsAud.onerror=()=>{
+   if(token!==speechToken)return;
+   if(!alt){alt=true;next()}
+   else setDuck(false);
+  };
   const p=ttsAud.play();
-  if(p&&typeof p.catch==='function')p.catch(()=>{if(token===speechToken)setDuck(false)});
+  if(p&&typeof p.catch==='function')p.catch(()=>{
+   if(token!==speechToken)return;
+   if(!alt){alt=true;next()}
+   else setDuck(false);
+  });
  };
  next();
 }
+function unlockSpeech(){
+ try{
+  pickVoice();
+  if(window.speechSynthesis){
+   const u=new SpeechSynthesisUtterance(' ');u.volume=0;speechSynthesis.speak(u);
+  }
+  if(!ttsAud){ttsAud=new Audio();ttsAud.playsInline=true;ttsAud.referrerPolicy='no-referrer'}
+  ttsAud.src='data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
+  const p=ttsAud.play();if(p&&typeof p.then==='function')p.then(()=>{try{ttsAud.pause()}catch(e){}}).catch(()=>{});
+ }catch(e){}
+}
 function speak(t){
  cancelSpeech();
- if(isMobile||muted||!t)return;
+ if(muted||!t)return;
  const token=speechToken;
  if(viV){
   try{
@@ -406,74 +417,17 @@ function speak(t){
    u.voice=viV;u.lang=viV.lang;u.rate=.88;u.pitch=1.05;
    let started=false;
    u.onstart=()=>{if(token===speechToken){started=true;setDuck(true)}};
-   u.onend=()=>{if(token===speechToken)setDuck(false)};
-   u.onerror=()=>{if(token===speechToken){if(!started)playOnlineTTS(t,token);else setDuck(false)}};
+   u.onend=()=>{if(token===speechToken){clearInterval(ttsKeepAlive);setDuck(false)}};
+   u.onerror=()=>{if(token===speechToken){clearInterval(ttsKeepAlive);if(!started)playOnlineTTS(t,token);else setDuck(false)}};
    setDuck(true);
    speechSynthesis.speak(u);
-   ttsTimer=setTimeout(()=>{if(token===speechToken&&!started&&!speechSynthesis.speaking)playOnlineTTS(t,token)},750);
+   if(!IS_IOS)ttsKeepAlive=setInterval(()=>{if(speechSynthesis.speaking&&!speechSynthesis.paused){speechSynthesis.pause();speechSynthesis.resume()}},10000);
+   ttsTimer=setTimeout(()=>{if(token===speechToken&&!started&&!speechSynthesis.speaking){clearInterval(ttsKeepAlive);playOnlineTTS(t,token)}},IS_IOS?3500:750);
    return;
   }catch(e){}
  }
  playOnlineTTS(t,token);
 }
-
-const floatingPrayers=[];
-let floatTimers=[];
-function clearFloatingPrayers(){
- floatTimers.forEach(id=>clearTimeout(id));
- floatTimers=[];
- while(floatingPrayers.length){
-  const fp=floatingPrayers.pop();
-  scene.remove(fp.sprite);
-  fp.sprite.material.map.dispose();
-  fp.sprite.material.dispose();
- }
-}
-function wrapPrayerLines(text,maxLen=24){
- const words=text.trim().split(/\s+/).filter(Boolean);
- const lines=[];let line='';
- for(const w of words){
-  if(!line)line=w;
-  else if((line+' '+w).length<=maxLen)line+=' '+w;
-  else{lines.push(line);line=w}
- }
- if(line)lines.push(line);
- return lines.length?lines:[text];
-}
-function spawnPrayerLine(actor,line){
- if(!actor||!line)return;
- const c=document.createElement('canvas');c.width=768;c.height=128;
- const x=c.getContext('2d');
- x.font='600 42px system-ui,-apple-system,sans-serif';
- x.textAlign='center';x.textBaseline='middle';
- x.shadowColor='rgba(255,175,40,.95)';x.shadowBlur=16;
- x.fillStyle='#fff3c4';
- x.fillText(line,384,64,720);
- const tex=new THREE.CanvasTexture(c);
- const mat=new THREE.SpriteMaterial({map:tex,transparent:true,depthWrite:false,depthTest:false,opacity:0});
- const sprite=new THREE.Sprite(mat);
- sprite.scale.set(2.35,.39,1);
- sprite.renderOrder=12;
- actor.head.getWorldPosition(_v);
- sprite.position.set(_v.x,2.52,_v.z-.05);
- scene.add(sprite);
- floatingPrayers.push({sprite,age:0,life:6.2,vy:.22,drift:(Math.random()-.5)*.06,phase:Math.random()*6.28});
-}
-function launchPrayer(actor,person){
- floatTimers.forEach(id=>clearTimeout(id));
- floatTimers=[];
- const rawText=person.prayer||DEFAULT_PRAYER;
- if(actor&&rawText){
-  const lines=wrapPrayerLines(rawText,24);
-  const step=1.65;
-  lines.forEach((line,i)=>{
-   const id=setTimeout(()=>{if(running&&phase==='group')spawnPrayerLine(actor,line)},i*step*1000);
-   floatTimers.push(id);
-  });
- }
- if(!isMobile)speak(`Lời cầu nguyện của ${person.name}: ${rawText}`);
-}
-if(!isMobile)pickVoice();
 
 /* ---------- Kịch bản hoạt cảnh ---------- */
 const ID={hipY:.75,leg:0,torso:0,head:0,arm:0,armZ:-.12,eye:0,incY:.45,incZ:.53};
@@ -503,14 +457,13 @@ function mkGroupSeq(){
  const HANDS=pz({arm:-1.15,armZ:.6,torso:.18,head:.5,eye:1});
  const s=[];
  for(let i=0;i<3;i++)s.push({d:1.3,p:BOW},{d:.5,p:BOW},{d:1.1,p:KN});
- const rawFor=person=>person.prayer||DEFAULT_PRAYER;
- const durFor=raw=>Math.max(4.5,wrapPrayerLines(raw,24).length*1.65+2.6);
- const firstRaw=rawFor(people[0]),firstDur=durFor(firstRaw);
- s.push({d:1.2,p:HANDS,on:()=>launchPrayer(actors[0],people[0])});
- s.push({d:firstDur,wait:1,p:HANDS});
+ const speechFor=person=>`Lời cầu nguyện của ${person.name}: ${person.prayer||DEFAULT_PRAYER}`;
+ const firstPrayer=speechFor(people[0]);
+ s.push({d:1.4,p:HANDS,on:()=>speak(firstPrayer)});
+ s.push({d:Math.max(4.2,firstPrayer.length*.09+1.5),wait:1,p:HANDS});
  for(let i=1;i<people.length;i++){
-  const raw=rawFor(people[i]),dur=durFor(raw);
-  s.push({d:dur,wait:1,p:HANDS,on:()=>launchPrayer(actors[i],people[i])});
+  const prayer=speechFor(people[i]);
+  s.push({d:Math.max(4.2,prayer.length*.09+1.5),wait:1,p:HANDS,on:()=>speak(prayer)});
  }
  s.push({d:1.1,p:ID,face:0,cm:'exit'},{walkGroupZ:17,speed:1.5,p:ID});
  return s;
@@ -534,12 +487,12 @@ function beginGroupRitual(){
  activateActor(actors[0]);P=actors[0].P;face=Math.PI;seq=mkGroupSeq();si=0;startStep();
 }
 function finish(){
- running=false;phase='idle';cancelSpeech();clearFloatingPrayers();
+ running=false;phase='idle';cancelSpeech();
  setTimeout(()=>{if(running)return;cm='idle';orb.a=orb.p=0;makeParticipants(people);$('go').disabled=false;$('count-back').disabled=false;$('people-fields').querySelectorAll('input,button').forEach(el=>el.disabled=false);$('ui').classList.remove('hide')},900);
 }
 $('go').onclick=()=>{
  if(running||!actors.length)return;people=readPeopleForm();makeParticipants(people);
- startMusic(true);running=true;activeIndex=0;beginGroupApproach();
+ startMusic(true);unlockSpeech();running=true;activeIndex=0;beginGroupApproach();
  $('go').disabled=true;$('count-back').disabled=true;$('people-fields').querySelectorAll('input,button').forEach(el=>el.disabled=true);$('ui').classList.add('hide');
 };
 
@@ -550,8 +503,8 @@ const stopDrag=()=>{orb.drag=false};
 R.domElement.addEventListener('pointerup',stopDrag);R.domElement.addEventListener('pointercancel',stopDrag);R.domElement.addEventListener('lostpointercapture',stopDrag);
 R.domElement.addEventListener('keydown',e=>{const step=.08;if(e.key==='ArrowLeft')orb.a=Math.max(-1.4,orb.a-step);else if(e.key==='ArrowRight')orb.a=Math.min(1.4,orb.a+step);else if(e.key==='ArrowUp')orb.p=Math.max(-.6,orb.p-step);else if(e.key==='ArrowDown')orb.p=Math.min(1.8,orb.p+step);else return;e.preventDefault()});
 document.addEventListener('visibilitychange',()=>{
- if(document.hidden){stopMusic();if(!isMobile){try{if(sb)speechSynthesis.pause()}catch(e){}if(ttsAud&&!ttsAud.paused)try{ttsAud.pause()}catch(e){}}}
- else{if(musicRequested&&!muted)startMusic();if(!isMobile){try{if(sb)speechSynthesis.resume()}catch(e){}if(sb&&ttsAud&&ttsAud.paused&&ttsAud.src&&!muted)try{ttsAud.play()}catch(e){}}}
+ if(document.hidden){stopMusic();try{if(sb)speechSynthesis.pause()}catch(e){}if(ttsAud&&!ttsAud.paused)try{ttsAud.pause()}catch(e){}}
+ else{if(musicRequested&&!muted)startMusic();try{if(sb)speechSynthesis.resume()}catch(e){}if(sb&&ttsAud&&ttsAud.paused&&ttsAud.src&&!muted)try{ttsAud.play()}catch(e){}}
 });
 
 /* ---------- Vòng lặp ---------- */
@@ -578,7 +531,7 @@ function sequenceFinished(){
 }
 addEventListener('resize',resize);resize();makeParticipants([{name:'Người 1',gender:'m',prayer:''}]);cam.position.set(2.6,2.4,19.4);
 function loop(){requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.05);tt+=dt;let wk=0;
- if(running){const s=seq[si];st+=dt;if(!isMobile&&s.wait&&sb&&st>=s.dur&&(s.w=(s.w||0)+dt)<25)st=s.dur-.001;const k=Math.min(st/s.dur,1),e=k*k*(3-2*k);
+ if(running){const s=seq[si];st+=dt;if(s.wait&&sb&&st>=s.dur&&(s.w=(s.w||0)+dt)<25)st=s.dur-.001;const k=Math.min(st/s.dur,1),e=k*k*(3-2*k);
   for(const key in P)P[key]=from[key]+(s.p[key]-from[key])*e;
   if(s.walk||s.walkGroupZ!==undefined){const m=k*k*(3-2*k);wk=Math.sin(k*Math.PI);
    if(s.walk){ch.root.position.x=wf[0]+(s.walk[0]-wf[0])*m;ch.root.position.z=wf[1]+(s.walk[1]-wf[1])*m}
@@ -589,27 +542,15 @@ function loop(){requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.
  actors.forEach(a=>animateActor(a,phase==='group'||phase==='approach'?P:a.P,dt,phase==='group'||phase==='approach'||a===ch?wa:0));
  sacc+=dt;if(sacc>.12){sacc=0;if(running&&held.g.visible&&ch.tipMaterial.emissiveIntensity>.5)emit(held.tips[Math.random()*5|0]);if(bowlI.g.visible&&Math.random()<.9)emit(bowlI.tips[Math.random()*13|0])}
  sm.forEach(s=>{const u=s.userData;if(u.l>0){u.l-=dt/3.5;s.position.y+=u.v*dt;s.position.x+=Math.sin(u.ph+tt*1.3)*.12*dt;const k=1-u.l;s.scale.setScalar(.12+k*.7);s.material.opacity=Math.max(0,u.l)*.4}else s.material.opacity=0});
- for(let i=floatingPrayers.length-1;i>=0;i--){
-  const fp=floatingPrayers[i];fp.age+=dt;
-  if(fp.age>=fp.life){
-   scene.remove(fp.sprite);fp.sprite.material.map.dispose();fp.sprite.material.dispose();
-   floatingPrayers.splice(i,1);continue;
-  }
-  const p=fp.age/fp.life,fadeIn=Math.min(1,fp.age/.85),fadeOut=p>.58?Math.max(0,1-(p-.58)/.42):1;
-  fp.sprite.position.y+=fp.vy*dt;
-  fp.sprite.position.x+=Math.sin(fp.phase+tt*1.1)*fp.drift*dt;
-  fp.sprite.scale.set(2.35*(1+p*.12),.39*(1+p*.12),1);
-  fp.sprite.material.opacity=fadeIn*fadeOut*.96;
- }
- luckyClover.position.y=2.62+Math.sin(tt*1.6)*.07;
- luckyClover.rotation.y=.36+Math.sin(tt*.85)*.22;
- luckyClover.rotation.x=.08+Math.cos(tt*1.1)*.05;
- luckyClover.rotation.z=Math.sin(tt*.95)*.06;
- cloverAura.intensity=.55+Math.sin(tt*2.2)*.15;
  flames.forEach(([f,l],i)=>{const q=1+Math.sin(tt*14+i*3)*.15+Math.random()*.08;f.scale.set(q,1.7*q,q);l.intensity=.8+Math.sin(tt*11+i)*.15});
- pl.forEach((l,i)=>l.intensity=1.15+Math.sin(tt*3+i)*.08);
- dust.position.y=Math.sin(tt*.7)*.12;dust.rotation.y=tt*.02;
- const r=ch.root;
+pl.forEach((l,i)=>l.intensity=1.15+Math.sin(tt*3+i)*.08);
+dust.position.y=Math.sin(tt*.7)*.12;dust.rotation.y=tt*.02;
+luckyClover.position.y=2.62+Math.sin(tt*1.6)*.09;
+luckyClover.rotation.y=Math.sin(tt*.75)*.45;
+luckyClover.rotation.x=.12+Math.cos(tt*1.1)*.06;
+luckyClover.rotation.z=Math.sin(tt*.9)*.05;
+cloverAura.intensity=.6+Math.sin(tt*2.2)*.18;
+const r=ch.root;
  if(cm==='idle'){lk.set(0,1.4,15.5);cp.set(lk.x+Math.sin(.55+orb.a)*4.6,2.4+orb.p,lk.z+Math.cos(.55+orb.a)*4.6)}
  else if(cm==='follow'){lk.set(0,1.6,r.position.z-1.5);const dist=Math.max(5.5,Math.min(7.5,r.position.z+7.5));cp.set(lk.x+Math.sin(.38+orb.a)*dist,2.9+orb.p,lk.z+Math.cos(.38+orb.a)*dist)}
  else{lk.set(0,1.3,r.position.z);cp.set(lk.x+Math.sin(.9+orb.a)*5.5,2.8+orb.p,lk.z+Math.cos(.9+orb.a)*5.5)}
