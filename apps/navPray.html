@@ -41,7 +41,6 @@ input{width:150px}
 <h1>🪔 Thắp Nhang Cầu Nguyện 🪔</h1>
 <div id="count-setup"><label for="person-count">Số người cầu nguyện</label><select id="person-count"><option value="1">1 người</option><option value="2">2 người</option><option value="3">3 người</option><option value="4">4 người</option><option value="5">5 người</option></select><button id="count-confirm" type="button">Tiếp tục</button></div>
 <div id="people-form" hidden><button id="count-back" type="button">Đổi số người</button><div id="people-fields"></div></div>
-<div id="vs"></div>
 <button id="go" type="button" hidden>🔥 Thắp nhang</button>
 </div></div>
 <button id="snd" type="button" title="Bật/Tắt nhạc nền" aria-label="Tắt nhạc nền" aria-pressed="true">🔊</button>
@@ -364,8 +363,6 @@ let sb=false,viV=null,speechToken=0,ttsAud=null,ttsTimer=null;
 function pickVoice(){
  if(isMobile)return;
  try{const a=speechSynthesis.getVoices();viV=a.find(v=>/^vi([-_]|$)/i.test(v.lang))||a.find(v=>/vietnam|hoaimy|namminh|linh/i.test(v.name))||null}catch(e){viV=null}
- const e=$('vs');
- if(e)e.textContent=viV?'🔊 Giọng đọc tiếng Việt: '+viV.name:'🔊 Giọng đọc tiếng Việt trực tuyến & chữ bay lên trên đầu từng người';
 }
 if(!isMobile&&window.speechSynthesis){speechSynthesis.onvoiceschanged=pickVoice;pickVoice();setTimeout(pickVoice,400);setTimeout(pickVoice,1500)}
 function setDuck(on){
@@ -476,8 +473,7 @@ function launchPrayer(actor,person){
  }
  if(!isMobile)speak(`Lời cầu nguyện của ${person.name}: ${rawText}`);
 }
-if(isMobile)$('vs').textContent='✨ Lời cầu nguyện sẽ nhẹ nhàng bay lên từ từ trên đầu từng người';
-else pickVoice();
+if(!isMobile)pickVoice();
 
 /* ---------- Kịch bản hoạt cảnh ---------- */
 const ID={hipY:.75,leg:0,torso:0,head:0,arm:0,armZ:-.12,eye:0,incY:.45,incZ:.53};
