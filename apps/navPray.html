@@ -13,9 +13,10 @@ canvas{display:block;position:fixed;z-index:0;inset:0;width:100%;height:100%;tou
 #error[hidden]{display:none}
 #ui{position:fixed;z-index:10;left:0;right:0;top:0;padding:calc(env(safe-area-inset-top,0px) + 10px) 10px 0;display:flex;justify-content:center;pointer-events:none;transition:opacity .4s}
 #ui.hide{opacity:0;visibility:hidden}
-.panel{pointer-events:auto;background:var(--bg);border:1px solid #f2b84b66;border-radius:18px;padding:10px 12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:center;backdrop-filter:blur(6px);max-width:640px}
+.panel{pointer-events:auto;background:var(--bg);border:1px solid #f2b84b66;border-radius:18px;padding:10px 12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:center;backdrop-filter:blur(6px);max-width:640px;max-height:calc(100dvh - env(safe-area-inset-top,0px) - 24px);overflow-y:auto}
 h1{font-size:15px;margin:0 6px 0 2px;color:var(--ac);width:100%;text-align:center}
-input{border:1px solid #f2b84b88;background:#00000040;color:var(--fg);padding:9px 12px;border-radius:12px;font-size:15px;width:150px;outline:none}
+input,select{border:1px solid #f2b84b88;background:#24120d;color:var(--fg);padding:9px 12px;border-radius:12px;font-size:15px;outline:none}
+input{width:150px}
 .seg{display:flex;border-radius:12px;overflow:hidden;border:1px solid #f2b84b88}
 .seg button{background:#00000040;color:var(--fg);border:0;padding:9px 12px;font-size:15px;cursor:pointer}
 .seg button.on{background:var(--ac);color:#3a1a0a;font-weight:700}
@@ -23,15 +24,24 @@ input{border:1px solid #f2b84b88;background:#00000040;color:var(--fg);padding:9p
 #vs{width:100%;font-size:12px;opacity:.85;text-align:center;line-height:1.35}
 #go{background:linear-gradient(#ef7a4a,#c8382e);color:#fff;border:0;border-radius:12px;padding:10px 18px;font-size:16px;font-weight:700;cursor:pointer;box-shadow:0 3px 10px #0006}
 #go:disabled,input:disabled,.seg.dis button{opacity:.55;cursor:not-allowed}
+#count-setup,#people-form{width:100%;display:flex;flex-wrap:wrap;justify-content:center;gap:8px}
+[hidden]{display:none!important}
+#people-fields{width:100%;display:grid;gap:8px}
+.person-card{width:100%;padding:9px;background:#0002;border:1px solid #f2b84b44;border-radius:12px;display:grid;grid-template-columns:1fr 1fr;gap:7px;align-items:center}
+.person-card strong{grid-column:1/-1;color:var(--ac);font-size:13px}
+.person-card input{width:100%;min-width:0}
+.person-card .person-pr{grid-column:1/-1}
+.person-gender{display:flex;justify-content:stretch}
+.person-gender button{flex:1}
+#count-confirm,#count-back{background:#604026;color:var(--fg);border:1px solid #f2b84b88;border-radius:12px;padding:9px 12px;font-size:14px;cursor:pointer}
 #snd{position:fixed;z-index:11;right:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 74px);background:var(--bg);border:1px solid #f2b84b66;color:var(--fg);border-radius:50%;width:42px;height:42px;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(6px)}
 </style></head><body>
 <div id="ui"><div class="panel">
 <h1>🪔 Thắp Nhang Cầu Nguyện 🪔</h1>
-<label class="sr-only" for="nm">Tên của bạn</label><input id="nm" maxlength="18" placeholder="Nhập tên của bạn" autocomplete="off">
-<div class="seg" id="sg" role="group" aria-label="Chọn nhân vật"><button type="button" data-g="m" class="on" aria-pressed="true">👦 Nam</button><button type="button" data-g="f" aria-pressed="false">👧 Nữ</button></div>
-<label class="sr-only" for="pr">Lời cầu nguyện</label><input id="pr" maxlength="160" placeholder="Hãy nhập nội dung cầu nguyện" autocomplete="off">
+<div id="count-setup"><label for="person-count">Số người cầu nguyện</label><select id="person-count"><option value="1">1 người</option><option value="2">2 người</option><option value="3">3 người</option><option value="4">4 người</option><option value="5">5 người</option></select><button id="count-confirm" type="button">Tiếp tục</button></div>
+<div id="people-form" hidden><button id="count-back" type="button">Đổi số người</button><div id="people-fields"></div></div>
 <div id="vs"></div>
-<button id="go" type="button">🔥 Thắp nhang</button>
+<button id="go" type="button" hidden>🔥 Thắp nhang</button>
 </div></div>
 <button id="snd" type="button" title="Bật/Tắt nhạc nền và giọng cầu nguyện" aria-label="Tắt âm thanh" aria-pressed="true">🔊</button>
 <div id="error" role="alert" hidden>Không thể khởi tạo cảnh 3D. Hãy kiểm tra kết nối mạng, bật WebGL trong trình duyệt hoặc thử trình duyệt khác rồi tải lại trang.</div>
@@ -109,7 +119,7 @@ mk(C(.55,.6,.14,24),M(0xc0282a),0,.07,-2.5);
 const dust=(()=>{const p=[];for(let i=0;i<140;i++)p.push((Math.random()-.5)*12,.4+Math.random()*5.4,-8+Math.random()*20);const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(p,3));const pts=new THREE.Points(g,new THREE.PointsMaterial({color:0xffd56b,size:.08,transparent:true,opacity:.6}));scene.add(pts);return pts})();
 
 /* ---------- Nhang & khói ---------- */
-const tipH=M(0xff6a20,{emissive:0xff5a10,emissiveIntensity:0}),tipB=M(0xff6a20,{emissive:0xff5a10,emissiveIntensity:2});
+const tipB=M(0xff6a20,{emissive:0xff5a10,emissiveIntensity:2});
 function mkInc(p,n,len,spread,tm){const g=new THREE.Group();p.add(g);const tips=[];for(let i=0;i<n;i++){const a=i/(n-1||1)-.5,s=new THREE.Group();s.rotation.z=-a*spread;s.rotation.x=i%2?.07:-.07;g.add(s);mk(C(.012,.012,len,6),M(0x8b2d1a),0,len/2,0,s);const t=mk(Sp(.03,8),tm,0,len,0,s);t.castShadow=false;tips.push(t)}return{g,tips}}
 const bowlI=mkInc(scene,13,.6,.7,tipB);bowlI.g.position.set(0,1.37,-4.5);bowlI.g.visible=false;
 const tx=(()=>{const c=document.createElement('canvas');c.width=c.height=64;const x=c.getContext('2d'),g=x.createRadialGradient(32,32,2,32,32,32);g.addColorStop(0,'rgba(255,255,255,.9)');g.addColorStop(1,'rgba(255,255,255,0)');x.fillStyle=g;x.fillRect(0,0,64,64);return new THREE.CanvasTexture(c)})();
@@ -119,29 +129,26 @@ function emit(t){const s=sm.find(a=>a.userData.l<=0);if(!s)return;t.getWorldPosi
 
 /* ---------- Nhạc nền & giọng cầu nguyện ---------- */
 function stopMusic(){music.pause()}
- $('snd').onclick=()=>{if(musicBlocked&&!muted){startMusic(true);return}muted=!muted;$('snd').textContent=muted?'🔇':'🔊';$('snd').setAttribute('aria-pressed',String(!muted));$('snd').setAttribute('aria-label',muted?'Bật nhạc nền và giọng cầu nguyện':'Tắt nhạc nền và giọng cầu nguyện');if(muted){sb=false;stopMusic();try{speechSynthesis.cancel()}catch(e){}}else startMusic(true)};
+ $('snd').onclick=()=>{if(musicBlocked&&!muted){startMusic(true);return}muted=!muted;$('snd').textContent=muted?'🔇':'🔊';$('snd').setAttribute('aria-pressed',String(!muted));$('snd').setAttribute('aria-label',muted?'Bật nhạc nền và giọng cầu nguyện':'Tắt nhạc nền và giọng cầu nguyện');if(muted){cancelSpeech();stopMusic()}else startMusic(true)};
 
 /* ---------- Nhân vật & Tối ưu bảng tên ---------- */
-let ch=null,P,held;
-const gen=()=>document.querySelector('#sg .on').dataset.g;
-// Dùng chung 1 canvas & texture cho bảng tên để tránh tràn bộ nhớ GPU khi gõ tên
-const lbCv=document.createElement('canvas');lbCv.width=512;lbCv.height=128;
-const lbTex=new THREE.CanvasTexture(lbCv);
-function updateLabel(name){
- const x=lbCv.getContext('2d');x.clearRect(0,0,512,128);
+let ch=null,P,held,actors=[],people=[],activeIndex=0,phase='idle',groupWalkFrom=[];
+const DEFAULT_PRAYER='Cầu cho gia đình bình an, sức khỏe, vạn sự như ý.';
+function updateLabel(name,actor=ch){
+ if(!actor)return;
+ const x=actor.labelCanvas.getContext('2d');x.clearRect(0,0,512,128);
  x.fillStyle='#ffe9b0';x.shadowColor='rgba(25,8,4,.95)';x.shadowBlur=8;x.shadowOffsetX=1;x.shadowOffsetY=2;
  x.font='bold 52px system-ui,sans-serif';x.textAlign='center';x.textBaseline='middle';
- x.fillText(name,256,66,460);lbTex.needsUpdate=true;
- if(ch)ch.name=name;
+ x.fillText(name,256,66,460);actor.labelTexture.needsUpdate=true;actor.name=name;
 }
 function disposeCharacter(root){
- const geometries=new Set(),materials=new Set();
+ const geometries=new Set(),materials=new Set(),textures=new Set();
  root.traverse(o=>{
   if(o.geometry)geometries.add(o.geometry);
   const list=Array.isArray(o.material)?o.material:[o.material];
-  list.filter(Boolean).forEach(m=>{if(m!==tipH)materials.add(m)});
+  list.filter(Boolean).forEach(m=>{materials.add(m);Object.values(m).forEach(v=>{if(v&&v.isTexture)textures.add(v)})});
  });
- geometries.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());
+ geometries.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());textures.forEach(t=>t.dispose());
 }
 function addFlower(parent,x,y,z,r,petalMat,centerMat){
  for(let i=0;i<5;i++){
@@ -150,10 +157,9 @@ function addFlower(parent,x,y,z,r,petalMat,centerMat){
  }
  mk(Sp(r*.34,8),centerMat,x,y,z+.015,parent);
 }
-function build(){
- if(ch){scene.remove(ch.root);disposeCharacter(ch.root)}
- bowlI.g.visible=false; // Làm mới bát hương cho lượt thắp mới
- const f=gen()==='f',name=$('nm').value.trim()||'Bạn';
+function build(person={name:'',gender:'m'},replace=true){
+ if(replace&&ch){scene.remove(ch.root);disposeCharacter(ch.root)}
+ const f=person.gender==='f',name=person.name||'Bạn';
  const skin=M(0xffd9b8,{roughness:.55}),top=M(f?0xe987a8:0x5795ad),bot=M(f?0xf8d9e4:0x40566f),hr=M(f?0x1c1214:0x2a1a12,{roughness:.4});
  const trim=M(f?0xffe8aa:0xe6d4a1,{metalness:.25}),sash=M(f?0xf0bf5b:0xd8b45c,{metalness:.2});
  const root=new THREE.Group(),hip=new THREE.Group();hip.position.y=.75;root.add(hip);scene.add(root);
@@ -199,18 +205,73 @@ function build(){
  mk(new THREE.TorusGeometry(.06,.014,8,14,Math.PI),M(0x8a2f2f),0,.31,.385,head).rotation.z=Math.PI;
  if(f){mk(Sp(.43),hr,0,.3,-.1,head).scale.set(1,1.15,.85);[-1,1].forEach(s=>{mk(Sp(.13),hr,s*.4,.08,-.05,head);mk(Sp(.08),M(0xff5c8a),s*.34,.62,.12,head)});mk(Sp(.15),hr,0,.9,-.08,head)}
  else mk(Sp(.11),hr,0,.88,.08,head);
- held=mkInc(torso,5,.5,.25,tipH);held.g.position.set(0,.45,.53);
- const lb=new THREE.Sprite(new THREE.SpriteMaterial({map:lbTex,depthTest:false}));lb.scale.set(1.8,.45,1);lb.position.y=1.24;lb.renderOrder=9;head.add(lb);
- root.position.set(0,0,15.5);root.rotation.y=0;face=0;
- ch={root,hip,torso,head,legL,legR,armL,armR,eyes,name};P={...ID};tipH.emissiveIntensity=0;
- updateLabel(name);
+ const tipMaterial=M(0xff6a20,{emissive:0xff5a10,emissiveIntensity:0});
+ held=mkInc(torso,5,.5,.25,tipMaterial);held.g.position.set(0,.45,.53);
+ const labelCanvas=document.createElement('canvas');labelCanvas.width=512;labelCanvas.height=128;
+ const labelTexture=new THREE.CanvasTexture(labelCanvas);
+ const lb=new THREE.Sprite(new THREE.SpriteMaterial({map:labelTexture,depthTest:false}));lb.scale.set(1.45,.36,1);lb.position.y=1.24;lb.renderOrder=9;head.add(lb);
+ root.position.set(0,0,15.5);root.rotation.y=Math.PI;
+ ch={root,hip,torso,head,legL,legR,armL,armR,eyes,name,held,tipMaterial,labelCanvas,labelTexture,P:{...ID},laneX:0};
+ P=ch.P;face=Math.PI;updateLabel(name,ch);return ch;
 }
+function makePersonCard(person,index){
+ const card=document.createElement('section');card.className='person-card';card.dataset.index=index;
+ const title=document.createElement('strong');title.textContent=`Người cầu nguyện ${index+1}`;card.append(title);
+ const name=document.createElement('input');name.type='text';name.maxLength=18;name.autocomplete='off';name.placeholder='Tên người cầu nguyện';name.setAttribute('aria-label',`Tên người cầu nguyện ${index+1}`);name.dataset.field='name';name.value=person.name||'';card.append(name);
+ const gender=document.createElement('div');gender.className='seg person-gender';gender.setAttribute('role','group');gender.setAttribute('aria-label',`Nhân vật ${index+1}`);
+ [['m','👦 Nam'],['f','👧 Nữ']].forEach(([value,label])=>{const button=document.createElement('button');button.type='button';button.dataset.gender=value;button.textContent=label;button.classList.toggle('on',(person.gender||'m')===value);button.setAttribute('aria-pressed',String((person.gender||'m')===value));gender.append(button)});card.append(gender);
+ const prayer=document.createElement('input');prayer.type='text';prayer.maxLength=160;prayer.autocomplete='off';prayer.placeholder='Hãy nhập nội dung cầu nguyện';prayer.setAttribute('aria-label',`Lời cầu nguyện của người ${index+1}`);prayer.dataset.field='prayer';prayer.className='person-pr';prayer.value=person.prayer||'';card.append(prayer);
+ return card;
+}
+function readPeopleForm(){
+ return [...$('people-fields').querySelectorAll('.person-card')].map((card,index)=>({
+  name:card.querySelector('[data-field="name"]').value.trim()||`Người ${index+1}`,
+  gender:card.querySelector('.person-gender .on')?.dataset.gender||'m',
+  prayer:card.querySelector('[data-field="prayer"]').value.trim()
+ }));
+}
+function activateActor(actor){ch=actor;P=actor.P;held=actor.held;face=actor.root.rotation.y}
+function makeParticipants(data=people){
+ actors.forEach(actor=>{scene.remove(actor.root);disposeCharacter(actor.root)});
+ actors=[];ch=null;bowlI.g.visible=false;
+ data.forEach((person,index)=>{
+  const actor=build(person,false);actor.laneX=(index-(data.length-1)/2)*1.05;
+  actor.root.position.set(actor.laneX,0,15.5);actor.root.rotation.y=Math.PI;actor.held.g.visible=true;
+  actors.push(actor);
+ });
+ if(actors.length)activateActor(actors[0]);
+}
+function renderPeopleForm(count,previous=[]){
+ people=Array.from({length:count},(_,i)=>previous[i]||{name:'',gender:'m',prayer:''});
+ const fields=$('people-fields');fields.replaceChildren(...people.map(makePersonCard));
+ $('count-setup').hidden=true;$('people-form').hidden=false;$('go').hidden=false;
+ makeParticipants(people);
+}
+$('count-confirm').onclick=()=>renderPeopleForm(Number($('person-count').value),people);
+$('count-back').onclick=()=>{people=readPeopleForm();$('people-form').hidden=true;$('go').hidden=true;$('count-setup').hidden=false};
+$('people-fields').addEventListener('input',e=>{
+ if(running)return;const card=e.target.closest('.person-card');if(!card)return;
+ people=readPeopleForm();const index=Number(card.dataset.index);
+ if(e.target.dataset.field==='name'&&actors[index])updateLabel(people[index].name,actors[index]);
+});
+$('people-fields').addEventListener('click',e=>{
+ const button=e.target.closest('.person-gender button');if(!button||running)return;
+ const group=button.parentElement;group.querySelectorAll('button').forEach(item=>{const on=item===button;item.classList.toggle('on',on);item.setAttribute('aria-pressed',String(on))});
+ people=readPeopleForm();makeParticipants(people);
+});
 
 /* ---------- Đọc lời cầu nguyện ---------- */
-let sb=false,viV=null;
+let sb=false,viV=null,speechToken=0;
 function pickVoice(){try{const a=speechSynthesis.getVoices();viV=a.find(v=>/^vi([-_]|$)/i.test(v.lang))||a.find(v=>/vietnam|hoaimy|namminh/i.test(v.name))||null}catch(e){viV=null}const e=$('vs');if(e)e.textContent=viV?'🔊 Giọng đọc tiếng Việt: '+viV.name:'⚠️ Máy chưa có giọng đọc tiếng Việt nên lời cầu nguyện chỉ hiện chữ. Hãy mở bằng Microsoft Edge (có giọng “HoaiMy”) hoặc cài giọng Vietnamese trong cài đặt hệ thống để nghe đọc.'}
 if(window.speechSynthesis){speechSynthesis.onvoiceschanged=pickVoice;pickVoice();setTimeout(pickVoice,400);setTimeout(pickVoice,1500)}else pickVoice();
-function speak(t){sb=false;if(muted||!viV)return;try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.voice=viV;u.lang=viV.lang;u.rate=.85;u.pitch=1.05;u.onend=u.onerror=()=>{sb=false};sb=true;speechSynthesis.speak(u)}catch(e){sb=false}}
+function cancelSpeech(){speechToken++;sb=false;try{speechSynthesis.cancel()}catch(e){}}
+function speak(t){
+ if(muted||!viV){sb=false;return}
+ try{
+  const token=++speechToken,u=new SpeechSynthesisUtterance(t);u.voice=viV;u.lang=viV.lang;u.rate=.85;u.pitch=1.05;
+  u.onend=u.onerror=()=>{if(token===speechToken)sb=false};sb=true;speechSynthesis.speak(u);
+ }catch(e){sb=false}
+}
 
 /* ---------- Kịch bản hoạt cảnh ---------- */
 const ID={hipY:.75,leg:0,torso:0,head:0,arm:0,armZ:-.12,eye:0,incY:.45,incZ:.53};
@@ -218,27 +279,66 @@ const pz=o=>({...ID,...o});
 let face=0,seq=[],si=0,st=0,from,wf,running=false,wa=0,wph=0,cm='idle';
 let orb={a:0,p:0,drag:false,x:0,y:0}; // Biến điều khiển xoay camera tự do
 const say=()=>{};
-function mkSeq(nm,txt){
- const HOLD=pz({arm:-1.3,armZ:.6}),HANDS=pz({arm:-1.15,armZ:.6}),KN=pz({hipY:.2,leg:1.45,arm:-1.2,armZ:.6}),BOW=pz({hipY:.2,leg:1.45,torso:1.25,arm:-2.2,armZ:.15,eye:1});
- const s=[
-  {d:1.8,p:HOLD,face:Math.PI,cm:'follow',msg:'Đang đốt nhang…'},
-  {walk:[0,-3.7],speed:1.45,p:HOLD,msg:''},
-  {d:1.5,p:pz({arm:-1.4,armZ:.5,torso:.35,incY:.5,incZ:.8,head:.25}),msg:'Cắm nhang vào bát…',end:()=>{held.g.visible=false;bowlI.g.visible=true}},
-  {walk:[0,-2.5],speed:.75,p:pz({arm:-1.2,armZ:.6}),msg:'Lùi lại một chút để quỳ lạy…'},
-  {d:1.2,p:KN,msg:'Quỳ xuống…'}];
- for(let i=1;i<=3;i++)s.push({d:1.3,p:BOW,msg:''},{d:.5,p:BOW,msg:''},{d:1.1,p:KN,msg:''});
- s.push(
-  {d:1.4,p:HANDS,msg:'',on:()=>speak(txt)},
-  {d:Math.max(4.2,txt.length*.09+1.5),wait:1,p:pz({arm:-1.15,armZ:.6,torso:.18,head:.5,eye:1}),msg:''},
-  {d:1.3,p:pz({arm:-1.15,armZ:.6,torso:.32,head:.2}),msg:'Cúi đầu tạ ơn…'},
-  {d:1,p:ID,face:0,cm:'exit',msg:'Xoay người đi ra…'},
-  {walk:[0,17],speed:1.5,p:ID,msg:'Rời chánh điện…'});
- return s}
-function startStep(){const s=seq[si];from={...P};st=0;wf=[ch.root.position.x,ch.root.position.z];s.dur=s.walk?Math.hypot(s.walk[0]-wf[0],s.walk[1]-wf[1])/s.speed:s.d;if(s.face!==undefined)face=s.face;if(s.cm){cm=s.cm;orb.a*=0.4;orb.p*=0.4}say(s.msg);s.on&&s.on()}
-function finish(){running=false;try{speechSynthesis.cancel()}catch(e){}sb=false;say('Nguyện cầu bình an, vạn sự như ý 🙏');setTimeout(()=>{if(running)return;cm='idle';orb.a=orb.p=0;build();$('go').disabled=$('nm').disabled=$('pr').disabled=false;$('sg').classList.remove('dis');$('ui').classList.remove('hide');say('Bạn có thể thắp nhang lần nữa, hoặc đổi tên/giới tính.')},2200)}
- $('go').onclick=()=>{if(running)return;startMusic(true);seq=mkSeq(ch.name,$('pr').value.trim()||'Cầu cho gia đình bình an, sức khỏe, vạn sự như ý.');si=0;running=true;$('go').disabled=$('nm').disabled=$('pr').disabled=true;$('sg').classList.add('dis');$('ui').classList.add('hide');startStep()};
- $('sg').onclick=e=>{const b=e.target.closest('button');if(!b||running)return;document.querySelectorAll('#sg button').forEach(x=>{const active=x===b;x.classList.toggle('on',active);x.setAttribute('aria-pressed',String(active))});build()};
-$('nm').oninput=()=>updateLabel($('nm').value.trim()||'Bạn');
+function mkOfferSeq(actor){
+ const HOLD=pz({arm:-1.3,armZ:.6}),KN=pz({hipY:.2,leg:1.45,arm:-1.2,armZ:.6});
+ return[
+  {walk:[0,-3.7],speed:.9,p:HOLD,face:Math.PI,cm:'follow'},
+  {d:1.35,p:pz({arm:-1.4,armZ:.5,torso:.35,incY:.5,incZ:.8,head:.25}),end:()=>{actor.held.g.visible=false;bowlI.g.visible=true}},
+  {walk:[actor.laneX,-2.5],speed:.9,p:HOLD},
+  {d:1.1,p:KN}
+ ];
+}
+function beginGroupApproach(){
+ const HOLD=pz({arm:-1.3,armZ:.6});
+ phase='approach';cm='follow';activeIndex=0;
+ actors.forEach(a=>{a.P={...ID};a.held.g.visible=true;a.tipMaterial.emissiveIntensity=0;a.root.position.set(a.laneX,0,15.5);a.root.rotation.y=Math.PI});
+ activateActor(actors[0]);P=actors[0].P;face=Math.PI;
+ seq=[{d:1.6,p:HOLD,face:Math.PI,cm:'follow'},{walkGroupZ:-3.7,speed:1.45,p:HOLD}];si=0;startStep();
+}
+function mkGroupSeq(){
+ const KN=pz({hipY:.2,leg:1.45,arm:-1.2,armZ:.6});
+ const BOW=pz({hipY:.2,leg:1.45,torso:1.25,arm:-2.2,armZ:.15,eye:1});
+ const HANDS=pz({arm:-1.15,armZ:.6,torso:.18,head:.5,eye:1});
+ const s=[];
+ for(let i=0;i<3;i++)s.push({d:1.3,p:BOW},{d:.5,p:BOW},{d:1.1,p:KN});
+ const speechFor=person=>`Lời cầu nguyện của ${person.name}: ${person.prayer||DEFAULT_PRAYER}`;
+ const firstPrayer=speechFor(people[0]);
+ s.push({d:1.4,p:HANDS,on:()=>speak(firstPrayer)});
+ s.push({d:Math.max(4.2,firstPrayer.length*.09+1.5),wait:1,p:HANDS});
+ for(let i=1;i<people.length;i++){
+  const prayer=speechFor(people[i]);
+  s.push({d:Math.max(4.2,prayer.length*.09+1.5),wait:1,p:HANDS,on:()=>speak(prayer)});
+ }
+ s.push({d:1.1,p:ID,face:0,cm:'exit'},{walkGroupZ:17,speed:1.5,p:ID});
+ return s;
+}
+function startStep(){
+ const s=seq[si];from={...P};st=0;wf=[ch.root.position.x,ch.root.position.z];
+ if(s.walk)s.dur=Math.hypot(s.walk[0]-wf[0],s.walk[1]-wf[1])/s.speed;
+ else if(s.walkGroupZ!==undefined){s.dur=Math.abs(s.walkGroupZ-ch.root.position.z)/s.speed;groupWalkFrom=actors.map(a=>[a.root.position.x,a.root.position.z])}
+ else s.dur=s.d;
+ if(s.face!==undefined)face=s.face;
+ if(s.cm){cm=s.cm;orb.a*=.4;orb.p*=.4}
+ say(s.msg);if(s.on)s.on();
+}
+function beginOffer(index){
+ activeIndex=index;activateActor(actors[index]);ch.root.position.set(ch.laneX,0,-3.7);ch.root.rotation.y=Math.PI;
+ ch.held.g.visible=true;ch.tipMaterial.emissiveIntensity=0;P={...ID};ch.P=P;face=Math.PI;
+ phase='offer';seq=mkOfferSeq(ch);si=0;startStep();
+}
+function beginGroupRitual(){
+ phase='group';cm='follow';activeIndex=0;actors.forEach(a=>{a.P=pz({hipY:.2,leg:1.45,arm:-1.2,armZ:.6});a.held.g.visible=false});
+ activateActor(actors[0]);P=actors[0].P;face=Math.PI;seq=mkGroupSeq();si=0;startStep();
+}
+function finish(){
+ running=false;phase='idle';cancelSpeech();
+ setTimeout(()=>{if(running)return;cm='idle';orb.a=orb.p=0;makeParticipants(people);$('go').disabled=false;$('count-back').disabled=false;$('people-fields').querySelectorAll('input,button').forEach(el=>el.disabled=false);$('ui').classList.remove('hide')},900);
+}
+$('go').onclick=()=>{
+ if(running||!actors.length)return;people=readPeopleForm();makeParticipants(people);
+ startMusic(true);running=true;activeIndex=0;beginGroupApproach();
+ $('go').disabled=true;$('count-back').disabled=true;$('people-fields').querySelectorAll('input,button').forEach(el=>el.disabled=true);$('ui').classList.add('hide');
+};
 
 /* ---------- Điều khiển xoay Camera bằng chuột/cảm ứng ---------- */
 R.domElement.addEventListener('pointerdown',e=>{if(!e.isPrimary)return;orb.drag=true;orb.x=e.clientX;orb.y=e.clientY;R.domElement.setPointerCapture(e.pointerId)});
@@ -254,28 +354,42 @@ document.addEventListener('visibilitychange',()=>{
 /* ---------- Vòng lặp ---------- */
 const clock=new THREE.Clock(),cp=new THREE.Vector3(),lk=new THREE.Vector3(),lkc=new THREE.Vector3(0,1.4,15);let tt=0,sacc=0;
 function resize(){const w=innerWidth,h=innerHeight;R.setSize(w,h);cam.aspect=w/h;cam.fov=w/h<1?70:50;cam.updateProjectionMatrix()}
-addEventListener('resize',resize);resize();build();cam.position.set(2.6,2.4,19.4);
+function animateActor(actor,pose,dt,walkWeight){
+ const r=actor.root,d=Math.atan2(Math.sin(face-r.rotation.y),Math.cos(face-r.rotation.y));r.rotation.y+=d*Math.min(1,dt*4);
+ const sw=pose.arm>-.6?walkWeight:0,sn=Math.sin(wph);
+ actor.hip.position.y=pose.hipY+Math.abs(sn)*.035*walkWeight;
+ actor.legL.rotation.x=pose.leg+sn*.45*walkWeight;actor.legR.rotation.x=pose.leg-sn*.45*walkWeight;
+ actor.armL.rotation.set(pose.arm-sn*.38*sw,0,-pose.armZ);actor.armR.rotation.set(pose.arm+sn*.38*sw,0,pose.armZ);
+ actor.torso.rotation.x=pose.torso;actor.torso.scale.y=1+Math.sin(tt*2.2)*.012;
+ actor.head.rotation.x=pose.head;actor.head.rotation.z=Math.sin(tt*1.6)*.05;
+ actor.eyes.forEach(e=>e.scale.y=Math.max(.12,1-pose.eye*.9));
+ actor.held.g.position.set(0,pose.incY,pose.incZ);
+ const lit=running&&((phase==='approach'&&si>=1)||(phase==='offer'&&actor===ch&&si<=1))&&actor.held.g.visible;
+ actor.tipMaterial.emissiveIntensity=lit?Math.min(2,actor.tipMaterial.emissiveIntensity+dt*1.5):0;
+}
+function sequenceFinished(){
+ if(phase==='approach')beginOffer(0);
+ else if(phase==='offer'&&activeIndex+1<actors.length)beginOffer(activeIndex+1);
+ else if(phase==='offer')beginGroupRitual();
+ else finish();
+}
+addEventListener('resize',resize);resize();makeParticipants([{name:'Người 1',gender:'m',prayer:''}]);cam.position.set(2.6,2.4,19.4);
 function loop(){requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.05);tt+=dt;let wk=0;
  if(running){const s=seq[si];st+=dt;if(s.wait&&sb&&st>=s.dur&&(s.w=(s.w||0)+dt)<25)st=s.dur-.001;const k=Math.min(st/s.dur,1),e=k*k*(3-2*k);
   for(const key in P)P[key]=from[key]+(s.p[key]-from[key])*e;
-  if(s.walk){const m=k*k*(3-2*k);wk=Math.sin(k*Math.PI);ch.root.position.x=wf[0]+(s.walk[0]-wf[0])*m;ch.root.position.z=wf[1]+(s.walk[1]-wf[1])*m}
-  if(k>=1){s.end&&s.end();si++;if(si>=seq.length)finish();else startStep()}}
+  if(s.walk||s.walkGroupZ!==undefined){const m=k*k*(3-2*k);wk=Math.sin(k*Math.PI);
+   if(s.walk){ch.root.position.x=wf[0]+(s.walk[0]-wf[0])*m;ch.root.position.z=wf[1]+(s.walk[1]-wf[1])*m}
+   else actors.forEach((a,i)=>{a.root.position.x=groupWalkFrom[i][0];a.root.position.z=groupWalkFrom[i][1]+(s.walkGroupZ-groupWalkFrom[i][1])*m});
+  }
+  if(k>=1){if(s.end)s.end();si++;if(si>=seq.length)sequenceFinished();else startStep()}}
  wa+=(wk-wa)*Math.min(1,dt*4.5);wph+=dt*6.2*wa;
- const r=ch.root,d=Math.atan2(Math.sin(face-r.rotation.y),Math.cos(face-r.rotation.y));r.rotation.y+=d*Math.min(1,dt*4);
- const sw=P.arm>-.6?wa:0,sn=Math.sin(wph);
- ch.hip.position.y=P.hipY+Math.abs(sn)*.035*wa;
- ch.legL.rotation.x=P.leg+sn*.45*wa;ch.legR.rotation.x=P.leg-sn*.45*wa;
- ch.armL.rotation.set(P.arm-sn*.38*sw,0,-P.armZ);ch.armR.rotation.set(P.arm+sn*.38*sw,0,P.armZ);
- ch.torso.rotation.x=P.torso;ch.torso.scale.y=1+Math.sin(tt*2.2)*.012;
- ch.head.rotation.x=P.head;ch.head.rotation.z=Math.sin(tt*1.6)*.05;
- ch.eyes.forEach(e=>e.scale.y=Math.max(.12,1-P.eye*.9));
- held.g.position.set(0,P.incY,P.incZ);
- tipH.emissiveIntensity=(running&&held.g.visible)?Math.min(2,tipH.emissiveIntensity+dt*1.5):0;
- sacc+=dt;if(sacc>.12){sacc=0;if(running&&held.g.visible&&tipH.emissiveIntensity>.5)emit(held.tips[Math.random()*5|0]);if(bowlI.g.visible&&Math.random()<.9)emit(bowlI.tips[Math.random()*13|0])}
+ actors.forEach(a=>animateActor(a,phase==='group'||phase==='approach'?P:a.P,dt,phase==='group'||phase==='approach'||a===ch?wa:0));
+ sacc+=dt;if(sacc>.12){sacc=0;if(running&&held.g.visible&&ch.tipMaterial.emissiveIntensity>.5)emit(held.tips[Math.random()*5|0]);if(bowlI.g.visible&&Math.random()<.9)emit(bowlI.tips[Math.random()*13|0])}
  sm.forEach(s=>{const u=s.userData;if(u.l>0){u.l-=dt/3.5;s.position.y+=u.v*dt;s.position.x+=Math.sin(u.ph+tt*1.3)*.12*dt;const k=1-u.l;s.scale.setScalar(.12+k*.7);s.material.opacity=Math.max(0,u.l)*.4}else s.material.opacity=0});
  flames.forEach(([f,l],i)=>{const q=1+Math.sin(tt*14+i*3)*.15+Math.random()*.08;f.scale.set(q,1.7*q,q);l.intensity=.8+Math.sin(tt*11+i)*.15});
  pl.forEach((l,i)=>l.intensity=1.15+Math.sin(tt*3+i)*.08);
  dust.position.y=Math.sin(tt*.7)*.12;dust.rotation.y=tt*.02;
+ const r=ch.root;
  if(cm==='idle'){lk.set(0,1.4,15.5);cp.set(lk.x+Math.sin(.55+orb.a)*4.6,2.4+orb.p,lk.z+Math.cos(.55+orb.a)*4.6)}
  else if(cm==='follow'){lk.set(0,1.6,r.position.z-1.5);const dist=Math.max(5.5,Math.min(7.5,r.position.z+7.5));cp.set(lk.x+Math.sin(.38+orb.a)*dist,2.9+orb.p,lk.z+Math.cos(.38+orb.a)*dist)}
  else{lk.set(0,1.3,r.position.z);cp.set(lk.x+Math.sin(.9+orb.a)*5.5,2.8+orb.p,lk.z+Math.cos(.9+orb.a)*5.5)}
