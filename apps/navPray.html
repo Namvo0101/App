@@ -36,6 +36,7 @@ input{width:150px}
 .person-gender button{flex:1}
 #count-confirm,#count-back{background:#604026;color:var(--fg);border:1px solid #f2b84b88;border-radius:12px;padding:9px 12px;font-size:14px;cursor:pointer}
 #snd{position:fixed;z-index:11;right:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 74px);background:var(--bg);border:1px solid #f2b84b66;color:var(--fg);border-radius:50%;width:42px;height:42px;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(6px)}
+#copyright{position:fixed;z-index:11;right:14px;bottom:calc(env(safe-area-inset-bottom,0px) + 12px);font-size:12px;color:#ffe9b0cc;letter-spacing:.3px;pointer-events:none;text-shadow:0 1px 4px rgba(0,0,0,.85)}
 </style></head><body>
 <div id="ui"><div class="panel">
 <h1>🪔 Thắp Nhang Cầu Nguyện 🪔</h1>
@@ -44,6 +45,7 @@ input{width:150px}
 <button id="go" type="button" hidden>🔥 Thắp nhang</button>
 </div></div>
 <button id="snd" type="button" title="Bật/Tắt nhạc nền" aria-label="Tắt nhạc nền" aria-pressed="true">🔊</button>
+<div id="copyright">© Nam Võ</div>
 <div id="error" role="alert" hidden>Không thể khởi tạo cảnh 3D. Hãy kiểm tra kết nối mạng, bật WebGL trong trình duyệt hoặc thử trình duyệt khác rồi tải lại trang.</div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
