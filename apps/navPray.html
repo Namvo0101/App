@@ -200,7 +200,7 @@ function build(){
  if(f){mk(Sp(.43),hr,0,.3,-.1,head).scale.set(1,1.15,.85);[-1,1].forEach(s=>{mk(Sp(.13),hr,s*.4,.08,-.05,head);mk(Sp(.08),M(0xff5c8a),s*.34,.62,.12,head)});mk(Sp(.15),hr,0,.9,-.08,head)}
  else mk(Sp(.11),hr,0,.88,.08,head);
  held=mkInc(torso,5,.5,.25,tipH);held.g.position.set(0,.45,.53);
- const lb=new THREE.Sprite(new THREE.SpriteMaterial({map:lbTex,depthTest:false}));lb.scale.set(1.8,.45,1);lb.position.y=2.75;lb.renderOrder=9;root.add(lb);
+ const lb=new THREE.Sprite(new THREE.SpriteMaterial({map:lbTex,depthTest:false}));lb.scale.set(1.8,.45,1);lb.position.y=1.24;lb.renderOrder=9;head.add(lb);
  root.position.set(0,0,15.5);root.rotation.y=0;face=0;
  ch={root,hip,torso,head,legL,legR,armL,armR,eyes,name};P={...ID};tipH.emissiveIntensity=0;
  updateLabel(name);
