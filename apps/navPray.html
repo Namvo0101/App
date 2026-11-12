@@ -29,7 +29,7 @@ input{border:1px solid #f2b84b88;background:#00000040;color:var(--fg);padding:9p
 <h1>🪔 Thắp Nhang Cầu Nguyện 🪔</h1>
 <label class="sr-only" for="nm">Tên của bạn</label><input id="nm" maxlength="18" placeholder="Nhập tên của bạn" autocomplete="off">
 <div class="seg" id="sg" role="group" aria-label="Chọn nhân vật"><button type="button" data-g="m" class="on" aria-pressed="true">👦 Nam</button><button type="button" data-g="f" aria-pressed="false">👧 Nữ</button></div>
-<label class="sr-only" for="pr">Lời cầu nguyện</label><input id="pr" maxlength="160" placeholder="Viết lời cầu nguyện của bạn…" value="Cầu cho gia đình bình an, sức khỏe, vạn sự như ý." autocomplete="off">
+<label class="sr-only" for="pr">Lời cầu nguyện</label><input id="pr" maxlength="160" placeholder="Hãy nhập nội dung cầu nguyện" autocomplete="off">
 <div id="vs"></div>
 <button id="go" type="button">🔥 Thắp nhang</button>
 </div></div>
@@ -38,6 +38,31 @@ input{border:1px solid #f2b84b88;background:#00000040;color:var(--fg);padding:9p
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
 const $=id=>document.getElementById(id);
+let muted=false,musicRequested=true,musicBlocked=false;
+const music=new Audio('https://www.dropbox.com/scl/fi/v97i1bm55ctsgtdwzgm4y/Nh-c-Thi-n-T-nh-T-m.mp3?rlkey=mx3adj0a5wpu2skw57kn6xyx1&st=3nmx1f3a&raw=1');
+music.loop=true;music.preload='auto';music.autoplay=true;music.volume=.28;
+function startMusic(fromGesture=false){
+ if(muted||document.hidden||(musicBlocked&&!fromGesture))return;
+ musicRequested=true;
+ try{
+  const pending=music.play();
+  if(pending&&typeof pending.then==='function')pending.then(()=>{musicBlocked=false;setMusicButtonBlocked(false)}).catch(e=>{
+   if(e.name==='NotAllowedError'){musicBlocked=true;setMusicButtonBlocked(true)}
+   else console.warn('Không phát được nhạc nền Dropbox:',e);
+  });
+ }catch(e){console.warn('Không phát được nhạc nền Dropbox:',e)}
+}
+function setMusicButtonBlocked(blocked){
+ const button=document.getElementById('snd');if(!button||muted)return;
+ button.textContent=blocked?'▶️':'🔊';
+ button.title=blocked?'Chạm hoặc nhấn để bắt đầu nhạc nền':'Bật/Tắt nhạc nền và giọng cầu nguyện';
+ button.setAttribute('aria-label',blocked?'Bắt đầu nhạc nền và giọng cầu nguyện':'Tắt nhạc nền và giọng cầu nguyện');
+}
+function retryMusicAfterGesture(){if(musicBlocked&&!muted)startMusic(true)}
+addEventListener('pointerdown',retryMusicAfterGesture);
+addEventListener('keydown',retryMusicAfterGesture);
+// Thử phát ngay, trước khi dựng toàn bộ cảnh 3D để giảm độ trễ khi vào trang.
+startMusic();
 try {
 if(!window.THREE)throw new Error('Three.js chưa tải được');
 // Tông nền nâu đỏ trầm ấm cúng
@@ -93,13 +118,8 @@ const _v=new THREE.Vector3();
 function emit(t){const s=sm.find(a=>a.userData.l<=0);if(!s)return;t.getWorldPosition(_v);s.position.copy(_v);s.userData={l:1,v:.3+Math.random()*.2,ph:Math.random()*6}}
 
 /* ---------- Nhạc nền & giọng cầu nguyện ---------- */
-let muted=false;
-const music=new Audio('https://www.dropbox.com/scl/fi/v97i1bm55ctsgtdwzgm4y/Nh-c-Thi-n-T-nh-T-m.mp3?rlkey=mx3adj0a5wpu2skw57kn6xyx1&st=3nmx1f3a&raw=1');
-music.loop=true;music.preload='none';music.volume=.28;
-let musicRequested=false;
-function startMusic(){if(muted||document.hidden)return;musicRequested=true;music.play().catch(e=>console.warn('Không phát được nhạc nền Dropbox:',e))}
 function stopMusic(){music.pause()}
- $('snd').onclick=()=>{muted=!muted;$('snd').textContent=muted?'🔇':'🔊';$('snd').setAttribute('aria-pressed',String(!muted));$('snd').setAttribute('aria-label',muted?'Bật nhạc nền và giọng cầu nguyện':'Tắt nhạc nền và giọng cầu nguyện');if(muted){sb=false;stopMusic();try{speechSynthesis.cancel()}catch(e){}}else startMusic()};
+ $('snd').onclick=()=>{if(musicBlocked&&!muted){startMusic(true);return}muted=!muted;$('snd').textContent=muted?'🔇':'🔊';$('snd').setAttribute('aria-pressed',String(!muted));$('snd').setAttribute('aria-label',muted?'Bật nhạc nền và giọng cầu nguyện':'Tắt nhạc nền và giọng cầu nguyện');if(muted){sb=false;stopMusic();try{speechSynthesis.cancel()}catch(e){}}else startMusic(true)};
 
 /* ---------- Nhân vật & Tối ưu bảng tên ---------- */
 let ch=null,P,held;
@@ -109,9 +129,8 @@ const lbCv=document.createElement('canvas');lbCv.width=512;lbCv.height=128;
 const lbTex=new THREE.CanvasTexture(lbCv);
 function updateLabel(name){
  const x=lbCv.getContext('2d');x.clearRect(0,0,512,128);
- x.fillStyle='rgba(60,20,20,.78)';x.beginPath();(x.roundRect||x.rect).call(x,8,20,496,88,44);x.fill();
- x.strokeStyle='rgba(242,184,75,.6)';x.lineWidth=4;x.stroke();
- x.fillStyle='#ffe9b0';x.font='bold 52px system-ui,sans-serif';x.textAlign='center';x.textBaseline='middle';
+ x.fillStyle='#ffe9b0';x.shadowColor='rgba(25,8,4,.95)';x.shadowBlur=8;x.shadowOffsetX=1;x.shadowOffsetY=2;
+ x.font='bold 52px system-ui,sans-serif';x.textAlign='center';x.textBaseline='middle';
  x.fillText(name,256,66,460);lbTex.needsUpdate=true;
  if(ch)ch.name=name;
 }
@@ -124,18 +143,53 @@ function disposeCharacter(root){
  });
  geometries.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());
 }
+function addFlower(parent,x,y,z,r,petalMat,centerMat){
+ for(let i=0;i<5;i++){
+  const a=-Math.PI/2+i*Math.PI*2/5,p=mk(Sp(r*.48,8),petalMat,x+Math.cos(a)*r*.58,y+Math.sin(a)*r*.58,z,parent);
+  p.scale.set(1,1,.42);
+ }
+ mk(Sp(r*.34,8),centerMat,x,y,z+.015,parent);
+}
 function build(){
  if(ch){scene.remove(ch.root);disposeCharacter(ch.root)}
  bowlI.g.visible=false; // Làm mới bát hương cho lượt thắp mới
  const f=gen()==='f',name=$('nm').value.trim()||'Bạn';
- const skin=M(0xffd9b8,{roughness:.55}),top=M(f?0xff9fbd:0x4f86c6),bot=M(f?0xfff0f5:0x35435e),hr=M(f?0x1c1214:0x2a1a12,{roughness:.4});
+ const skin=M(0xffd9b8,{roughness:.55}),top=M(f?0xe987a8:0x5795ad),bot=M(f?0xf8d9e4:0x40566f),hr=M(f?0x1c1214:0x2a1a12,{roughness:.4});
+ const trim=M(f?0xffe8aa:0xe6d4a1,{metalness:.25}),sash=M(f?0xf0bf5b:0xd8b45c,{metalness:.2});
  const root=new THREE.Group(),hip=new THREE.Group();hip.position.y=.75;root.add(hip);scene.add(root);
  const torso=new THREE.Group();hip.add(torso);
- mk(C(.26,.31,.72),top,0,.36,0,torso);mk(C(.32,.32,.07),M(f?0xffe066:0x8b5a2b),0,.03,0,torso);
- const leg=x=>{const g=new THREE.Group();g.position.set(x,0,0);hip.add(g);mk(C(.11,.1,.72),bot,0,-.36,0,g);mk(Sp(.14),M(0x7a3b2a),0,-.72,.05,g).scale.set(1,.6,1.3);return g};
+ mk(C(.26,.31,.72),top,0,.36,0,torso);
+ // Viền cổ áo chữ V, hàng khuy và đai lưng tạo dáng áo lam chibi.
+ const collarL=mk(B(.075,.24,.035),trim,-.075,.61,.28,torso);collarL.rotation.z=-.42;
+ const collarR=mk(B(.075,.24,.035),trim,.075,.61,.28,torso);collarR.rotation.z=.42;
+ mk(C(.30,.33,.085,24),sash,0,.065,0,torso);
+ mk(Sp(.075,12),sash,0,.075,.315,torso);
+ for(let i=0;i<3;i++)mk(Sp(.026,8),trim,0,.48-i*.12,.331,torso);
+ addFlower(torso,-.14,.47,.321,.075,M(f?0xffd2df:0xffe8ab),M(0xffd15a));
+ const leg=x=>{
+  const g=new THREE.Group();g.position.set(x,0,0);hip.add(g);
+  // Các khớp bo tròn phủ lên đầu và giữa ống quần để chân không bị chia khúc.
+  mk(Sp(.12),bot,0,-.035,0,g).scale.set(1,.82,1);
+  mk(C(.115,.105,.68,16),bot,0,-.37,0,g);
+  mk(Sp(.108),bot,0,-.39,0,g);
+  const shoe=mk(Sp(.15),M(0x594238),0,-.7,.075,g);shoe.scale.set(1,.62,1.35);
+  return g
+ };
  const legL=leg(.15),legR=leg(-.15);
- if(f)mk(C(.28,.5,.5,24),top,0,-.12,0,hip);
- const arm=x=>{const g=new THREE.Group();g.position.set(x,.6,0);torso.add(g);mk(C(.095,.085,.55),top,0,-.28,0,g);mk(Sp(.11),skin,0,-.58,0,g);return g};
+ if(f){
+  mk(C(.28,.49,.78,24),bot,0,-.18,0,hip);
+  addFlower(hip,0,-.39,.337,.09,M(0xffb8ca),M(0xffd15a));
+ }
+ const arm=x=>{
+  const g=new THREE.Group();g.position.set(x,.6,0);torso.add(g);
+  // Vai và khuỷu tay bo tròn, cùng chất liệu với tay áo để che các đường ráp.
+  const shoulder=mk(Sp(.135),top,x,.6,0,torso);shoulder.scale.set(1,.88,.92);
+  mk(C(.105,.095,.52,16),top,0,-.27,0,g);
+  const elbow=mk(Sp(.102),top,0,-.3,0,g);elbow.scale.set(1,.95,.95);
+  mk(C(.098,.108,.075,16),trim,0,-.5,0,g);
+  mk(Sp(.115),skin,0,-.59,0,g);
+  return g
+ };
  const armL=arm(.34),armR=arm(-.34);
  const head=new THREE.Group();head.position.y=.72;torso.add(head);
  mk(Sp(.4,28),skin,0,.4,0,head);
@@ -182,7 +236,7 @@ function mkSeq(nm,txt){
  return s}
 function startStep(){const s=seq[si];from={...P};st=0;wf=[ch.root.position.x,ch.root.position.z];s.dur=s.walk?Math.hypot(s.walk[0]-wf[0],s.walk[1]-wf[1])/s.speed:s.d;if(s.face!==undefined)face=s.face;if(s.cm){cm=s.cm;orb.a*=0.4;orb.p*=0.4}say(s.msg);s.on&&s.on()}
 function finish(){running=false;try{speechSynthesis.cancel()}catch(e){}sb=false;say('Nguyện cầu bình an, vạn sự như ý 🙏');setTimeout(()=>{if(running)return;cm='idle';orb.a=orb.p=0;build();$('go').disabled=$('nm').disabled=$('pr').disabled=false;$('sg').classList.remove('dis');$('ui').classList.remove('hide');say('Bạn có thể thắp nhang lần nữa, hoặc đổi tên/giới tính.')},2200)}
-$('go').onclick=()=>{if(running)return;startMusic();seq=mkSeq(ch.name,$('pr').value.trim()||'Cầu cho gia đình bình an, sức khỏe, vạn sự như ý.');si=0;running=true;$('go').disabled=$('nm').disabled=$('pr').disabled=true;$('sg').classList.add('dis');$('ui').classList.add('hide');startStep()};
+ $('go').onclick=()=>{if(running)return;startMusic(true);seq=mkSeq(ch.name,$('pr').value.trim()||'Cầu cho gia đình bình an, sức khỏe, vạn sự như ý.');si=0;running=true;$('go').disabled=$('nm').disabled=$('pr').disabled=true;$('sg').classList.add('dis');$('ui').classList.add('hide');startStep()};
  $('sg').onclick=e=>{const b=e.target.closest('button');if(!b||running)return;document.querySelectorAll('#sg button').forEach(x=>{const active=x===b;x.classList.toggle('on',active);x.setAttribute('aria-pressed',String(active))});build()};
 $('nm').oninput=()=>updateLabel($('nm').value.trim()||'Bạn');
 
