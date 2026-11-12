@@ -260,14 +260,9 @@ $('people-fields').addEventListener('click',e=>{
  people=readPeopleForm();makeParticipants(people);
 });
 
-/* ---------- Đọc lời cầu nguyện đa nền tảng (System TTS + Online Audio Fallback cho Chrome & iOS) ---------- */
-let sb=false,viV=null,speechToken=0,ttsAud=null,ttsTimer=null;
-function pickVoice(){
- try{const a=speechSynthesis.getVoices();viV=a.find(v=>/^vi([-_]|$)/i.test(v.lang))||a.find(v=>/vietnam|hoaimy|namminh|linh/i.test(v.name))||null}catch(e){viV=null}
- const e=$('vs');
- if(e)e.textContent=viV?'🔊 Giọng đọc tiếng Việt: '+viV.name:'🔊 Giọng đọc tiếng Việt trực tuyến: Sẵn sàng (Tương thích Chrome, Edge & iPhone)';
-}
-if(window.speechSynthesis){speechSynthesis.onvoiceschanged=pickVoice;pickVoice();setTimeout(pickVoice,400);setTimeout(pickVoice,1500)}else pickVoice();
+/* ---------- Đọc lời cầu nguyện bằng TTS tiếng Việt trực tuyến ---------- */
+let sb=false,speechToken=0,ttsAud=null;
+const voiceStatus=$('vs');if(voiceStatus)voiceStatus.textContent='🔊 Lời cầu nguyện sẽ được đọc bằng giọng tiếng Việt trực tuyến.';
 
 function setDuck(on){
  sb=on;
@@ -277,9 +272,7 @@ function resumeBackgroundMusic(){
 }
 function cancelSpeech(){
  speechToken++;
- clearTimeout(ttsTimer);
  setDuck(false);
- try{speechSynthesis.cancel()}catch(e){}
  if(ttsAud){try{ttsAud.pause();ttsAud.onended=ttsAud.onerror=null;ttsAud.removeAttribute('src');ttsAud.load()}catch(e){}}
 }
 function splitChunks(t){
@@ -288,6 +281,7 @@ function splitChunks(t){
 function playOnlineTTS(text,token){
  const chunks=splitChunks(text);let idx=0;
  setDuck(true);
+ resumeBackgroundMusic();
  const next=()=>{
   if(muted||token!==speechToken||idx>=chunks.length){if(token===speechToken){setDuck(false);resumeBackgroundMusic()}return}
   const q=encodeURIComponent(chunks[idx++].slice(0,180));
@@ -303,10 +297,8 @@ function playOnlineTTS(text,token){
 }
 function unlockSpeech(){
  try{
-  if(window.speechSynthesis){
-   const u=new SpeechSynthesisUtterance('');u.volume=0;speechSynthesis.speak(u);
-  }
   if(!ttsAud){ttsAud=new Audio();ttsAud.playsInline=true}
+  ttsAud.preload='auto';ttsAud.volume=1;ttsAud.muted=false;
   ttsAud.src='data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
   const p=ttsAud.play();if(p&&typeof p.catch==='function')p.catch(()=>{});
  }catch(e){}
@@ -314,29 +306,10 @@ function unlockSpeech(){
 function speak(t){
  // Lời trước đã kết thúc trong sequence; không gọi cancel ở đây vì iOS có thể
  // xem việc hủy TTS/đặt lại audio element là mất quyền phát đã mở từ thao tác chạm.
- clearTimeout(ttsTimer);speechToken++;setDuck(false);
+ speechToken++;setDuck(false);
  if(muted||!t)return;
- const token=speechToken;
- if(window.speechSynthesis&&typeof SpeechSynthesisUtterance!=='undefined'){
-  try{
-   const u=new SpeechSynthesisUtterance(t);
-   if(viV)u.voice=viV;u.lang=viV?.lang||'vi-VN';u.rate=.88;u.pitch=1.05;
-   let started=false,fallbackStarted=false;
-   u.onstart=()=>{if(token===speechToken&&!fallbackStarted){started=true;setDuck(true)}};
-   u.onend=()=>{if(token===speechToken){setDuck(false);resumeBackgroundMusic()}};
-   u.onerror=()=>{if(token===speechToken){if(!started&&!fallbackStarted){fallbackStarted=true;playOnlineTTS(t,token)}else if(started){setDuck(false);resumeBackgroundMusic()}}};
-   setDuck(true);
-   speechSynthesis.speak(u);
-   ttsTimer=setTimeout(()=>{
-    if(token!==speechToken||started||fallbackStarted)return;
-    fallbackStarted=true;
-    try{speechSynthesis.cancel()}catch(e){}
-    playOnlineTTS(t,token);
-   },1500);
-   return;
-  }catch(e){}
- }
- playOnlineTTS(t,token);
+ // Chỉ dùng TTS trực tuyến tiếng Việt, không gọi giọng đọc của hệ thống.
+ playOnlineTTS(t,speechToken);
 }
 
 /* ---------- Kịch bản hoạt cảnh ---------- */
@@ -413,8 +386,8 @@ const stopDrag=()=>{orb.drag=false};
 R.domElement.addEventListener('pointerup',stopDrag);R.domElement.addEventListener('pointercancel',stopDrag);R.domElement.addEventListener('lostpointercapture',stopDrag);
 R.domElement.addEventListener('keydown',e=>{const step=.08;if(e.key==='ArrowLeft')orb.a=Math.max(-1.4,orb.a-step);else if(e.key==='ArrowRight')orb.a=Math.min(1.4,orb.a+step);else if(e.key==='ArrowUp')orb.p=Math.max(-.6,orb.p-step);else if(e.key==='ArrowDown')orb.p=Math.min(1.8,orb.p+step);else return;e.preventDefault()});
 document.addEventListener('visibilitychange',()=>{
- if(document.hidden){try{if(sb)speechSynthesis.pause()}catch(e){}if(ttsAud&&!ttsAud.paused)try{ttsAud.pause()}catch(e){}}
- else{if(musicRequested&&!muted)startMusic();try{if(sb)speechSynthesis.resume()}catch(e){}if(sb&&ttsAud&&ttsAud.paused&&ttsAud.src&&!muted)try{ttsAud.play()}catch(e){}}
+ if(document.hidden){if(ttsAud&&!ttsAud.paused)try{ttsAud.pause()}catch(e){}}
+ else{if(musicRequested&&!muted)startMusic();if(sb&&ttsAud&&ttsAud.paused&&ttsAud.src&&!muted)try{ttsAud.play()}catch(e){}}
 });
 
 /* ---------- Vòng lặp ---------- */
