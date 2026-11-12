@@ -518,10 +518,11 @@ function speak(t){
 }
 
 const floatingPrayers=[];
-let floatTimers=[];
+let floatTimers=[],prayingActorIndex=-1;
 function clearFloatingPrayers(){
  floatTimers.forEach(id=>clearTimeout(id));
  floatTimers=[];
+ prayingActorIndex=-1;
  while(floatingPrayers.length){
   const fp=floatingPrayers.pop();
   scene.remove(fp.sprite);
@@ -559,9 +560,10 @@ function spawnPrayerLine(actor,line){
  scene.add(sprite);
  floatingPrayers.push({sprite,age:0,life:6.2,vy:.22,drift:(Math.random()-.5)*.06,phase:Math.random()*6.28});
 }
-function launchPrayer(actor,person){
+function launchPrayer(actor,person,index=-1){
  floatTimers.forEach(id=>clearTimeout(id));
  floatTimers=[];
+ prayingActorIndex=index;
  const rawText=person.prayer||DEFAULT_PRAYER;
  if(actor&&rawText){
   const lines=wrapPrayerLines(rawText,24);
@@ -606,13 +608,13 @@ function mkGroupSeq(){
  const rawFor=person=>person.prayer||DEFAULT_PRAYER;
  const durFor=raw=>Math.max(4.5,wrapPrayerLines(raw,24).length*1.65+2.6);
  const firstRaw=rawFor(people[0]),firstDur=durFor(firstRaw);
- s.push({d:1.2,p:HANDS,on:()=>launchPrayer(actors[0],people[0])});
+ s.push({d:1.2,p:HANDS,on:()=>launchPrayer(actors[0],people[0],0)});
  s.push({d:firstDur,wait:1,p:HANDS});
  for(let i=1;i<people.length;i++){
   const raw=rawFor(people[i]),dur=durFor(raw);
-  s.push({d:dur,wait:1,p:HANDS,on:()=>launchPrayer(actors[i],people[i])});
+  s.push({d:dur,wait:1,p:HANDS,on:()=>launchPrayer(actors[i],people[i],i)});
  }
- s.push({d:1.1,p:ID,face:0,cm:'exit'},{walkGroupZ:17,speed:1.5,p:ID});
+ s.push({d:1.1,p:ID,face:0,cm:'exit',on:()=>{prayingActorIndex=-1}},{walkGroupZ:17,speed:1.5,p:ID});
  return s;
 }
 function startStep(){
@@ -657,14 +659,16 @@ document.addEventListener('visibilitychange',()=>{
 /* ---------- Vòng lặp ---------- */
 const clock=new THREE.Clock(),cp=new THREE.Vector3(),lk=new THREE.Vector3(),lkc=new THREE.Vector3(0,1.4,15);let tt=0,sacc=0;
 function resize(){const w=innerWidth,h=innerHeight;R.setSize(w,h);cam.aspect=w/h;cam.fov=w/h<1?70:50;cam.updateProjectionMatrix()}
-function animateActor(actor,pose,dt,walkWeight){
+function animateActor(actor,pose,dt,walkWeight,isPraying=false){
  const r=actor.root,d=Math.atan2(Math.sin(face-r.rotation.y),Math.cos(face-r.rotation.y));r.rotation.y+=d*Math.min(1,dt*4);
  const sw=pose.arm>-.6?walkWeight:0,sn=Math.sin(wph);
+ const nod=isPraying?Math.sin(tt*4.8)*.13:0;
+ const bowPulse=isPraying?Math.sin(tt*4.8)*.035:0;
  actor.hip.position.y=pose.hipY+Math.abs(sn)*.035*walkWeight;
  actor.legL.rotation.x=pose.leg+sn*.45*walkWeight;actor.legR.rotation.x=pose.leg-sn*.45*walkWeight;
- actor.armL.rotation.set(pose.arm-sn*.38*sw,0,-pose.armZ);actor.armR.rotation.set(pose.arm+sn*.38*sw,0,pose.armZ);
- actor.torso.rotation.x=pose.torso;actor.torso.scale.y=1+Math.sin(tt*2.2)*.012;
- actor.head.rotation.x=pose.head;actor.head.rotation.z=Math.sin(tt*1.6)*.05;
+ actor.armL.rotation.set(pose.arm-sn*.38*sw-bowPulse*.6,0,-pose.armZ);actor.armR.rotation.set(pose.arm+sn*.38*sw-bowPulse*.6,0,pose.armZ);
+ actor.torso.rotation.x=pose.torso+bowPulse;actor.torso.scale.y=1+Math.sin(tt*2.2)*.012;
+ actor.head.rotation.x=pose.head+nod;actor.head.rotation.z=Math.sin(tt*1.6)*(isPraying?.02:.05);
  actor.eyes.forEach(e=>e.scale.y=Math.max(.12,1-pose.eye*.9));
  actor.held.g.position.set(0,pose.incY,pose.incZ);
  const lit=running&&((phase==='approach'&&si>=1)||(phase==='offer'&&actor===ch&&si<=1))&&actor.held.g.visible;
@@ -686,7 +690,7 @@ function loop(){requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.
   }
   if(k>=1){if(s.end)s.end();si++;if(si>=seq.length)sequenceFinished();else startStep()}}
  wa+=(wk-wa)*Math.min(1,dt*4.5);wph+=dt*6.2*wa;
- actors.forEach(a=>animateActor(a,phase==='group'||phase==='approach'?P:a.P,dt,phase==='group'||phase==='approach'||a===ch?wa:0));
+ actors.forEach((a,idx)=>animateActor(a,phase==='group'||phase==='approach'?P:a.P,dt,phase==='group'||phase==='approach'||a===ch?wa:0,running&&phase==='group'&&idx===prayingActorIndex));
  sacc+=dt;if(sacc>.12){sacc=0;if(running&&held.g.visible&&ch.tipMaterial.emissiveIntensity>.5)emit(held.tips[Math.random()*5|0]);if(bowlI.g.visible&&Math.random()<.9)emit(bowlI.tips[Math.random()*13|0])}
  sm.forEach(s=>{const u=s.userData;if(u.l>0){u.l-=dt/3.5;s.position.y+=u.v*dt;s.position.x+=Math.sin(u.ph+tt*1.3)*.12*dt;const k=1-u.l;s.scale.setScalar(.12+k*.7);s.material.opacity=Math.max(0,u.l)*.4}else s.material.opacity=0});
  for(let i=floatingPrayers.length-1;i>=0;i--){
