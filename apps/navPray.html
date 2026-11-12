@@ -49,9 +49,12 @@ input{width:150px}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
 const $=id=>document.getElementById(id);
-let muted=false,musicRequested=true,musicBlocked=false;
+let muted=false,musicRequested=true,musicBlocked=false,sb=false;
 const music=new Audio('https://www.dropbox.com/scl/fi/v97i1bm55ctsgtdwzgm4y/Nh-c-Thi-n-T-nh-T-m.mp3?rlkey=mx3adj0a5wpu2skw57kn6xyx1&st=3nmx1f3a&raw=1');
-music.loop=true;music.preload='auto';music.autoplay=true;music.volume=.28;
+music.loop=true;music.preload='auto';music.autoplay=true;music.playsInline=true;music.volume=.28;
+function setMusicLevel(v){
+ try{music.volume=v}catch(e){}
+}
 function startMusic(fromGesture=false){
  if(muted||document.hidden||(musicBlocked&&!fromGesture))return;
  musicRequested=true;
@@ -63,13 +66,27 @@ function startMusic(fromGesture=false){
   });
  }catch(e){console.warn('Không phát được nhạc nền Dropbox:',e)}
 }
+// Chống iOS Safari tự ngắt loop với stream Dropbox hoặc sau khi tranh chấp kênh audio
+music.addEventListener('ended',()=>{if(!muted&&musicRequested&&!document.hidden){music.currentTime=0;startMusic(true)}});
+music.addEventListener('pause',()=>{
+ if(!muted&&musicRequested&&!document.hidden&&!sb&&!musicBlocked){
+  setTimeout(()=>{if(!muted&&musicRequested&&!document.hidden&&!sb&&music.paused)startMusic(true)},250);
+ }
+});
+setInterval(()=>{
+ if(!muted&&musicRequested&&!document.hidden&&!sb&&!musicBlocked&&music.paused){
+  startMusic(true);
+ }
+},1200);
 function setMusicButtonBlocked(blocked){
  const button=document.getElementById('snd');if(!button||muted)return;
  button.textContent=blocked?'▶️':'🔊';
  button.title=blocked?'Chạm hoặc nhấn để bắt đầu nhạc nền':'Bật/Tắt nhạc nền và giọng cầu nguyện';
  button.setAttribute('aria-label',blocked?'Bắt đầu nhạc nền và giọng cầu nguyện':'Tắt nhạc nền và giọng cầu nguyện');
 }
-function retryMusicAfterGesture(){if(musicBlocked&&!muted)startMusic(true)}
+function retryMusicAfterGesture(){
+ if(!muted&&musicRequested&&(musicBlocked||music.paused))startMusic(true);
+}
 addEventListener('pointerdown',retryMusicAfterGesture);
 addEventListener('keydown',retryMusicAfterGesture);
 // Thử phát ngay, trước khi dựng toàn bộ cảnh 3D để giảm độ trễ khi vào trang.
@@ -342,7 +359,7 @@ $('people-fields').addEventListener('click',e=>{
 });
 
 /* ---------- Đọc lời cầu nguyện đa nền tảng (System TTS + Online Audio Fallback cho Chrome & iOS) ---------- */
-let sb=false,viV=null,speechToken=0,ttsAud=null,ttsTimer=null,ttsKeepAlive=null;
+let viV=null,speechToken=0,ttsAud=null,ttsTimer=null,ttsKeepAlive=null;
 function pickVoice(){
  try{const a=speechSynthesis.getVoices();viV=a.find(v=>/^vi([-_]|$)/i.test(v.lang))||a.find(v=>/vietnam|hoaimy|namminh|linh/i.test(v.name))||null}catch(e){viV=null}
  const e=$('vs');
@@ -352,7 +369,13 @@ if(window.speechSynthesis){speechSynthesis.onvoiceschanged=pickVoice;pickVoice()
 
 function setDuck(on){
  sb=on;
- if(!muted)music.volume=on?.08:.28;
+ if(!muted){
+  setMusicLevel(on?.08:.28);
+  // Trên iOS Safari, thẻ <audio> giọng đọc có thể làm tạm dừng nhạc nền; tự động nối lại ngay khi đọc xong
+  if(!on&&musicRequested&&!document.hidden&&music.paused){
+   setTimeout(()=>startMusic(true),120);
+  }
+ }
 }
 function cancelSpeech(){
  speechToken++;
@@ -549,7 +572,8 @@ const r=ch.root;
  else if(cm==='follow'){lk.set(0,1.6,r.position.z-1.5);const dist=Math.max(5.5,Math.min(7.5,r.position.z+7.5));cp.set(lk.x+Math.sin(.38+orb.a)*dist,2.9+orb.p,lk.z+Math.cos(.38+orb.a)*dist)}
  else{lk.set(0,1.3,r.position.z);cp.set(lk.x+Math.sin(.9+orb.a)*5.5,2.8+orb.p,lk.z+Math.cos(.9+orb.a)*5.5)}
  cam.position.lerp(cp,1-Math.exp(-dt*2.5));lkc.lerp(lk,1-Math.exp(-dt*4));cam.lookAt(lkc);
- R.render(scene,cam)}
+ R.render(scene,cam);
+}
 loop();
 } catch(error) {
  console.error('Không thể khởi tạo cảnh 3D:',error);
