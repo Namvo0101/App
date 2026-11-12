@@ -272,6 +272,9 @@ if(window.speechSynthesis){speechSynthesis.onvoiceschanged=pickVoice;pickVoice()
 function setDuck(on){
  sb=on;
 }
+function resumeBackgroundMusic(){
+ if(musicRequested&&!muted&&!document.hidden&&music.paused)startMusic();
+}
 function cancelSpeech(){
  speechToken++;
  clearTimeout(ttsTimer);
@@ -286,15 +289,15 @@ function playOnlineTTS(text,token){
  const chunks=splitChunks(text);let idx=0;
  setDuck(true);
  const next=()=>{
-  if(muted||token!==speechToken||idx>=chunks.length){if(token===speechToken)setDuck(false);return}
+  if(muted||token!==speechToken||idx>=chunks.length){if(token===speechToken){setDuck(false);resumeBackgroundMusic()}return}
   const q=encodeURIComponent(chunks[idx++].slice(0,180));
-  if(!ttsAud){ttsAud=new Audio();ttsAud.crossOrigin='anonymous';ttsAud.playsInline=true}
+  if(!ttsAud){ttsAud=new Audio();ttsAud.playsInline=true}
   ttsAud.src=`https://translate.googleapis.com/translate_tts?ie=UTF-8&client=gtx&tl=vi&q=${q}`;
   ttsAud.playbackRate=.95;
   ttsAud.onended=next;
-  ttsAud.onerror=()=>{if(token===speechToken)setDuck(false)};
+  ttsAud.onerror=()=>{if(token===speechToken){setDuck(false);resumeBackgroundMusic()}};
   const p=ttsAud.play();
-  if(p&&typeof p.catch==='function')p.catch(()=>{if(token===speechToken)setDuck(false)});
+  if(p&&typeof p.catch==='function')p.catch(()=>{if(token===speechToken){setDuck(false);resumeBackgroundMusic()}});
  };
  next();
 }
@@ -309,7 +312,9 @@ function unlockSpeech(){
  }catch(e){}
 }
 function speak(t){
- cancelSpeech();
+ // Lời trước đã kết thúc trong sequence; không gọi cancel ở đây vì iOS có thể
+ // xem việc hủy TTS/đặt lại audio element là mất quyền phát đã mở từ thao tác chạm.
+ clearTimeout(ttsTimer);speechToken++;setDuck(false);
  if(muted||!t)return;
  const token=speechToken;
  if(window.speechSynthesis&&typeof SpeechSynthesisUtterance!=='undefined'){
@@ -317,9 +322,9 @@ function speak(t){
    const u=new SpeechSynthesisUtterance(t);
    if(viV)u.voice=viV;u.lang=viV?.lang||'vi-VN';u.rate=.88;u.pitch=1.05;
    let started=false,fallbackStarted=false;
-   u.onstart=()=>{if(token===speechToken){started=true;setDuck(true)}};
-   u.onend=()=>{if(token===speechToken)setDuck(false)};
-   u.onerror=()=>{if(token===speechToken){if(!started&&!fallbackStarted){fallbackStarted=true;playOnlineTTS(t,token)}else if(started)setDuck(false)}};
+   u.onstart=()=>{if(token===speechToken&&!fallbackStarted){started=true;setDuck(true)}};
+   u.onend=()=>{if(token===speechToken){setDuck(false);resumeBackgroundMusic()}};
+   u.onerror=()=>{if(token===speechToken){if(!started&&!fallbackStarted){fallbackStarted=true;playOnlineTTS(t,token)}else if(started){setDuck(false);resumeBackgroundMusic()}}};
    setDuck(true);
    speechSynthesis.speak(u);
    ttsTimer=setTimeout(()=>{
@@ -408,7 +413,7 @@ const stopDrag=()=>{orb.drag=false};
 R.domElement.addEventListener('pointerup',stopDrag);R.domElement.addEventListener('pointercancel',stopDrag);R.domElement.addEventListener('lostpointercapture',stopDrag);
 R.domElement.addEventListener('keydown',e=>{const step=.08;if(e.key==='ArrowLeft')orb.a=Math.max(-1.4,orb.a-step);else if(e.key==='ArrowRight')orb.a=Math.min(1.4,orb.a+step);else if(e.key==='ArrowUp')orb.p=Math.max(-.6,orb.p-step);else if(e.key==='ArrowDown')orb.p=Math.min(1.8,orb.p+step);else return;e.preventDefault()});
 document.addEventListener('visibilitychange',()=>{
- if(document.hidden){stopMusic();try{if(sb)speechSynthesis.pause()}catch(e){}if(ttsAud&&!ttsAud.paused)try{ttsAud.pause()}catch(e){}}
+ if(document.hidden){try{if(sb)speechSynthesis.pause()}catch(e){}if(ttsAud&&!ttsAud.paused)try{ttsAud.pause()}catch(e){}}
  else{if(musicRequested&&!muted)startMusic();try{if(sb)speechSynthesis.resume()}catch(e){}if(sb&&ttsAud&&ttsAud.paused&&ttsAud.src&&!muted)try{ttsAud.play()}catch(e){}}
 });
 
