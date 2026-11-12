@@ -231,12 +231,21 @@ $('snd').onclick=()=>{if(musicBlocked&&!muted){startMusic(true);return}muted=!mu
 /* ---------- Nhân vật & Tối ưu bảng tên ---------- */
 let ch=null,P,held,actors=[],people=[],activeIndex=0,phase='idle',groupWalkFrom=[];
 const DEFAULT_PRAYER='Cầu cho gia đình bình an, sức khỏe, vạn sự như ý.';
-function updateLabel(name,actor=ch){
+function updateLabel(name,actor=ch,isPraying=false){
  if(!actor)return;
  const x=actor.labelCanvas.getContext('2d');x.clearRect(0,0,512,128);
- x.fillStyle='#ffe9b0';x.shadowColor='rgba(25,8,4,.95)';x.shadowBlur=8;x.shadowOffsetX=1;x.shadowOffsetY=2;
- x.font='bold 52px system-ui,sans-serif';x.textAlign='center';x.textBaseline='middle';
- x.fillText(name,256,66,460);actor.labelTexture.needsUpdate=true;actor.name=name;
+ x.save();
+ x.fillStyle=isPraying?'#fff7cc':'#ffe9b0';
+ x.shadowColor=isPraying?'rgba(255,205,60,1)':'rgba(25,8,4,.95)';
+ x.shadowBlur=isPraying?22:8;
+ x.shadowOffsetX=isPraying?0:1;
+ x.shadowOffsetY=isPraying?0:2;
+ x.font=`bold ${isPraying?56:50}px system-ui,-apple-system,sans-serif`;
+ x.textAlign='center';x.textBaseline='middle';
+ x.fillText(name,256,66,460);
+ if(isPraying)x.fillText(name,256,66,460);
+ x.restore();
+ actor.labelTexture.needsUpdate=true;actor.name=name;actor.labelHighlight=isPraying;
 }
 function disposeCharacter(root){
  const geometries=new Set(),materials=new Set(),textures=new Set();
@@ -254,6 +263,47 @@ function addFlower(parent,x,y,z,r,petalMat,centerMat){
  }
  mk(Sp(r*.34,8),centerMat,x,y,z+.015,parent);
 }
+// Texture mắt anime chuyển sắc + họa tiết vải áo/váy sinh động
+function createAnimeEyeTexture(){
+ const c=document.createElement('canvas');c.width=c.height=128;
+ const x=c.getContext('2d');
+ const g=x.createLinearGradient(0,12,0,118);
+ g.addColorStop(0,'#171018');g.addColorStop(.52,'#2f1c24');g.addColorStop(.82,'#8f4a24');g.addColorStop(1,'#e89b44');
+ x.fillStyle=g;x.beginPath();x.ellipse(64,64,46,56,0,0,Math.PI*2);x.fill();
+ x.fillStyle='#140d14';x.beginPath();x.ellipse(64,58,22,27,0,0,Math.PI*2);x.fill();
+ x.fillStyle='rgba(255,220,130,.35)';x.beginPath();x.ellipse(64,88,24,14,0,0,Math.PI*2);x.fill();
+ return new THREE.CanvasTexture(c);
+}
+function createOutfitTexture(isFemale){
+ const c=document.createElement('canvas');c.width=c.height=256;
+ const x=c.getContext('2d');
+ if(isFemale){
+  // Kẻ caro pastel ngọt ngào cho chân váy nữ
+  x.fillStyle='#fff2f6';x.fillRect(0,0,256,256);
+  x.fillStyle='rgba(255,158,187,.28)';
+  for(let i=0;i<256;i+=32){x.fillRect(i,0,16,256);x.fillRect(0,i,256,16)}
+  x.fillStyle='rgba(255,215,120,.25)';
+  for(let i=8;i<256;i+=64){x.fillRect(i,0,4,256);x.fillRect(0,i,256,4)}
+ }else{
+  // Áo sweater xanh dương kèm huy hiệu cỏ 4 lá & mặt gấu nhỏ ở mặt trước
+  x.fillStyle='#63b3ed';x.fillRect(0,0,256,256);
+  x.fillStyle='rgba(255,255,255,.12)';
+  for(let y=0;y<256;y+=16)x.fillRect(0,y,256,2);
+  // Vị trí ngực trước của LatheGeometry (u quanh 0.25 hoặc 0.75 tùy chiều)
+  [64,192].forEach(cx=>{
+   x.save();x.translate(cx,148);
+   x.fillStyle='#fff8e7';x.beginPath();x.arc(0,0,20,0,Math.PI*2);x.fill();
+   x.fillStyle='#52a957';
+   for(let k=0;k<4;k++){
+    const a=k*Math.PI/2+Math.PI/4;
+    x.beginPath();x.arc(Math.cos(a)*7,Math.sin(a)*7,6.5,0,Math.PI*2);x.fill();
+   }
+   x.restore();
+  });
+ }
+ const tex=new THREE.CanvasTexture(c);tex.wrapS=tex.wrapT=THREE.RepeatWrapping;
+ return tex;
+}
 // Hàm tạo khối thân/áo liền mạch bo tròn bằng LatheGeometry
 function mkSmoothLathe(pts,seg=28){
  const v=pts.map(([r,y])=>new THREE.Vector2(r,y));
@@ -267,9 +317,9 @@ function build(person={name:'',gender:'m'},replace=true){
  // Chất liệu da mịn hồng hào kiểu Figure (tương thích Three.js r128)
  const skin=new THREE.MeshPhysicalMaterial({color:0xffe0c4,roughness:.42,metalness:.02,clearcoat:.08,clearcoatRoughness:.5,sheen:new THREE.Color(0xffb5a3)});
  // Bảng màu trang phục hiện đại, trẻ trung & đáng yêu (Pastel Trendy)
- const top=new THREE.MeshPhysicalMaterial({color:f?0xff9ebb:0x63b3ed,roughness:.52,sheen:new THREE.Color(f?0xffd6e5:0xbbe3ff)});
+ const top=new THREE.MeshPhysicalMaterial({color:f?0xff9ebb:0xffffff,map:f?null:createOutfitTexture(false),roughness:.52,sheen:new THREE.Color(f?0xffd6e5:0xbbe3ff)});
  const innerMat=new THREE.MeshPhysicalMaterial({color:0xfffaf0,roughness:.48});
- const bot=new THREE.MeshPhysicalMaterial({color:f?0xfff0f5:0x3b4d63,roughness:.58});
+ const bot=new THREE.MeshPhysicalMaterial({color:f?0xffffff:0x3b4d63,map:f?createOutfitTexture(true):null,roughness:.58});
  const hr=new THREE.MeshPhysicalMaterial({color:f?0x26171a:0x2d1d15,roughness:.36,clearcoat:.16,clearcoatRoughness:.42});
  const accent=M(f?0xff6b9d:0xffb74d,{roughness:.4});
  const sneakerWhite=new THREE.MeshPhysicalMaterial({color:0xffffff,roughness:.35,clearcoat:.15});
@@ -280,7 +330,7 @@ function build(person={name:'',gender:'m'},replace=true){
  const bodyGeo=mkSmoothLathe([
   [0,-.10],[.285,-.10],[.295,-.03],[.272,.08],[.26,.24],[.245,.42],[.195,.53],[.11,.57],[0,.57]
  ],30);
- const bodyMesh=mk(bodyGeo,top,0,0,0,torso);bodyMesh.scale.set(1.05,1,.94);
+ const bodyMesh=mk(bodyGeo,top,0,0,0,torso);bodyMesh.scale.set(1.05,1,.94);bodyMesh.rotation.y=Math.PI/2;
  if(f){
   // Cổ áo búp bê (Peter Pan collar) trắng kem hai bên xinh xắn
   [-1,1].forEach(s=>{
@@ -294,7 +344,7 @@ function build(person={name:'',gender:'m'},replace=true){
    bowWing.scale.set(1.25,.75,.55);bowWing.rotation.z=s*.25;
   });
   for(let i=0;i<3;i++)mk(Sp(.022,10),innerMat,0,.35-i*.11,.255-i*.003,torso);
-  // Chân váy xếp ly babydoll xòe bồng bềnh trẻ trung + viền ren trắng
+  // Chân váy xếp ly babydoll xòe bồng bềnh trẻ trung + viền ren hồng
   const skirtGeo=mkSmoothLathe([
    [.39,-.33],[.37,-.20],[.31,-.06],[.26,.04],[0,.04]
   ],28);
@@ -310,15 +360,25 @@ function build(person={name:'',gender:'m'},replace=true){
    shirtCollar.rotation.set(-.35,s*.25,-s*.52);
   });
   // Túi kangaroo trẻ trung trước bụng + dây rút áo hoodie trắng
-  const pocket=mk(B(.24,.15,.05),M(0x4fa3e0,{roughness:.55}),0,.08,.245,torso);
+  mk(B(.24,.15,.05),M(0x4fa3e0,{roughness:.55}),0,.08,.245,torso);
   [-1,1].forEach(s=>{
    mk(C(.009,.009,.15,8),innerMat,s*.055,.41,.235,torso).rotation.x=-.12;
    mk(Sp(.016,8),accent,s*.055,.33,.252,torso);
   });
   // Mũ hoodie gập gọn sau vai tạo dáng năng động
   const hoodGeo=mkSmoothLathe([[.16,.44],[.25,.48],[.26,.56],[.17,.58]],22);
-  const hood=mk(hoodGeo,top,0,.02,-.06,torso);hood.scale.set(1.05,.9,.85);
+  const hood=mk(hoodGeo,M(0x52a3df,{roughness:.5}),0,.02,-.06,torso);hood.scale.set(1.05,.9,.85);
  }
+ // Ba lô gấu bông mini xinh xắn sau lưng (tạo điểm nhấn cực dễ thương khi nhìn từ phía sau vào chánh điện)
+ const backpack=new THREE.Group();backpack.position.set(0,.22,-.26);torso.add(backpack);
+ const bagMat=M(f?0xfff5f8:0xf6d365,{roughness:.55});
+ const bagTrim=M(f?0xff85a9:0xe09f3e,{roughness:.45});
+ mk(Sp(.145,16),bagMat,0,0,0,backpack).scale.set(1.08,1.18,.68);
+ mk(Sp(.11,14),bagTrim,0,-.04,-.055,backpack).scale.set(1.05,.92,.55);
+ [-1,1].forEach(s=>{
+  mk(Sp(.038,10),bagTrim,s*.085,.13,-.01,backpack);
+  mk(B(.028,.28,.16),bagTrim,s*.135,.04,.14,backpack).rotation.x=-.12;
+ });
  // Chân chibi ngắn mũm mĩm + tất cổ cao & giày Sneaker / Mary Jane hiện đại
  const leg=x=>{
   const g=new THREE.Group();g.position.set(x,.02,0);hip.add(g);
@@ -326,13 +386,11 @@ function build(person={name:'',gender:'m'},replace=true){
    [0,-.34],[.106,-.34],[.116,-.22],[.118,-.04],[.09,.03],[0,.04]
   ],22);
   const limb=mk(legGeo,f?skin:bot,0,0,0,g);limb.scale.set(1.04,1,1.06);
-  // Tất trắng cổ ngắn bo viền đáng yêu
   const sockGeo=mkSmoothLathe([
    [0,-.46],[.108,-.46],[.114,-.33],[.104,-.33],[0,-.33]
   ],20);
   mk(sockGeo,innerMat,0,0,0,g);
   mk(mkSmoothLathe([[.112,-.35],[.118,-.335],[.112,-.32]],18),accent,0,0,0,g);
-  // Giày Sneaker đế trắng dày (hoặc Mary Jane cho nữ)
   const soleGeo=mkSmoothLathe([
    [0,-.55],[.11,-.55],[.128,-.525],[.124,-.50],[0,-.50]
   ],20);
@@ -341,13 +399,8 @@ function build(person={name:'',gender:'m'},replace=true){
    [0,-.505],[.122,-.505],[.115,-.46],[.075,-.44],[0,-.44]
   ],20);
   mk(upperGeo,shoeMain,0,0,.045,g).scale.set(1.02,1,1.38);
-  if(f){
-   // Quai giày búp bê Mary Jane xinh xắn
-   mk(B(.18,.024,.045),innerMat,0,-.455,.04,g);
-  }else{
-   // Dây giày sneaker trắng nổi bật trên mu bàn chân
-   mk(B(.11,.025,.08),sneakerWhite,0,-.455,.09,g);
-  }
+  if(f)mk(B(.18,.024,.045),innerMat,0,-.455,.04,g);
+  else mk(B(.11,.025,.08),sneakerWhite,0,-.455,.09,g);
   return g
  };
  const legL=leg(.125),legR=leg(-.125);
@@ -357,7 +410,7 @@ function build(person={name:'',gender:'m'},replace=true){
   const sleeveGeo=mkSmoothLathe([
    [0,-.39],[.092,-.39],[.112,-.28],[.106,-.14],[.118,-.01],[.095,.07],[0,.09]
   ],22);
-  mk(sleeveGeo,top,0,0,0,g);
+  mk(sleeveGeo,f?top:M(0x63b3ed,{roughness:.52}),0,0,0,g);
   const cuffGeo=mkSmoothLathe([[.09,-.40],[.104,-.37],[.098,-.33],[.088,-.33]],20);
   mk(cuffGeo,innerMat,0,0,0,g);
   const hand=mk(Sp(.092,16),skin,0,-.46,0,g);hand.scale.set(.78,1.12,.92);
@@ -377,16 +430,39 @@ function build(person={name:'',gender:'m'},replace=true){
  [-1,1].forEach(s=>{
   const ear=mk(Sp(.085,14),skin,s*.49,.43,-.01,head);ear.scale.set(.68,1.05,.85);
  });
- const eyes=[-1,1].map(s=>{
+ const eyeTex=createAnimeEyeTexture();
+ const openEyes=[],closedEyes=[],blushList=[];
+ [-1,1].forEach(s=>{
   const g=new THREE.Group();g.position.set(s*.175,.43,.455);head.add(g);
-  mk(Sp(.072,16),M(0x1b1518,{roughness:.2}),0,0,0,g).scale.set(1,1.28,.55);
-  mk(Sp(.026,10),M(0xffffff,{emissive:0xffffff}),.022,.034,.032,g);
-  mk(Sp(.013,8),M(0xffffff,{emissive:0xffffff}),-.018,-.024,.032,g);
-  const brow=mk(new THREE.TorusGeometry(.055,.011,6,12,Math.PI*.75),hr,0,.115,-.01,g);brow.rotation.z=Math.PI*.12;
-  mk(Sp(.085,12),M(0xff8da6,{roughness:.6}),s*.115,-.095,-.055,g).scale.set(1.15,.68,.38);
-  return g
+  const openGroup=new THREE.Group();g.add(openGroup);
+  const iris=mk(Sp(.074,18),new THREE.MeshPhysicalMaterial({map:eyeTex,roughness:.18,clearcoat:.6}),0,0,0,openGroup);
+  iris.scale.set(1,1.3,.55);iris.rotation.y=-Math.PI/2;
+  mk(Sp(.028,10),M(0xffffff,{emissive:0xffffff}),.022,.036,.034,openGroup);
+  mk(Sp(.014,8),M(0xffffff,{emissive:0xffffff}),-.018,-.025,.034,openGroup);
+  if(f){
+   const lash=mk(B(.045,.012,.015),hr,s*.062,.052,.018,openGroup);
+   lash.rotation.z=s*.35;
+  }
+  openEyes.push(openGroup);
+  // Đường mắt nhắm cười cong dịu dàng (◡ ◡) khi cầu nguyện hoặc cúi lạy
+  const closedArc=mk(new THREE.TorusGeometry(.055,.013,8,16,Math.PI),hr,0,-.01,.025,g);
+  closedArc.rotation.z=Math.PI;closedArc.visible=false;
+  closedEyes.push(closedArc);
+  const brow=mk(new THREE.TorusGeometry(.055,.011,6,12,Math.PI*.75),hr,0,.118,-.01,g);brow.rotation.z=Math.PI*.12;
+  const blushMat=M(0xff85a1,{roughness:.6,emissive:0xff4d79,emissiveIntensity:.15});
+  const blush=mk(Sp(.088,12),blushMat,s*.115,-.095,-.052,g);blush.scale.set(1.2,.7,.38);
+  blushList.push(blushMat);
  });
  mk(new THREE.TorusGeometry(.062,.015,8,16,Math.PI),M(0x9c3636),0,.345,.475,head).rotation.z=Math.PI;
+ // Mầm cỏ 4 lá may mắn rung rinh trên đỉnh đầu (đồng bộ với cỏ 4 lá trên bàn thờ!)
+ const sprout=new THREE.Group();sprout.position.set(0,.98,.02);head.add(sprout);
+ const sproutStemMat=M(0x46994b,{roughness:.45});
+ const sproutLeafMat=M(0x6bd463,{roughness:.35,emissive:0x1b4d1d,emissiveIntensity:.25});
+ mk(C(.014,.018,.13,8),sproutStemMat,0,.06,0,sprout);
+ for(let i=0;i<4;i++){
+  const lf=new THREE.Group();lf.position.y=.125;lf.rotation.y=i*Math.PI/2+Math.PI/4;sprout.add(lf);
+  const pt=mk(Sp(.045,10),sproutLeafMat,.042,.01,0,lf);pt.scale.set(1.35,.32,.95);pt.rotation.z=.22;
+ }
  if(f){
   // Tóc dài mượt + 2 lọn tóc mai ôm má + 2 búi tóc tròn gắn nơ pastel xinh xắn
   const backHair=mk(Sp(.52,24),hr,0,.35,-.12,head);backHair.scale.set(1.06,1.15,.88);
@@ -395,7 +471,6 @@ function build(person={name:'',gender:'m'},replace=true){
    mk(Sp(.165,16),hr,s*.42,.80,-.06,head);
    const ribbon=mk(Sp(.09,12),accent,s*.37,.69,.09,head);ribbon.scale.set(1.25,.78,.7);
   });
-  // Kẹp tóc nhỏ đáng yêu bên mái
   mk(B(.08,.026,.024),M(0xffe066),-.28,.66,.41,head).rotation.z=.35;
  }else{
   // Chỏm tóc bồng bềnh hiện đại cho nam
@@ -406,10 +481,10 @@ function build(person={name:'',gender:'m'},replace=true){
  held=mkInc(torso,5,.48,.22,tipMaterial);held.g.position.set(0,.36,.44);
  const labelCanvas=document.createElement('canvas');labelCanvas.width=512;labelCanvas.height=128;
  const labelTexture=new THREE.CanvasTexture(labelCanvas);
- const lb=new THREE.Sprite(new THREE.SpriteMaterial({map:labelTexture,depthTest:false}));lb.scale.set(1.55,.38,1);lb.position.y=1.28;lb.renderOrder=9;head.add(lb);
+ const lb=new THREE.Sprite(new THREE.SpriteMaterial({map:labelTexture,depthTest:false}));lb.scale.set(1.68,.42,1);lb.position.y=1.34;lb.renderOrder=9;head.add(lb);
  root.position.set(0,0,15.5);root.rotation.y=Math.PI;
- ch={root,hip,torso,head,legL,legR,armL,armR,eyes,name,held,tipMaterial,labelCanvas,labelTexture,P:{...ID},laneX:0};
- P=ch.P;face=Math.PI;updateLabel(name,ch);return ch;
+ ch={root,hip,torso,head,legL,legR,armL,armR,openEyes,closedEyes,blushList,sprout,gender:person.gender||'m',name,held,tipMaterial,labelCanvas,labelTexture,labelHighlight:false,blinkOffset:Math.random()*3.5,P:{...ID},laneX:0};
+ P=ch.P;face=Math.PI;updateLabel(name,ch,false);return ch;
 }
 function makePersonCard(person,index){
  const card=document.createElement('section');card.className='person-card';card.dataset.index=index;
@@ -669,7 +744,19 @@ function animateActor(actor,pose,dt,walkWeight,isPraying=false){
  actor.armL.rotation.set(pose.arm-sn*.38*sw-bowPulse*.6,0,-pose.armZ);actor.armR.rotation.set(pose.arm+sn*.38*sw-bowPulse*.6,0,pose.armZ);
  actor.torso.rotation.x=pose.torso+bowPulse;actor.torso.scale.y=1+Math.sin(tt*2.2)*.012;
  actor.head.rotation.x=pose.head+nod;actor.head.rotation.z=Math.sin(tt*1.6)*(isPraying?.02:.05);
- actor.eyes.forEach(e=>e.scale.y=Math.max(.12,1-pose.eye*.9));
+ // Mầm cỏ 4 lá trên đầu lắc lư vui mắt theo bước đi và nhịp gật gù
+ if(actor.sprout){
+  actor.sprout.rotation.z=Math.sin(tt*3.4+actor.blinkOffset)*.12+sn*.16*walkWeight;
+  actor.sprout.rotation.x=-nod*.75+Math.cos(tt*2.6)*.06;
+ }
+ // Biểu cảm mắt nhắm cười dịu dàng (◡ ◡) khi khấn & chớp mắt tự động khi mở mắt
+ const eyesClosed=pose.eye>.55;
+ const blinkCycle=(tt+actor.blinkOffset)%3.6;
+ const blinkScale=blinkCycle<.12?Math.max(.12,Math.abs(blinkCycle-.06)/.06):1;
+ actor.openEyes.forEach(e=>{e.visible=!eyesClosed;e.scale.y=blinkScale});
+ actor.closedEyes.forEach(e=>{e.visible=eyesClosed});
+ actor.blushList.forEach(m=>{m.emissiveIntensity=eyesClosed||isPraying?.42:.15});
+ if(actor.labelHighlight!==isPraying)updateLabel(actor.name,actor,isPraying);
  actor.held.g.position.set(0,pose.incY,pose.incZ);
  const lit=running&&((phase==='approach'&&si>=1)||(phase==='offer'&&actor===ch&&si<=1))&&actor.held.g.visible;
  actor.tipMaterial.emissiveIntensity=lit?Math.min(2,actor.tipMaterial.emissiveIntensity+dt*1.5):0;
