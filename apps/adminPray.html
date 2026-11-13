@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quản Trị Lời Cầu Nguyện - Admin</title>
+<style>
+:root {
+  --bg: #180c08;
+  --panel: #27140e;
+  --card: #321a12;
+  --border: #f2b84b55;
+  --fg: #fff1d6;
+  --muted: #d4b895;
+  --gold: #f2b84b;
+  --red: #d9534f;
+  --green: #4caf50;
+  --blue: #3b82f6;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: radial-gradient(circle at top, #2e160f 0%, #140906 100%);
+  color: var(--fg);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  padding: 20px 14px 90px;
+}
+.container {
+  max-width: 1060px;
+  margin: 0 auto;
+}
+header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 16px 20px;
+  margin-bottom: 16px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+}
+header h1 {
+  margin: 0;
+  font-size: 20px;
+  color: var(--gold);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.stats {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 13px;
+}
+.badge {
+  background: rgba(242, 184, 75, 0.14);
+  border: 1px solid var(--border);
+  color: var(--gold);
+  padding: 5px 11px;
+  border-radius: 999px;
+  font-weight: 600;
+}
+.badge.pending {
+  background: rgba(217, 83, 79, 0.2);
+  border-color: #d9534f88;
+  color: #ff9e9b;
+}
+.box {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 16px 20px;
+  margin-bottom: 16px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.3);
+}
+.box-title {
+  margin: 0 0 12px;
+  font-size: 15px;
+  color: var(--gold);
+  font-weight: 700;
+}
+.grid-config {
+  display: grid;
+  grid-template-columns: 1fr 220px auto;
+  gap: 10px;
+  align-items: center;
+}
+.grid-add {
+  display: grid;
+  grid-template-columns: 220px 1fr auto;
+  gap: 10px;
+  align-items: center;
+}
+@media (max-width: 720px) {
+  .grid-config, .grid-add {
+    grid-template-columns: 1fr;
+  }
+}
+input, textarea {
+  width: 100%;
+  background: #1a0c08;
+  border: 1px solid #f2b84b66;
+  color: var(--fg);
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 14px;
+  outline: none;
+}
+input:focus, textarea:focus {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 2px rgba(242, 184, 75, 0.25);
+}
+button {
+  border: 0;
+  border-radius: 10px;
+  padding: 10px 15px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: transform 0.1s, opacity 0.2s;
+  white-space: nowrap;
+}
+button:active { transform: scale(0.98); }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-gold { background: var(--gold); color: #2b1206; }
+.btn-save-db {
+  background: linear-gradient(135deg, #4caf50, #2e7d32);
+  color: #fff;
+  padding: 11px 20px;
+  font-size: 15px;
+  box-shadow: 0 4px 12px rgba(46, 125, 50, 0.45);
+}
+.btn-outline {
+  background: transparent;
+  color: var(--fg);
+  border: 1px solid #f2b84b66;
+}
+.btn-danger {
+  background: rgba(217, 83, 79, 0.2);
+  color: #ff8a85;
+  border: 1px solid #d9534f66;
+}
+.btn-edit {
+  background: rgba(59, 130, 246, 0.2);
+  color: #93c5fd;
+  border: 1px solid #3b82f666;
+}
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.search-wrap {
+  flex: 1;
+  min-width: 240px;
+}
+.table-wrap {
+  overflow-x: auto;
+  border: 1px solid #f2b84b33;
+  border-radius: 12px;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+th, td {
+  padding: 12px 14px;
+  text-align: left;
+  border-bottom: 1px solid #f2b84b22;
+  vertical-align: middle;
+}
+th {
+  background: #1f0e09;
+  color: var(--gold);
+  font-weight: 700;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+tr:hover td {
+  background: rgba(255, 255, 255, 0.03);
+}
+tr.row-new td {
+  background: rgba(76, 175, 80, 0.1);
+}
+tr.row-modified td {
+  background: rgba(242, 184, 75, 0.1);
+}
+tr.row-deleted td {
+  background: rgba(217, 83, 79, 0.14);
+  text-decoration: line-through;
+  opacity: 0.65;
+}
+.actions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+.actions button {
+  padding: 7px 11px;
+  font-size: 13px;
+}
+.time-col {
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.status-tag {
+  display: inline-block;
+  font-size: 11px;
+  padding: 2px 7px;
+  border-radius: 6px;
+  margin-left: 6px;
+  font-weight: 600;
+}
+.tag-new { background: #2e7d32; color: #fff; }
+.tag-mod { background: #d97706; color: #fff; }
+.tag-del { background: #c62828; color: #fff; }
+
+.sticky-footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(24, 12, 8, 0.94);
+  border-top: 1px solid var(--border);
+  backdrop-filter: blur(8px);
+  padding: 12px 20px;
+  z-index: 20;
+}
+.footer-inner {
+  max-width: 1060px;
+  margin: 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+#toast {
+  font-size: 14px;
+  color: var(--gold);
+  font-weight: 500;
+}
+.empty-state {
+  text-align: center;
+  padding: 36px 20px;
+  color: var(--muted);
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>🪔 Quản Trị Lời Cầu Nguyện (Admin)</h1>
+    <div class="stats">
+      <span class="badge" id="total-count">Tổng: 0 lời chúc</span>
+      <span class="badge pending" id="pending-count" hidden>0 thay đổi chưa lưu</span>
+    </div>
+  </header>
+
+  <!-- Cấu hình kết nối Firebase -->
+  <section class="box">
+    <div class="box-title">🔗 Kết Nối Firebase Realtime Database</div>
+    <div class="grid-config">
+      <input id="db-url" type="url" placeholder="https://ten-project-default-rtdb.asia-southeast1.firebasedatabase.app">
+      <input id="db-secret" type="password" placeholder="Database Secret">
+      <div style="display:flex;gap:8px">
+        <button id="btn-load" class="btn-gold" type="button">🔄 Tải Dữ Liệu</button>
+        <button id="btn-export" class="btn-outline" type="button" title="Tải file JSON sao lưu về máy">📥 Xuất File Backup</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Công cụ thêm lời chúc mới -->
+  <section class="box">
+    <div class="box-title">➕ Thêm Lời Chúc Mới</div>
+    <div class="grid-add">
+      <input id="add-name" type="text" maxlength="40" placeholder="Tên người cầu nguyện">
+      <input id="add-text" type="text" maxlength="200" placeholder="Nhập nội dung lời chúc / cầu nguyện...">
+      <button id="btn-add" class="btn-gold" type="button">➕ Thêm Vào Danh Sách</button>
+    </div>
+  </section>
+
+  <!-- Bảng danh sách xem / sửa / xóa -->
+  <section class="box">
+    <div class="toolbar">
+      <div class="box-title" style="margin:0">📜 Danh Sách Lời Cầu Nguyện</div>
+      <div class="search-wrap">
+        <input id="search-input" type="search" placeholder="🔍 Tìm theo tên hoặc nội dung lời chúc...">
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:52px">#</th>
+            <th style="width:210px">Tên Người Chúc</th>
+            <th>Nội Dung Lời Cầu Nguyện</th>
+            <th style="width:145px">Thời Gian</th>
+            <th style="width:175px;text-align:right">Công Cụ</th>
+          </tr>
+        </thead>
+        <tbody id="prayer-tbody">
+          <tr><td colspan="5" class="empty-state">Hãy nhập Firebase Database URL và nhấn "🔄 Tải Dữ Liệu" (hoặc thêm lời chúc mới).</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
+<!-- Thanh công cụ cố định phía dưới để Lưu trữ Database -->
+<div class="sticky-footer">
+  <div class="footer-inner">
+    <div id="toast">Sẵn sàng quản lý dữ liệu.</div>
+    <div style="display:flex;gap:10px">
+      <button id="btn-discard" class="btn-outline" type="button" disabled>↩️ Hoàn Tác Thay Đổi</button>
+      <button id="btn-commit" class="btn-save-db" type="button" disabled>💾 Lưu Thay Đổi Vào Database</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+
+// Khôi phục link Database và Database Secret đã lưu từ lần mở trước (nếu chưa có thì dùng link mặc định)
+const DEFAULT_DB_URL = 'https://thapnhang-default-rtdb.asia-southeast1.firebasedatabase.app';
+const savedUrl = localStorage.getItem('navPray_admin_db_url') || DEFAULT_DB_URL;
+const savedSecret = localStorage.getItem('navPray_admin_db_secret') || '';
+$('db-url').value = savedUrl;
+$('db-secret').value = savedSecret;
+
+// Chỉ cập nhật link Database đã lưu khi người dùng nhập lại link mới
+$('db-url').addEventListener('change', () => {
+  const newUrl = $('db-url').value.trim().replace(/\/+$/, '');
+  if (newUrl) {
+    localStorage.setItem('navPray_admin_db_url', newUrl);
+  }
+});
+
+// Chỉ cập nhật Database Secret đã lưu khi người dùng nhập lại key mới
+$('db-secret').addEventListener('change', () => {
+  const newKey = $('db-secret').value.trim();
+  if (newKey) {
+    localStorage.setItem('navPray_admin_db_secret', newKey);
+  }
+});
+
+// Danh sách bản ghi quản lý trên bộ nhớ tạm
+// Mỗi phần tử: { id, name, text, ts, status: 'clean' | 'new' | 'modified' | 'deleted', editing: false }
+let records = [];
+let originalSnapshot = [];
+
+function notify(msg, isError = false) {
+  const el = $('toast');
+  if (!el) return;
+  el.textContent = msg;
+  el.style.color = isError ? '#ff8a85' : '#f2b84b';
+}
+
+function getBaseUrl() {
+  const inputUrl = $('db-url').value.trim().replace(/\/+$/, '');
+  if (inputUrl) {
+    localStorage.setItem('navPray_admin_db_url', inputUrl);
+  }
+  return inputUrl || localStorage.getItem('navPray_admin_db_url') || DEFAULT_DB_URL;
+}
+
+function buildAuthQuery() {
+  const inputSecret = $('db-secret').value.trim();
+  if (inputSecret) {
+    localStorage.setItem('navPray_admin_db_secret', inputSecret);
+  }
+  const secret = inputSecret || localStorage.getItem('navPray_admin_db_secret') || '';
+  return secret ? `?auth=${encodeURIComponent(secret)}` : '';
+}
+
+function formatDate(ts) {
+  if (!ts) return '—';
+  const d = new Date(Number(ts));
+  if (isNaN(d.getTime())) return '—';
+  return d.toLocaleString('vi-VN', {
+    hour: '2-digit', minute: '2-digit',
+    day: '2-digit', month: '2-digit', year: 'numeric'
+  });
+}
+
+function updateStats() {
+  const activeCount = records.filter(r => r.status !== 'deleted').length;
+  const changedCount = records.filter(r => r.status !== 'clean').length;
+  $('total-count').textContent = `Tổng: ${activeCount} lời chúc`;
+  const pendingBadge = $('pending-count');
+  if (changedCount > 0) {
+    pendingBadge.hidden = false;
+    pendingBadge.textContent = `${changedCount} thay đổi chưa lưu`;
+    $('btn-commit').disabled = false;
+    $('btn-discard').disabled = false;
+  } else {
+    pendingBadge.hidden = true;
+    $('btn-commit').disabled = true;
+    $('btn-discard').disabled = true;
+  }
+}
+
+function renderTable() {
+  const tbody = $('prayer-tbody');
+  const keyword = $('search-input').value.trim().toLowerCase();
+  const filtered = records.filter(r => {
+    if (!keyword) return true;
+    return r.name.toLowerCase().includes(keyword) || r.text.toLowerCase().includes(keyword);
+  });
+
+  if (!filtered.length) {
+    tbody.innerHTML = `<tr><td colspan="5" class="empty-state">Không có lời chúc nào khớp với tìm kiếm.</td></tr>`;
+    updateStats();
+    return;
+  }
+
+  tbody.innerHTML = '';
+  filtered.forEach((rec, idx) => {
+    const tr = document.createElement('tr');
+    if (rec.status === 'new') tr.className = 'row-new';
+    else if (rec.status === 'modified') tr.className = 'row-modified';
+    else if (rec.status === 'deleted') tr.className = 'row-deleted';
+
+    // Cột STT
+    const tdIndex = document.createElement('td');
+    tdIndex.textContent = idx + 1;
+    tr.appendChild(tdIndex);
+
+    // Cột Tên
+    const tdName = document.createElement('td');
+    if (rec.editing) {
+      const inpName = document.createElement('input');
+      inpName.type = 'text';
+      inpName.maxLength = 40;
+      inpName.value = rec.name;
+      inpName.dataset.role = 'edit-name';
+      tdName.appendChild(inpName);
+    } else {
+      const strong = document.createElement('strong');
+      strong.textContent = rec.name;
+      tdName.appendChild(strong);
+      if (rec.status === 'new') tdName.insertAdjacentHTML('beforeend', '<span class="status-tag tag-new">Mới</span>');
+      else if (rec.status === 'modified') tdName.insertAdjacentHTML('beforeend', '<span class="status-tag tag-mod">Đã sửa</span>');
+      else if (rec.status === 'deleted') tdName.insertAdjacentHTML('beforeend', '<span class="status-tag tag-del">Chờ xóa</span>');
+    }
+    tr.appendChild(tdName);
+
+    // Cột Nội dung lời chúc
+    const tdText = document.createElement('td');
+    if (rec.editing) {
+      const inpText = document.createElement('input');
+      inpText.type = 'text';
+      inpText.maxLength = 220;
+      inpText.value = rec.text;
+      inpText.dataset.role = 'edit-text';
+      tdText.appendChild(inpText);
+    } else {
+      tdText.textContent = rec.text;
+    }
+    tr.appendChild(tdText);
+
+    // Cột Thời gian
+    const tdTime = document.createElement('td');
+    tdTime.className = 'time-col';
+    tdTime.textContent = formatDate(rec.ts);
+    tr.appendChild(tdTime);
+
+    // Cột Công cụ (Sửa / Xóa / Khôi phục)
+    const tdActions = document.createElement('td');
+    const actWrap = document.createElement('div');
+    actWrap.className = 'actions';
+
+    if (rec.status === 'deleted') {
+      const btnRestore = document.createElement('button');
+      btnRestore.className = 'btn-outline';
+      btnRestore.textContent = '↩️ Giữ lại';
+      btnRestore.onclick = () => {
+        rec.status = rec.isLocalNew ? 'new' : 'modified';
+        renderTable();
+      };
+      actWrap.appendChild(btnRestore);
+    } else if (rec.editing) {
+      const btnDone = document.createElement('button');
+      btnDone.className = 'btn-gold';
+      btnDone.textContent = '✔️ Xong';
+      btnDone.onclick = () => {
+        const newName = tr.querySelector('[data-role="edit-name"]').value.trim() || 'Khách thập phương';
+        const newText = tr.querySelector('[data-role="edit-text"]').value.trim();
+        if (!newText) {
+          notify('Nội dung lời chúc không được để trống!', true);
+          return;
+        }
+        rec.name = newName;
+        rec.text = newText;
+        rec.editing = false;
+        if (rec.status === 'clean') rec.status = 'modified';
+        renderTable();
+        notify('Đã cập nhật trên bảng tạm. Nhấn "Lưu Thay Đổi Vào Database" để lưu vĩnh viễn.');
+      };
+
+      const btnCancel = document.createElement('button');
+      btnCancel.className = 'btn-outline';
+      btnCancel.textContent = 'Hủy';
+      btnCancel.onclick = () => {
+        rec.editing = false;
+        renderTable();
+      };
+      actWrap.append(btnDone, btnCancel);
+    } else {
+      const btnEdit = document.createElement('button');
+      btnEdit.className = 'btn-edit';
+      btnEdit.textContent = '✏️ Sửa';
+      btnEdit.onclick = () => {
+        rec.editing = true;
+        renderTable();
+      };
+
+      const btnDel = document.createElement('button');
+      btnDel.className = 'btn-danger';
+      btnDel.textContent = '🗑️ Xóa';
+      btnDel.onclick = () => {
+        if (rec.status === 'new') {
+          records = records.filter(item => item.id !== rec.id);
+        } else {
+          rec.status = 'deleted';
+        }
+        renderTable();
+        notify('Đã đánh dấu xóa. Nhấn "Lưu Thay Đổi Vào Database" để áp dụng.');
+      };
+      actWrap.append(btnEdit, btnDel);
+    }
+
+    tdActions.appendChild(actWrap);
+    tr.appendChild(tdActions);
+    tbody.appendChild(tr);
+  });
+
+  updateStats();
+}
+
+// 1. Tải toàn bộ lời chúc từ Firebase
+async function loadFromDatabase() {
+  const baseUrl = getBaseUrl();
+  if (!baseUrl) {
+    notify('Vui lòng nhập đường dẫn Firebase Realtime Database URL!', true);
+    return;
+  }
+  $('btn-load').disabled = true;
+  notify('Đang tải dữ liệu từ Firebase...');
+  try {
+    const res = await fetch(`${baseUrl}/prayers.json${buildAuthQuery()}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    records = [];
+    if (data && typeof data === 'object') {
+      Object.entries(data).forEach(([id, val]) => {
+        if (val && typeof val === 'object') {
+          records.push({
+            id,
+            name: String(val.name || 'Khách thập phương'),
+            text: String(val.text || ''),
+            ts: Number(val.ts) || Date.now(),
+            status: 'clean',
+            editing: false
+          });
+        }
+      });
+      // Sắp xếp mới nhất lên đầu
+      records.sort((a, b) => b.ts - a.ts);
+    }
+    originalSnapshot = JSON.parse(JSON.stringify(records));
+    renderTable();
+    notify(`Đã tải thành công ${records.length} lời chúc từ Database.`);
+  } catch (err) {
+    console.error(err);
+    notify(`Lỗi tải dữ liệu: ${err.message}. Hãy kiểm tra lại URL hoặc Rules.`, true);
+  } finally {
+    $('btn-load').disabled = false;
+  }
+}
+
+// 2. Thêm lời chúc mới vào bảng tạm
+function addNewRecord() {
+  const name = $('add-name').value.trim() || 'Khách thập phương';
+  const text = $('add-text').value.trim();
+  if (!text) {
+    notify('Vui lòng nhập nội dung lời chúc trước khi thêm!', true);
+    $('add-text').focus();
+    return;
+  }
+  records.unshift({
+    id: 'local_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+    name,
+    text,
+    ts: Date.now(),
+    status: 'new',
+    isLocalNew: true,
+    editing: false
+  });
+  $('add-name').value = '';
+  $('add-text').value = '';
+  renderTable();
+  notify('Đã thêm lời chúc mới vào danh sách. Nhấn "Lưu Thay Đổi Vào Database" để lưu lên Cloud.');
+}
+
+// 3. Lưu toàn bộ thay đổi (Thêm / Sửa / Xóa) lên Firebase Database
+async function commitChangesToDatabase() {
+  const baseUrl = getBaseUrl();
+  if (!baseUrl) {
+    notify('Vui lòng nhập Firebase Database URL trước khi lưu!', true);
+    return;
+  }
+
+  const changed = records.filter(r => r.status !== 'clean');
+  if (!changed.length) return;
+
+  $('btn-commit').disabled = true;
+  notify(`Đang đồng bộ ${changed.length} thay đổi lên Firebase Database...`);
+
+  try {
+    const authQuery = buildAuthQuery();
+    for (const item of changed) {
+      if (item.status === 'new') {
+        const res = await fetch(`${baseUrl}/prayers.json${authQuery}`, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({name: item.name, text: item.text, ts: item.ts})
+        });
+        if (!res.ok) throw new Error(`Không thể thêm bản ghi mới (HTTP ${res.status})`);
+        const created = await res.json();
+        if (created && created.name) item.id = created.name;
+        item.status = 'clean';
+        delete item.isLocalNew;
+      } else if (item.status === 'modified') {
+        const res = await fetch(`${baseUrl}/prayers/${ encodeURIComponent(item.id) }.json${authQuery}`, {
+          method: 'PATCH',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({name: item.name, text: item.text})
+        });
+        if (!res.ok) throw new Error(`Không thể cập nhật bản ghi ${item.id} (HTTP ${res.status})`);
+        item.status = 'clean';
+      } else if (item.status === 'deleted') {
+        const res = await fetch(`${baseUrl}/prayers/${ encodeURIComponent(item.id) }.json${authQuery}`, {
+          method: 'DELETE'
+        });
+        if (!res.ok) throw new Error(`Không thể xóa bản ghi ${item.id} (HTTP ${res.status})`);
+      }
+    }
+
+    records = records.filter(r => r.status !== 'deleted');
+    originalSnapshot = JSON.parse(JSON.stringify(records));
+    renderTable();
+    notify('🎉 Đã lưu trữ toàn bộ thay đổi vào Database thành công!');
+  } catch (err) {
+    console.error(err);
+    notify(`Lỗi khi lưu vào Database: ${err.message}. Hãy kiểm tra quyền .write trong Firebase Rules!`, true);
+    $('btn-commit').disabled = false;
+  }
+}
+
+// 4. Hoàn tác về trạng thái vừa tải
+function discardChanges() {
+  records = JSON.parse(JSON.stringify(originalSnapshot));
+  renderTable();
+  notify('Đã hoàn tác mọi thay đổi chưa lưu.');
+}
+
+// 5. Xuất file JSON sao lưu về máy
+function exportBackupJson() {
+  const exportObj = {prayers: {}};
+  records.filter(r => r.status !== 'deleted').forEach(r => {
+    exportObj.prayers[r.id] = {name: r.name, text: r.text, ts: r.ts};
+  });
+  const blob = new Blob([JSON.stringify(exportObj, null, 2)], {type: 'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `prayers-backup-${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  notify('Đã tải xuống file sao lưu Database (.json).');
+}
+
+$('btn-load').onclick = loadFromDatabase;
+$('btn-add').onclick = addNewRecord;
+$('add-text').addEventListener('keydown', e => { if (e.key === 'Enter') addNewRecord(); });
+$('search-input').addEventListener('input', renderTable);
+$('btn-commit').onclick = commitChangesToDatabase;
+$('btn-discard').onclick = discardChanges;
+$('btn-export').onclick = exportBackupJson;
+
+loadFromDatabase();
+</script>
+</body>
+</html>
