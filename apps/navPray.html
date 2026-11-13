@@ -875,9 +875,18 @@ function spawnRandomSkyPrayer(){
  const sprite=createSkyPrayerSprite(pickedItem);
  sprite.position.set(x,y,z);
  scene.add(sprite);
- // Lời chúc ngắn có vòng đời 5s; lời chúc nhiều dòng được cộng thêm chút thời gian (tối đa ~7.2s) để người xem kịp đọc trọn vẹn
- const lineCount=sprite.userData.lineCount||1;
- const dynamicLife=5+Math.max(0,lineCount-2)*0.45;
+ 
+ // Giải thuật 7 bậc giới hạn số ký tự để tính toán thời gian vòng đời (life) tối ưu
+ const rawTextLength=String(pickedItem.text||'').trim().length;
+ let dynamicLife=5.0;
+ if(rawTextLength<=40)dynamicLife=5.0;
+ else if(rawTextLength<=80)dynamicLife=6.5;
+ else if(rawTextLength<=130)dynamicLife=8.0;
+ else if(rawTextLength<=180)dynamicLife=9.5;
+ else if(rawTextLength<=230)dynamicLife=11.0;
+ else if(rawTextLength<=280)dynamicLife=12.5;
+ else dynamicLife=14.0;
+
  activeSkyPrayers.push({
   id:pickedItem.id,
   text:pickedItem.text,
@@ -886,8 +895,8 @@ function spawnRandomSkyPrayer(){
   baseH:sprite.userData.baseH||0.79,
   age:0,
   life:dynamicLife,
-  vy:0.08+Math.random()*0.05,
-  driftX:(Math.random()-.5)*0.16,
+  vy:0.07+Math.random()*0.04,
+  driftX:(Math.random()-.5)*0.14,
   phase:Math.random()*Math.PI*2
  });
 }
