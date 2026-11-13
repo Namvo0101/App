@@ -748,39 +748,42 @@ loadPrayersFromCloud();
 
 // Tạo thẻ lời chúc 3D trên cao (chỉ hiển thị nội dung lời chúc, ẩn tên người chúc)
 function createSkyPrayerSprite(item){
- const c=document.createElement('canvas');c.width=768;c.height=180;
+ const c=document.createElement('canvas');c.width=820;c.height=200;
  const ctx=c.getContext('2d');
- ctx.fillStyle='rgba(42, 16, 10, 0.62)';
- ctx.strokeStyle='rgba(242, 184, 75, 0.55)';
- ctx.lineWidth=3;
+ const bgGrad=ctx.createLinearGradient(0,18,0,182);
+ bgGrad.addColorStop(0,'rgba(128, 54, 18, 0.82)');
+ bgGrad.addColorStop(1,'rgba(82, 30, 10, 0.78)');
+ ctx.fillStyle=bgGrad;
+ ctx.strokeStyle='rgba(255, 216, 105, 0.9)';
+ ctx.lineWidth=3.5;
  ctx.beginPath();
- if(ctx.roundRect)ctx.roundRect(24,20,720,140,26);
- else ctx.rect(24,20,720,140);
+ if(ctx.roundRect)ctx.roundRect(20,18,780,164,30);
+ else ctx.rect(20,18,780,164);
  ctx.fill();ctx.stroke();
 
- ctx.shadowColor='rgba(255, 190, 60, 0.9)';
- ctx.shadowBlur=12;
- ctx.fillStyle='#fff4d2';
- ctx.font='600 30px system-ui,-apple-system,sans-serif';
+ ctx.shadowColor='rgba(255, 200, 65, 1)';
+ ctx.shadowBlur=16;
+ ctx.fillStyle='#fffbe6';
+ ctx.font='700 37px system-ui,-apple-system,sans-serif';
  ctx.textAlign='center';ctx.textBaseline='middle';
- const lines=wrapPrayerLines(item.text,36).slice(0,2);
+ const lines=wrapPrayerLines(item.text,31).slice(0,2);
  if(lines.length===1){
-  ctx.fillText(`“${lines[0]}”`,384,90,670);
+  ctx.fillText(`“${lines[0]}”`,410,100,730);
  }else{
-  ctx.fillText(`“${lines[0]}`,384,68,670);
-  ctx.fillText(`${lines[1]}”`,384,112,670);
+  ctx.fillText(`“${lines[0]}`,410,74,730);
+  ctx.fillText(`${lines[1]}”`,410,126,730);
  }
  const tex=new THREE.CanvasTexture(c);
  const mat=new THREE.SpriteMaterial({map:tex,transparent:true,depthWrite:false,opacity:0});
  const sprite=new THREE.Sprite(mat);
- sprite.scale.set(2.9,0.68,1);
+ sprite.scale.set(3.25,0.79,1);
  sprite.renderOrder=8;
  return sprite;
 }
 
 function spawnRandomSkyPrayer(){
- // Số lượng thẻ bay tối đa không bao giờ vượt quá số lời chúc thực tế trong Database (và tối đa 12 thẻ cùng lúc)
- const maxConcurrent=Math.min(12,communityPrayersPool.length);
+ // Số lượng thẻ bay tối đa không bao giờ vượt quá số lời chúc thực tế trong Database (và tối đa 16 thẻ cùng lúc)
+ const maxConcurrent=Math.min(16,communityPrayersPool.length);
  if(!maxConcurrent||activeSkyPrayers.length>=maxConcurrent)return;
 
  // Tìm một lời chúc chưa hiển thị trên bầu trời (kiểm tra cả ID lẫn nội dung chữ để chống trùng tuyệt đối)
@@ -799,11 +802,14 @@ function spawnRandomSkyPrayer(){
  if(!pickedItem)return;
 
  let x=0,y=0,z=0,found=false;
- for(let attempt=0;attempt<8;attempt++){
-  const tx=(Math.random()-.5)*9.2;
-  const ty=3.3+Math.random()*2.3;
-  const tz=-7.5+Math.random()*16.5;
-  const tooClose=activeSkyPrayers.some(p=>Math.hypot(p.sprite.position.x-tx,p.sprite.position.y-ty,p.sprite.position.z-tz)<2.4);
+ for(let attempt=0;attempt<10;attempt++){
+  // Bay khắp bề ngang chánh điện (-5.8m đến 5.8m) và chiều sâu từ bàn thờ (-9.2m) đến cửa chánh điện (11.5m)
+  const tx=(Math.random()-.5)*11.6;
+  const tz=-9.2+Math.random()*20.7;
+  // Độ cao từ ngang bụng nhân vật (0.7m) tới sát trần chánh điện (5.6m); nếu ở ngay trên bàn thờ thì từ 2.0m trở lên
+  const minY=(tz<-3.6&&Math.abs(tx)<3.4)?2.0:0.7;
+  const ty=minY+Math.random()*(5.6-minY);
+  const tooClose=activeSkyPrayers.some(p=>Math.hypot(p.sprite.position.x-tx,p.sprite.position.y-ty,p.sprite.position.z-tz)<2.2);
   if(!tooClose){x=tx;y=ty;z=tz;found=true;break}
  }
  if(!found)return;
@@ -816,8 +822,8 @@ function spawnRandomSkyPrayer(){
   sprite,
   age:0,
   life:9+Math.random()*4,
-  vy:0.06+Math.random()*0.05,
-  driftX:(Math.random()-.5)*0.12,
+  vy:0.05+Math.random()*0.045,
+  driftX:(Math.random()-.5)*0.14,
   phase:Math.random()*Math.PI*2
  });
 }
@@ -977,10 +983,10 @@ function loop(){requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.
   fp.sprite.scale.set(2.35*(1+p*.12),.39*(1+p*.12),1);
   fp.sprite.material.opacity=fadeIn*fadeOut*.96;
  }
- // 2. Lời chúc cộng đồng bay lơ lửng trên cao trong chánh điện khi nhân vật bước vào
+ // 2. Lời chúc cộng đồng bay lơ lửng khắp chánh điện (từ ngang bụng tới trần & trên bàn thờ) khi nhân vật bước vào
  if(running&&ch&&ch.root.position.z<12){
   skySpawnAccumulator+=dt;
-  if(skySpawnAccumulator>0.85){
+  if(skySpawnAccumulator>0.65){
    skySpawnAccumulator=0;
    spawnRandomSkyPrayer();
   }
@@ -996,11 +1002,11 @@ function loop(){requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.
    continue;
   }
   const progress=spItem.age/spItem.life;
-  const fadeIn=Math.min(1,spItem.age/1.5);
+  const fadeIn=Math.min(1,spItem.age/1.2);
   const fadeOut=progress>0.75?Math.max(0,1-(progress-0.75)/0.25):1;
-  spItem.sprite.position.y+=spItem.vy*dt;
+  if(spItem.sprite.position.y<5.95)spItem.sprite.position.y+=spItem.vy*dt;
   spItem.sprite.position.x+=Math.sin(spItem.phase+tt*0.9)*spItem.driftX*dt;
-  spItem.sprite.material.opacity=fadeIn*fadeOut*0.88;
+  spItem.sprite.material.opacity=fadeIn*fadeOut*0.95;
  }
  luckyClover.position.y=2.62+Math.sin(tt*1.6)*.07;
  luckyClover.rotation.y=.36+Math.sin(tt*.85)*.22;
