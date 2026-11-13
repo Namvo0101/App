@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="vi"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="referrer" content="no-referrer">
 <title>Thắp Nhang Cầu Nguyện</title>
 <style>
 :root{--bg:rgba(48,20,14,.86);--fg:#fff1d6;--ac:#f2b84b;--ac2:#d9534f;box-sizing:border-box}
@@ -658,7 +657,7 @@ if(!isMobile)pickVoice();
 const FIREBASE_DB_URL='https://thapnhang-default-rtdb.asia-southeast1.firebasedatabase.app';
 let communityPrayersPool=[];
 const activeSkyPrayers=[];
-let skySpawnAccumulator=0;
+let skySpawnAccumulator=0,skyPoolCursor=0;
 
 // Lưu lời chúc lên Firebase Database (nếu để trống thì lưu câu DEFAULT_PRAYER như bình thường)
 async function savePrayerToCloud(person){
@@ -666,15 +665,16 @@ async function savePrayerToCloud(person){
  const rawPrayer=(person.prayer||'').trim()||DEFAULT_PRAYER;
  const cleanText=rawPrayer.slice(0,200);
  const cleanName=(person.name||'Khách thập phương').trim().slice(0,30);
- communityPrayersPool.push({text:cleanText});
  try{
-  await fetch(`${FIREBASE_DB_URL}/prayers.json`,{
+  const res=await fetch(`${FIREBASE_DB_URL}/prayers.json`,{
    method:'POST',
    headers:{'Content-Type':'application/json'},
    body:JSON.stringify({name:cleanName,text:cleanText,ts:Date.now()})
   });
+  return await res.json();
  }catch(e){
   console.warn('Không thể lưu lời chúc lên Cloud:',e);
+  return null;
  }
 }
 
@@ -685,15 +685,20 @@ async function loadPrayersFromCloud(){
   return;
  }
  try{
-  const res=await fetch(`${FIREBASE_DB_URL}/prayers.json?orderBy="$key"&limitToLast=100`);
+  const res=await fetch(`${FIREBASE_DB_URL}/prayers.json`);
+  if(!res.ok)throw new Error(`HTTP ${res.status}`);
   const data=await res.json();
   if(data&&typeof data==='object'){
-   const list=Object.values(data).filter(item=>item&&item.text);
+   const list=Object.entries(data)
+    .filter(([,item])=>item&&typeof item==='object'&&item.text)
+    .map(([id,item])=>({id,text:String(item.text)}))
+    .slice(-100);
    for(let i=list.length-1;i>0;i--){
     const j=Math.floor(Math.random()*(i+1));
     [list[i],list[j]]=[list[j],list[i]];
    }
    communityPrayersPool=list;
+   skyPoolCursor=0;
   }else{
    communityPrayersPool=[];
   }
@@ -737,7 +742,23 @@ function createSkyPrayerSprite(item){
 }
 
 function spawnRandomSkyPrayer(){
- if(!communityPrayersPool.length||activeSkyPrayers.length>=12)return;
+ // Số lượng thẻ bay tối đa không bao giờ vượt quá số lời chúc thực tế trong Database (và tối đa 12 thẻ cùng lúc)
+ const maxConcurrent=Math.min(12,communityPrayersPool.length);
+ if(!maxConcurrent||activeSkyPrayers.length>=maxConcurrent)return;
+
+ // Tìm một lời chúc trong Database chưa hiển thị trên bầu trời để không bị nhân bản trùng lặp
+ const activeIds=new Set(activeSkyPrayers.map(p=>p.id));
+ let pickedItem=null;
+ for(let i=0;i<communityPrayersPool.length;i++){
+  const candidate=communityPrayersPool[(skyPoolCursor+i)%communityPrayersPool.length];
+  if(!activeIds.has(candidate.id)){
+   pickedItem=candidate;
+   skyPoolCursor=(skyPoolCursor+i+1)%communityPrayersPool.length;
+   break;
+  }
+ }
+ if(!pickedItem)return;
+
  let x=0,y=0,z=0,found=false;
  for(let attempt=0;attempt<8;attempt++){
   const tx=(Math.random()-.5)*9.2;
@@ -747,11 +768,11 @@ function spawnRandomSkyPrayer(){
   if(!tooClose){x=tx;y=ty;z=tz;found=true;break}
  }
  if(!found)return;
- const item=communityPrayersPool[Math.floor(Math.random()*communityPrayersPool.length)];
- const sprite=createSkyPrayerSprite(item);
+ const sprite=createSkyPrayerSprite(pickedItem);
  sprite.position.set(x,y,z);
  scene.add(sprite);
  activeSkyPrayers.push({
+  id:pickedItem.id,
   sprite,
   age:0,
   life:9+Math.random()*4,
@@ -830,6 +851,8 @@ function beginGroupRitual(){
 }
 function finish(){
  running=false;phase='idle';cancelSpeech();clearFloatingPrayers();clearSkyPrayers();
+ // Tải lại danh sách Database sau khi kết thúc lượt lễ để cập nhật cho lượt tiếp theo
+ loadPrayersFromCloud();
  setTimeout(()=>{if(running)return;cm='idle';orb.a=orb.p=0;makeParticipants(people);$('go').disabled=false;$('count-back').disabled=false;$('people-fields').querySelectorAll('input,button').forEach(el=>el.disabled=false);$('ui').classList.remove('hide')},900);
 }
 $('go').onclick=()=>{
