@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="vi"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="referrer" content="no-referrer">
 <title>Thắp Nhang Cầu Nguyện</title>
 <style>
 :root{--bg:rgba(48,20,14,.86);--fg:#fff1d6;--ac:#f2b84b;--ac2:#d9534f;box-sizing:border-box}
@@ -556,6 +557,28 @@ function cancelSpeech(){
 function splitChunks(t){
  return t.match(/[^.!?,;]+[.!?,;]?/g)?.map(s=>s.trim()).filter(Boolean)||[t];
 }
+function unlockSpeechFromGesture(){
+ if(isMobile||muted)return;
+ try{
+  if(!ttsAud){
+   ttsAud=new Audio();
+   ttsAud.playsInline=true;
+   ttsAud.referrerPolicy='no-referrer';
+  }
+  // Mở khóa Audio element trong lúc người dùng vừa click nút Thắp nhang
+  ttsAud.src='data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
+  const p=ttsAud.play();
+  if(p&&typeof p.then==='function')p.then(()=>{ttsAud.pause();ttsAud.currentTime=0}).catch(()=>{});
+ }catch(e){}
+ try{
+  if(window.speechSynthesis){
+   pickVoice();
+   const warm=new SpeechSynthesisUtterance('');
+   warm.volume=0;
+   speechSynthesis.speak(warm);
+  }
+ }catch(e){}
+}
 function playOnlineTTS(text,token){
  const chunks=splitChunks(text);let idx=0;
  setDuck(true);
@@ -563,6 +586,7 @@ function playOnlineTTS(text,token){
   if(muted||token!==speechToken||idx>=chunks.length){if(token===speechToken)setDuck(false);return}
   const q=encodeURIComponent(chunks[idx++].slice(0,180));
   if(!ttsAud){ttsAud=new Audio();ttsAud.playsInline=true}
+  ttsAud.referrerPolicy='no-referrer';
   ttsAud.src=`https://translate.googleapis.com/translate_tts?ie=UTF-8&client=gtx&tl=vi&q=${q}`;
   ttsAud.playbackRate=.95;
   ttsAud.onended=next;
@@ -576,6 +600,7 @@ function speak(t){
  cancelSpeech();
  if(isMobile||muted||!t)return;
  const token=speechToken;
+ pickVoice();
  if(viV){
   try{
    const u=new SpeechSynthesisUtterance(t);
@@ -663,22 +688,23 @@ let skySpawnAccumulator=0,skyPoolCursor=0;
 async function savePrayerToCloud(person){
  if(!FIREBASE_DB_URL)return;
  const rawPrayer=(person.prayer||'').trim()||DEFAULT_PRAYER;
- const cleanText=rawPrayer.slice(0,200);
  const cleanName=(person.name||'Khách thập phương').trim().slice(0,30);
  try{
-  const res=await fetch(`${FIREBASE_DB_URL}/prayers.json`,{
+  await fetch(`${FIREBASE_DB_URL}/prayers.json`,{
    method:'POST',
    headers:{'Content-Type':'application/json'},
-   body:JSON.stringify({name:cleanName,text:cleanText,ts:Date.now()})
+   body:JSON.stringify({name:cleanName,text:rawPrayer.slice(0,200),ts:Date.now()})
   });
-  return await res.json();
  }catch(e){
   console.warn('Không thể lưu lời chúc lên Cloud:',e);
-  return null;
  }
 }
 
-// Tải lời chúc đã lưu từ Firebase Database
+// Tải lời chúc đã lưu từ Firebase Database (có bộ lọc chống trùng nội dung chữ)
+function normalizePrayerText(str){
+ return String(str||'').trim().replace(/\s+/g,' ').toLowerCase();
+}
+
 async function loadPrayersFromCloud(){
  if(!FIREBASE_DB_URL){
   communityPrayersPool=[];
@@ -689,15 +715,26 @@ async function loadPrayersFromCloud(){
   if(!res.ok)throw new Error(`HTTP ${res.status}`);
   const data=await res.json();
   if(data&&typeof data==='object'){
-   const list=Object.entries(data)
-    .filter(([,item])=>item&&typeof item==='object'&&item.text)
-    .map(([id,item])=>({id,text:String(item.text)}))
-    .slice(-100);
-   for(let i=list.length-1;i>0;i--){
-    const j=Math.floor(Math.random()*(i+1));
-    [list[i],list[j]]=[list[j],list[i]];
+   const rawEntries=Object.entries(data)
+    .filter(([,item])=>item&&typeof item==='object'&&String(item.text||'').trim())
+    .map(([id,item])=>({id,text:String(item.text).trim()}));
+   // Lọc chống trùng lặp nội dung chữ (chỉ giữ lại 1 bản cho mỗi nội dung lời chúc)
+   const seenTexts=new Set();
+   const uniqueList=[];
+   for(let i=rawEntries.length-1;i>=0;i--){
+    const entry=rawEntries[i];
+    const norm=normalizePrayerText(entry.text);
+    if(norm&&!seenTexts.has(norm)){
+     seenTexts.add(norm);
+     uniqueList.push(entry);
+     if(uniqueList.length>=100)break;
+    }
    }
-   communityPrayersPool=list;
+   for(let i=uniqueList.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [uniqueList[i],uniqueList[j]]=[uniqueList[j],uniqueList[i]];
+   }
+   communityPrayersPool=uniqueList;
    skyPoolCursor=0;
   }else{
    communityPrayersPool=[];
@@ -746,12 +783,14 @@ function spawnRandomSkyPrayer(){
  const maxConcurrent=Math.min(12,communityPrayersPool.length);
  if(!maxConcurrent||activeSkyPrayers.length>=maxConcurrent)return;
 
- // Tìm một lời chúc trong Database chưa hiển thị trên bầu trời để không bị nhân bản trùng lặp
+ // Tìm một lời chúc chưa hiển thị trên bầu trời (kiểm tra cả ID lẫn nội dung chữ để chống trùng tuyệt đối)
  const activeIds=new Set(activeSkyPrayers.map(p=>p.id));
+ const activeTexts=new Set(activeSkyPrayers.map(p=>normalizePrayerText(p.text)));
  let pickedItem=null;
  for(let i=0;i<communityPrayersPool.length;i++){
   const candidate=communityPrayersPool[(skyPoolCursor+i)%communityPrayersPool.length];
-  if(!activeIds.has(candidate.id)){
+  const normCandidate=normalizePrayerText(candidate.text);
+  if(!activeIds.has(candidate.id)&&!activeTexts.has(normCandidate)){
    pickedItem=candidate;
    skyPoolCursor=(skyPoolCursor+i+1)%communityPrayersPool.length;
    break;
@@ -773,6 +812,7 @@ function spawnRandomSkyPrayer(){
  scene.add(sprite);
  activeSkyPrayers.push({
   id:pickedItem.id,
+  text:pickedItem.text,
   sprite,
   age:0,
   life:9+Math.random()*4,
@@ -860,7 +900,7 @@ $('go').onclick=()=>{
  // Lưu lời chúc của từng người lên Database (nếu để trống vẫn lưu câu DEFAULT_PRAYER như bình thường)
  people.forEach(p=>savePrayerToCloud(p));
  makeParticipants(people);
- startMusic(true);running=true;activeIndex=0;beginGroupApproach();
+ startMusic(true);unlockSpeechFromGesture();running=true;activeIndex=0;beginGroupApproach();
  $('go').disabled=true;$('count-back').disabled=true;$('people-fields').querySelectorAll('input,button').forEach(el=>el.disabled=true);$('ui').classList.add('hide');
 };
 
