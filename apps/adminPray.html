@@ -290,7 +290,7 @@ tr.row-deleted td {
     <div class="box-title">➕ Thêm Lời Chúc Mới</div>
     <div class="grid-add">
       <input id="add-name" type="text" maxlength="40" placeholder="Tên người cầu nguyện">
-      <input id="add-text" type="text" maxlength="200" placeholder="Nhập nội dung lời chúc / cầu nguyện...">
+      <input id="add-text" type="text" maxlength="300" placeholder="Nhập nội dung lời chúc / cầu nguyện (tối đa 300 ký tự)...">
       <button id="btn-add" class="btn-gold" type="button">➕ Thêm Vào Danh Sách</button>
     </div>
   </section>
@@ -466,7 +466,7 @@ function renderTable() {
     if (rec.editing) {
       const inpText = document.createElement('input');
       inpText.type = 'text';
-      inpText.maxLength = 220;
+      inpText.maxLength = 300;
       inpText.value = rec.text;
       inpText.dataset.role = 'edit-text';
       tdText.appendChild(inpText);
