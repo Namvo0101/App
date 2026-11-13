@@ -36,6 +36,8 @@ input{width:150px}
 .person-gender button{flex:1}
 #count-confirm,#count-back{background:#604026;color:var(--fg);border:1px solid #f2b84b88;border-radius:12px;padding:9px 12px;font-size:14px;cursor:pointer}
 #snd{position:fixed;z-index:11;right:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 74px);background:var(--bg);border:1px solid #f2b84b66;color:var(--fg);border-radius:50%;width:42px;height:42px;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(6px)}
+#exit-role{position:fixed;z-index:12;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 24px);transform:translateX(-50%);background:linear-gradient(135deg,#f2b84b,#d97706);color:#2b1206;border:1px solid #fff3c4aa;border-radius:999px;padding:11px 26px;font-size:16px;font-weight:700;cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,.65);backdrop-filter:blur(6px);transition:transform .2s,opacity .3s}
+#exit-role:active{transform:translateX(-50%) scale(.96)}
 #copyright{position:fixed;z-index:11;right:14px;bottom:calc(env(safe-area-inset-bottom,0px) + 12px);font-size:12px;color:#ffe9b0cc;letter-spacing:.3px;pointer-events:none;text-shadow:0 1px 4px rgba(0,0,0,.85)}
 </style></head><body>
 <div id="ui"><div class="panel">
@@ -44,6 +46,7 @@ input{width:150px}
 <div id="people-form" hidden><button id="count-back" type="button">Đổi số người</button><div id="people-fields"></div></div>
 <button id="go" type="button" hidden>🔥 Thắp nhang</button>
 </div></div>
+<button id="exit-role" type="button" hidden>Xả Vai</button>
 <button id="snd" type="button" title="Bật/Tắt nhạc nền" aria-label="Tắt nhạc nền" aria-pressed="true">🔊</button>
 <div id="copyright">© Nam Võ</div>
 <div id="error" role="alert" hidden>Không thể khởi tạo cảnh 3D. Hãy kiểm tra kết nối mạng, bật WebGL trong trình duyệt hoặc thử trình duyệt khác rồi tải lại trang.</div>
@@ -874,7 +877,11 @@ function mkGroupSeq(){
   const raw=rawFor(people[i]),dur=durFor(raw);
   s.push({d:dur,wait:1,p:HANDS,on:()=>launchPrayer(actors[i],people[i],i)});
  }
- s.push({d:1.1,p:ID,face:0,cm:'exit',on:()=>{prayingActorIndex=-1}},{walkGroupZ:17,speed:1.5,p:ID});
+ // Sau khi cầu nguyện xong, nhân vật đứng dậy, đi ra đứng ở ngay giữa chánh điện (z = 3.2) và dừng lại
+ s.push(
+  {d:1.1,p:ID,face:0,cm:'exit',on:()=>{prayingActorIndex=-1}},
+  {walkGroupZ:3.2,speed:1.4,p:ID}
+ );
  return s;
 }
 function startStep(){
@@ -896,14 +903,33 @@ function beginGroupRitual(){
  activateActor(actors[0]);P=actors[0].P;face=Math.PI;seq=mkGroupSeq();si=0;startStep();
 }
 function finish(){
- running=false;phase='idle';cancelSpeech();clearFloatingPrayers();
- // Không xóa các thẻ lời chúc trên cao (clearSkyPrayers) để chúng tiếp tục bay và tan biến tự nhiên
- // Tải lại danh sách Database sau khi kết thúc lượt lễ để cập nhật thêm lời chúc mới
+ running=false;phase='panoramic';cancelSpeech();clearFloatingPrayers();
+ // Chuyển góc camera sang chế độ xoay toàn cảnh nhẹ nhàng quanh nhân vật ở giữa chánh điện
+ cm='panoramic';
+ orb.a=0.45;orb.p=0.15;
+ // Tải lại danh sách Database sau khi kết thúc lượt lễ để cập nhật thêm lời chúc mới vào chu kỳ bay
  loadPrayersFromCloud();
- setTimeout(()=>{if(running)return;cm='idle';orb.a=orb.p=0;makeParticipants(people);$('go').disabled=false;$('count-back').disabled=false;$('people-fields').querySelectorAll('input,button').forEach(el=>el.disabled=false);$('ui').classList.remove('hide')},900);
+ // Hiện nút "Xả vai" để khi người dùng bấm vào mới quay lại bảng thiết lập ban đầu
+ $('exit-role').hidden=false;
 }
+$('exit-role').onclick=()=>{
+ $('exit-role').hidden=true;
+ phase='idle';cm='idle';orb.a=orb.p=0;
+ cancelSpeech();clearFloatingPrayers();
+ // Đưa bảng thiết lập về trạng thái vừa bắt đầu vào app (chọn số người cầu nguyện từ đầu)
+ $('people-form').hidden=true;
+ $('go').hidden=true;
+ $('go').disabled=false;
+ $('count-back').disabled=false;
+ $('count-setup').hidden=false;
+ $('person-count').value='1';
+ people=[{name:'',gender:'m',prayer:''}];
+ makeParticipants([{name:'Người 1',gender:'m',prayer:''}]);
+ $('ui').classList.remove('hide');
+};
 $('go').onclick=()=>{
  if(running||!actors.length)return;people=readPeopleForm();
+ $('exit-role').hidden=true;
  // Lưu lời chúc của từng người lên Database (nếu để trống vẫn lưu câu DEFAULT_PRAYER như bình thường)
  people.forEach(p=>savePrayerToCloud(p));
  makeParticipants(people);
@@ -912,11 +938,29 @@ $('go').onclick=()=>{
 };
 
 /* ---------- Điều khiển xoay Camera bằng chuột/cảm ứng ---------- */
-R.domElement.addEventListener('pointerdown',e=>{if(!e.isPrimary)return;orb.drag=true;orb.x=e.clientX;orb.y=e.clientY;R.domElement.setPointerCapture(e.pointerId)});
-R.domElement.addEventListener('pointermove',e=>{if(!orb.drag)return;orb.a=Math.max(-1.4,Math.min(1.4,orb.a-(e.clientX-orb.x)*.006));orb.p=Math.max(-.6,Math.min(1.8,orb.p+(e.clientY-orb.y)*.005));orb.x=e.clientX;orb.y=e.clientY});
+let lastUserCamInput=0;
+R.domElement.addEventListener('pointerdown',e=>{if(!e.isPrimary)return;orb.drag=true;orb.x=e.clientX;orb.y=e.clientY;lastUserCamInput=performance.now();R.domElement.setPointerCapture(e.pointerId)});
+R.domElement.addEventListener('pointermove',e=>{
+ if(!orb.drag)return;
+ const dx=(e.clientX-orb.x)*.006,dy=(e.clientY-orb.y)*.005;
+ if(cm==='panoramic')orb.a-=dx;
+ else orb.a=Math.max(-1.4,Math.min(1.4,orb.a-dx));
+ orb.p=Math.max(-.6,Math.min(1.8,orb.p+dy));
+ orb.x=e.clientX;orb.y=e.clientY;
+ lastUserCamInput=performance.now();
+});
 const stopDrag=()=>{orb.drag=false};
 R.domElement.addEventListener('pointerup',stopDrag);R.domElement.addEventListener('pointercancel',stopDrag);R.domElement.addEventListener('lostpointercapture',stopDrag);
-R.domElement.addEventListener('keydown',e=>{const step=.08;if(e.key==='ArrowLeft')orb.a=Math.max(-1.4,orb.a-step);else if(e.key==='ArrowRight')orb.a=Math.min(1.4,orb.a+step);else if(e.key==='ArrowUp')orb.p=Math.max(-.6,orb.p-step);else if(e.key==='ArrowDown')orb.p=Math.min(1.8,orb.p+step);else return;e.preventDefault()});
+R.domElement.addEventListener('keydown',e=>{
+ const step=.08;
+ if(e.key==='ArrowLeft')orb.a=cm==='panoramic'?orb.a-step:Math.max(-1.4,orb.a-step);
+ else if(e.key==='ArrowRight')orb.a=cm==='panoramic'?orb.a+step:Math.min(1.4,orb.a+step);
+ else if(e.key==='ArrowUp')orb.p=Math.max(-.6,orb.p-step);
+ else if(e.key==='ArrowDown')orb.p=Math.min(1.8,orb.p+step);
+ else return;
+ lastUserCamInput=performance.now();
+ e.preventDefault();
+});
 document.addEventListener('visibilitychange',()=>{
  if(document.hidden){stopMusic();if(!isMobile){try{if(sb)speechSynthesis.pause()}catch(e){}if(ttsAud&&!ttsAud.paused)try{ttsAud.pause()}catch(e){}}}
  else{if(musicRequested&&!muted)startMusic();if(!isMobile){try{if(sb)speechSynthesis.resume()}catch(e){}if(sb&&ttsAud&&ttsAud.paused&&ttsAud.src&&!muted)try{ttsAud.play()}catch(e){}}}
@@ -1025,6 +1069,15 @@ function loop(){requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.
  const r=ch.root;
  if(cm==='idle'){lk.set(0,1.4,15.5);cp.set(lk.x+Math.sin(.55+orb.a)*4.6,2.4+orb.p,lk.z+Math.cos(.55+orb.a)*4.6)}
  else if(cm==='follow'){lk.set(0,1.6,r.position.z-1.5);const dist=Math.max(5.5,Math.min(7.5,r.position.z+7.5));cp.set(lk.x+Math.sin(.38+orb.a)*dist,2.9+orb.p,lk.z+Math.cos(.38+orb.a)*dist)}
+ else if(cm==='panoramic'){
+  // Nếu người dùng không kéo chuột hoặc bấm phím xoay góc nhìn thì hệ thống tự động xoay nhẹ nhàng quanh nhân vật (chậm hơn 30%)
+  if(!orb.drag&&(performance.now()-lastUserCamInput>400)){
+   orb.a+=dt*0.168;
+  }
+  lk.set(0,1.65,r.position.z-0.6);
+  const panoRadius=6.2;
+  cp.set(lk.x+Math.sin(orb.a)*panoRadius,2.75+orb.p,lk.z+Math.cos(orb.a)*panoRadius);
+ }
  else{lk.set(0,1.3,r.position.z);cp.set(lk.x+Math.sin(.9+orb.a)*5.5,2.8+orb.p,lk.z+Math.cos(.9+orb.a)*5.5)}
  cam.position.lerp(cp,1-Math.exp(-dt*2.5));lkc.lerp(lk,1-Math.exp(-dt*4));cam.lookAt(lkc);
  R.render(scene,cam)}
