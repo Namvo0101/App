@@ -497,7 +497,7 @@ function makePersonCard(person,index){
  const name=document.createElement('input');name.type='text';name.maxLength=18;name.autocomplete='off';name.placeholder='Tên người cầu nguyện';name.setAttribute('aria-label',`Tên người cầu nguyện ${index+1}`);name.dataset.field='name';name.value=person.name||'';card.append(name);
  const gender=document.createElement('div');gender.className='seg person-gender';gender.setAttribute('role','group');gender.setAttribute('aria-label',`Nhân vật ${index+1}`);
  [['m','👦 Nam'],['f','👧 Nữ']].forEach(([value,label])=>{const button=document.createElement('button');button.type='button';button.dataset.gender=value;button.textContent=label;button.classList.toggle('on',(person.gender||'m')===value);button.setAttribute('aria-pressed',String((person.gender||'m')===value));gender.append(button)});card.append(gender);
- const prayer=document.createElement('input');prayer.type='text';prayer.maxLength=160;prayer.autocomplete='off';prayer.placeholder='Hãy nhập nội dung cầu nguyện';prayer.setAttribute('aria-label',`Lời cầu nguyện của người ${index+1}`);prayer.dataset.field='prayer';prayer.className='person-pr';prayer.value=person.prayer||'';card.append(prayer);
+ const prayer=document.createElement('input');prayer.type='text';prayer.maxLength=300;prayer.autocomplete='off';prayer.placeholder='Hãy nhập nội dung cầu nguyện (tối đa 300 ký tự)';prayer.setAttribute('aria-label',`Lời cầu nguyện của người ${index+1}`);prayer.dataset.field='prayer';prayer.className='person-pr';prayer.value=person.prayer||'';card.append(prayer);
  return card;
 }
 function readPeopleForm(){
@@ -687,7 +687,7 @@ let communityPrayersPool=[];
 const activeSkyPrayers=[];
 let skySpawnAccumulator=0,skyPoolCursor=0;
 
-// Lưu lời chúc lên Firebase Database (nếu để trống thì lưu câu DEFAULT_PRAYER như bình thường)
+// Lưu lời chúc lên Firebase Database (nếu để trống thì lưu câu DEFAULT_PRAYER như bình thường, hỗ trợ đủ 300 ký tự)
 async function savePrayerToCloud(person){
  if(!FIREBASE_DB_URL)return;
  const rawPrayer=(person.prayer||'').trim()||DEFAULT_PRAYER;
@@ -696,7 +696,7 @@ async function savePrayerToCloud(person){
   await fetch(`${FIREBASE_DB_URL}/prayers.json`,{
    method:'POST',
    headers:{'Content-Type':'application/json'},
-   body:JSON.stringify({name:cleanName,text:rawPrayer.slice(0,200),ts:Date.now()})
+   body:JSON.stringify({name:cleanName,text:rawPrayer.slice(0,300),ts:Date.now()})
   });
  }catch(e){
   console.warn('Không thể lưu lời chúc lên Cloud:',e);
@@ -749,37 +749,93 @@ async function loadPrayersFromCloud(){
 }
 loadPrayersFromCloud();
 
-// Tạo thẻ lời chúc 3D trên cao (chỉ hiển thị nội dung lời chúc, ẩn tên người chúc)
+// Hàm ngắt dòng chính xác theo chiều rộng pixel thực tế trên Canvas (đảm bảo không mất bất kỳ từ nào tới 300 ký tự)
+function wrapTextByPixelWidth(ctx,text,maxWidth){
+ const words=String(text||'').trim().split(/\s+/).filter(Boolean);
+ if(!words.length)return[''];
+ const lines=[];
+ let currentLine=words[0];
+ for(let i=1;i<words.length;i++){
+  const word=words[i];
+  const testLine=currentLine+' '+word;
+  if(ctx.measureText(testLine).width<=maxWidth){
+   currentLine=testLine;
+  }else{
+   lines.push(currentLine);
+   currentLine=word;
+  }
+ }
+ if(currentLine)lines.push(currentLine);
+ return lines;
+}
+
+// Tạo thẻ lời chúc 3D tự động co giãn chiều cao theo độ dài văn bản (hiển thị trọn vẹn 100% lời chúc tới 300 ký tự)
 function createSkyPrayerSprite(item){
- const c=document.createElement('canvas');c.width=820;c.height=200;
+ const fullText=`“${String(item.text||'').trim()}”`;
+ const len=fullText.length;
+ // Tự động chọn cỡ chữ & độ rộng khung tối ưu theo độ dài lời chúc
+ const fontSize=len<=75?36:len<=165?31:27;
+ const lineHeight=Math.round(fontSize*1.36);
+ const canvasW=len<=75?820:len<=165?880:940;
+ const padX=48,padY=34;
+ const maxTextW=canvasW-padX*2;
+
+ const measureCanvas=document.createElement('canvas');
+ const mCtx=measureCanvas.getContext('2d');
+ mCtx.font=`600 ${fontSize}px system-ui,-apple-system,"Segoe UI",sans-serif`;
+ const lines=wrapTextByPixelWidth(mCtx,fullText,maxTextW);
+
+ const contentH=lines.length*lineHeight;
+ const cardH=Math.max(136,contentH+padY*2);
+ const canvasH=cardH+32;
+
+ const c=document.createElement('canvas');
+ c.width=canvasW;c.height=canvasH;
  const ctx=c.getContext('2d');
- const bgGrad=ctx.createLinearGradient(0,18,0,182);
- bgGrad.addColorStop(0,'rgba(128, 54, 18, 0.82)');
- bgGrad.addColorStop(1,'rgba(82, 30, 10, 0.78)');
+
+ const cardX=16,cardY=16,cardW=canvasW-32;
+ // Nền thẻ lụa vàng hổ phách ấm sáng chuyển sắc
+ const bgGrad=ctx.createLinearGradient(0,cardY,0,cardY+cardH);
+ bgGrad.addColorStop(0,'rgba(142, 62, 20, 0.88)');
+ bgGrad.addColorStop(0.5,'rgba(108, 42, 14, 0.86)');
+ bgGrad.addColorStop(1,'rgba(78, 28, 9, 0.88)');
  ctx.fillStyle=bgGrad;
- ctx.strokeStyle='rgba(255, 216, 105, 0.9)';
+ ctx.strokeStyle='rgba(255, 222, 118, 0.95)';
  ctx.lineWidth=3.5;
  ctx.beginPath();
- if(ctx.roundRect)ctx.roundRect(20,18,780,164,30);
- else ctx.rect(20,18,780,164);
+ if(ctx.roundRect)ctx.roundRect(cardX,cardY,cardW,cardH,26);
+ else ctx.rect(cardX,cardY,cardW,cardH);
  ctx.fill();ctx.stroke();
 
- ctx.shadowColor='rgba(255, 200, 65, 1)';
- ctx.shadowBlur=16;
- ctx.fillStyle='#fffbe6';
- ctx.font='700 37px system-ui,-apple-system,sans-serif';
- ctx.textAlign='center';ctx.textBaseline='middle';
- const lines=wrapPrayerLines(item.text,31).slice(0,2);
- if(lines.length===1){
-  ctx.fillText(`“${lines[0]}”`,410,100,730);
- }else{
-  ctx.fillText(`“${lines[0]}`,410,74,730);
-  ctx.fillText(`${lines[1]}”`,410,126,730);
- }
+ // Viền chỉ vàng mảnh bên trong tạo vẻ trang trọng như thẻ ước nguyện
+ ctx.strokeStyle='rgba(255, 236, 160, 0.32)';
+ ctx.lineWidth=1.5;
+ ctx.beginPath();
+ if(ctx.roundRect)ctx.roundRect(cardX+10,cardY+10,cardW-20,cardH-20,18);
+ else ctx.rect(cardX+10,cardY+10,cardW-20,cardH-20);
+ ctx.stroke();
+
+ // Vẽ đầy đủ tất cả các dòng của lời chúc
+ ctx.shadowColor='rgba(255, 195, 55, 0.95)';
+ ctx.shadowBlur=14;
+ ctx.fillStyle='#fffdf0';
+ ctx.font=`600 ${fontSize}px system-ui,-apple-system,"Segoe UI",sans-serif`;
+ ctx.textAlign='center';
+ ctx.textBaseline='middle';
+
+ const startY=cardY+cardH/2-((lines.length-1)*lineHeight)/2;
+ lines.forEach((line,idx)=>{
+  ctx.fillText(line,canvasW/2,startY+idx*lineHeight,maxTextW+8);
+ });
+
  const tex=new THREE.CanvasTexture(c);
  const mat=new THREE.SpriteMaterial({map:tex,transparent:true,depthWrite:false,opacity:0});
  const sprite=new THREE.Sprite(mat);
- sprite.scale.set(3.25,0.79,1);
+ // Giữ đúng tỷ lệ khung hình thực tế trong không gian 3D để chữ luôn sắc nét, không bị bẹp
+ const baseW=canvasW/255;
+ const baseH=canvasH/255;
+ sprite.scale.set(baseW,baseH,1);
+ sprite.userData={baseW,baseH,lineCount:lines.length};
  sprite.renderOrder=8;
  return sprite;
 }
@@ -819,12 +875,17 @@ function spawnRandomSkyPrayer(){
  const sprite=createSkyPrayerSprite(pickedItem);
  sprite.position.set(x,y,z);
  scene.add(sprite);
+ // Lời chúc ngắn có vòng đời 5s; lời chúc nhiều dòng được cộng thêm chút thời gian (tối đa ~7.2s) để người xem kịp đọc trọn vẹn
+ const lineCount=sprite.userData.lineCount||1;
+ const dynamicLife=5+Math.max(0,lineCount-2)*0.45;
  activeSkyPrayers.push({
   id:pickedItem.id,
   text:pickedItem.text,
   sprite,
+  baseW:sprite.userData.baseW||3.25,
+  baseH:sprite.userData.baseH||0.79,
   age:0,
-  life:5,
+  life:dynamicLife,
   vy:0.08+Math.random()*0.05,
   driftX:(Math.random()-.5)*0.16,
   phase:Math.random()*Math.PI*2
@@ -1055,7 +1116,7 @@ function loop(){requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.
   if(spItem.sprite.position.y<6.2)spItem.sprite.position.y+=spItem.vy*upwardBoost*dt;
   spItem.sprite.position.x+=Math.sin(spItem.phase+tt*1.1)*spItem.driftX*(1+dissolvePhase)*dt;
   const scaleGrow=1+dissolvePhase*0.18;
-  spItem.sprite.scale.set(3.25*scaleGrow,0.79*scaleGrow,1);
+  spItem.sprite.scale.set(spItem.baseW*scaleGrow,spItem.baseH*scaleGrow,1);
   spItem.sprite.material.opacity=fadeIn*fadeOut*0.95;
  }
  luckyClover.position.y=2.62+Math.sin(tt*1.6)*.07;
