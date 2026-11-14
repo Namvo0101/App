@@ -39,12 +39,20 @@ input{width:150px}
 #exit-role{position:fixed;z-index:12;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 24px);transform:translateX(-50%);background:linear-gradient(135deg,#f2b84b,#d97706);color:#2b1206;border:1px solid #fff3c4aa;border-radius:999px;padding:11px 26px;font-size:16px;font-weight:700;cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,.65);backdrop-filter:blur(6px);transition:transform .2s,opacity .3s}
 #exit-role:active{transform:translateX(-50%) scale(.96)}
 #copyright{position:fixed;z-index:11;right:14px;bottom:calc(env(safe-area-inset-bottom,0px) + 12px);font-size:12px;color:#ffe9b0cc;letter-spacing:.3px;pointer-events:none;text-shadow:0 1px 4px rgba(0,0,0,.85)}
-/* Cần gạt ảo (Virtual Joystick) mờ nhẹ góc trái dưới & Hướng dẫn điều khiển */
+/* Cần gạt ảo (Virtual Joystick) mờ nhẹ góc trái dưới */
 #joy-zone{position:fixed;z-index:12;left:calc(env(safe-area-inset-left,0px) + 18px);bottom:calc(env(safe-area-inset-bottom,0px) + 22px);width:112px;height:112px;border-radius:50%;background:radial-gradient(circle,rgba(242,184,75,.14) 0%,rgba(36,16,10,.42) 100%);border:1.5px solid rgba(242,184,75,.38);backdrop-filter:blur(4px);touch-action:none;display:flex;align-items:center;justify-content:center;opacity:.68;transition:opacity .25s,transform .2s;box-shadow:0 4px 16px rgba(0,0,0,.35)}
 #joy-zone.active{opacity:.95;border-color:rgba(242,184,75,.75)}
 #joy-knob{width:46px;height:46px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#ffe89e,#d98a2b);border:1.5px solid rgba(255,248,220,.85);box-shadow:0 3px 10px rgba(0,0,0,.5);pointer-events:none;transform:translate3d(0,0,0);transition:transform .08s ease-out}
 #joy-zone.active #joy-knob{transition:none}
+/* Huy hiệu số người đang hiện diện & Thông báo xếp hàng đợi thắp nhang */
+#live-badge{position:fixed;z-index:11;left:calc(env(safe-area-inset-left,0px) + 12px);top:calc(env(safe-area-inset-top,0px) + 10px);background:rgba(36,16,10,.82);border:1px solid #f2b84b66;border-radius:999px;padding:6px 13px;font-size:12.5px;color:#ffe9b0;display:flex;align-items:center;gap:7px;backdrop-filter:blur(6px);pointer-events:none;box-shadow:0 4px 14px rgba(0,0,0,.4)}
+#live-dot{width:8px;height:8px;border-radius:50%;background:#4caf50;box-shadow:0 0 8px #4caf50;animation:pulseDot 1.8s infinite}
+@keyframes pulseDot{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.35);opacity:.65}}
+#queue-banner{position:fixed;z-index:12;left:50%;top:calc(env(safe-area-inset-top,0px) + 14px);transform:translateX(-50%);background:linear-gradient(135deg,rgba(56,24,14,.94),rgba(36,14,8,.94));border:1.5px solid #f2b84baa;border-radius:16px;padding:10px 18px;font-size:14px;color:#fff3d1;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.6);backdrop-filter:blur(8px);max-width:min(92vw,520px);line-height:1.45;pointer-events:none}
+#queue-banner strong{color:#ffd56b}
 </style></head><body>
+<div id="live-badge" title="Số người đang có mặt trong chánh điện"><span id="live-dot"></span><span id="live-count">Đang kết nối chánh điện...</span></div>
+<div id="queue-banner" hidden></div>
 <div id="ui"><div class="panel">
 <h1>🪔 Thắp Nhang Cầu Nguyện 🪔</h1>
 <div id="count-setup"><label for="person-count">Số người cầu nguyện</label><select id="person-count"><option value="1">1 người</option><option value="2">2 người</option><option value="3">3 người</option><option value="4">4 người</option><option value="5">5 người</option></select><button id="count-confirm" type="button">Tiếp tục</button></div>
@@ -57,6 +65,8 @@ input{width:150px}
 <div id="copyright">© Nam Võ</div>
 <div id="error" role="alert" hidden>Không thể khởi tạo cảnh 3D. Hãy kiểm tra kết nối mạng, bật WebGL trong trình duyệt hoặc thử trình duyệt khác rồi tải lại trang.</div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script>
 const $=id=>document.getElementById(id);
 let muted=false,musicRequested=true,musicBlocked=false;
@@ -96,8 +106,8 @@ function retryMusicAfterGesture(){
 }
 addEventListener('pointerdown',retryMusicAfterGesture);
 addEventListener('keydown',retryMusicAfterGesture);
-// Thử phát ngay, trước khi dựng toàn bộ cảnh 3D để giảm độ trễ khi vào trang.
 startMusic();
+
 try {
 if(!window.THREE)throw new Error('Three.js chưa tải được');
 // Tông nền nâu đỏ trầm ấm cúng
@@ -164,7 +174,7 @@ mk(B(5.06,.8,.04),clothM,0,.6,-3.99);mk(B(5.14,.05,.07),GOLD,0,.99,-3.99);mk(B(5
 mk(C(.4,.27,.32,28),GOLD,0,1.21,-4.5);mk(C(.36,.36,.02,24),M(0x6e6a66),0,1.375,-4.5);mk(new THREE.TorusGeometry(.385,.022,8,32),GOLD,0,1.37,-4.5).rotation.x=Math.PI/2;[-1,1].forEach(q=>mk(new THREE.TorusGeometry(.085,.02,8,16),GOLD,q*.4,1.28,-4.5));
 const flames=[];
 [-1.8,1.8].forEach(x=>{mk(C(.04,.04,.5,12),M(0xfff4e0,{roughness:.55}),x,1.3,-4.6);mk(C(.068,.08,.07,18),GOLD,x,1.085,-4.6);mk(C(.012,.012,.1,6),M(0x2a1a10),x,1.58,-4.6);const f=mk(Sp(.04,10),M(0xffd24a,{emissive:0xffb020,emissiveIntensity:2}),x,1.62,-4.6);f.scale.y=2.9;f.castShadow=false;const l=new THREE.PointLight(0xffb347,.9,7);l.position.set(x,1.8,-4.4);scene.add(l);const gl=new THREE.Sprite(glowMat(0xffa23a,.55));gl.position.set(x,1.68,-4.6);gl.scale.set(1.3,1.3,1);scene.add(gl);flames.push([f,l,gl])});
-// Lễ vật hiện đại: Dàn đều Gà rán (trái & 2 phần bên phải), Pizza, Trà sữa, Bánh tráng trộn & Cá viên chiên không đè lên nhau
+// Lễ vật hiện đại: Gà rán, Pizza, Trà sữa, Bánh tráng trộn & Cá viên chiên
 {
  const makeFriedChickenPlate=(px,pz,scale=.76,rotY=0)=>{
   const fryPlate=new THREE.Group();fryPlate.position.set(px,1.05,pz);fryPlate.scale.setScalar(scale);fryPlate.rotation.y=rotY;scene.add(fryPlate);
@@ -176,12 +186,9 @@ const flames=[];
    mk(Sp(.038,8),M(0xf7edd4),-.26,0,.02,leg);mk(Sp(.038,8),M(0xf7edd4),-.26,0,-.02,leg);
   });
  };
- // Đĩa gà rán bên trái (hàng sau)
  makeFriedChickenPlate(-1.12,-4.85,.78,.2);
- // 2 phần gà rán bên phải bàn thờ (tách biệt rõ ràng, không đè lên Pizza & Cá viên chiên)
  makeFriedChickenPlate(1.52,-4.92,.66,-.35);
  makeFriedChickenPlate(2.18,-4.45,.66,.55);
- // Bánh Pizza (bên phải phía sau, lệch vào giữa để nhường chỗ cho 2 phần gà rán bên phải)
  const pizzaSet=new THREE.Group();pizzaSet.position.set(.92,1.05,-4.86);pizzaSet.scale.setScalar(.76);scene.add(pizzaSet);
  mk(C(.42,.36,.04,24),GOLD,0,.02,0,pizzaSet);
  mk(C(.37,.39,.045,24),M(0xd99b4e,{roughness:.75}),0,.055,0,pizzaSet);
@@ -191,7 +198,6 @@ const flames=[];
   mk(C(.05,.05,.012,12),M(0xc83228),Math.cos(a)*rad,.09,Math.sin(a)*rad,pizzaSet);
   mk(Sp(.024,8),M(0x4b8f3b),Math.cos(a+.45)*.22,.092,Math.sin(a+.45)*.22,pizzaSet).scale.y=.45;
  }
- // Hai ly trà sữa trân châu (hai bên bát hương)
  [-.48,.48].forEach((x,idx)=>{
   const cup=new THREE.Group();cup.position.set(x,1.05,-4.55);scene.add(cup);
   mk(C(.12,.09,.34,18),M(idx?0xe09a5c:0xc97b42,{roughness:.35}),0,.17,0,cup);
@@ -199,7 +205,6 @@ const flames=[];
   mk(new THREE.SphereGeometry(.12,18,10,0,Math.PI*2,0,Math.PI*.5),M(0xffffff,{roughness:.2}),0,.34,0,cup).scale.y=.65;
   const straw=mk(C(.015,.015,.24,8),M(idx?0xff5c8a:0x3b8ea5),.025,.42,0,cup);straw.rotation.z=-.22;
  });
- // Tô bánh tráng trộn (phía trước bên trái)
  const bttBowl=new THREE.Group();bttBowl.position.set(-1.15,1.05,-4.26);scene.add(bttBowl);
  mk(C(.21,.135,.11,20),M(0xf5efe6,{roughness:.35}),0,.055,0,bttBowl);
  mk(C(.19,.19,.02,18),M(0xd96b27,{roughness:.8}),0,.1,0,bttBowl);
@@ -209,7 +214,6 @@ const flames=[];
  }
  [[-.065,.124,-.045],[.07,.122,.035]].forEach(([x,y,z])=>mk(Sp(.026,10),M(0xfffdf7),x,y,z,bttBowl).scale.set(1.2,.85,1));
  [[-.03,.125,.065],[.045,.126,-.065]].forEach(([x,y,z])=>mk(B(.045,.014,.025),M(0x6e2414),x,y,z,bttBowl).rotation.y=x*12);
- // Đĩa cá viên chiên & xiên que (to rõ, nhiều xiên vàng ươm)
  const fishPlate=new THREE.Group();fishPlate.position.set(.98,1.05,-4.26);fishPlate.scale.setScalar(1.38);scene.add(fishPlate);
  mk(C(.27,.21,.04,24),GOLD,0,.02,0,fishPlate);
  [
@@ -251,45 +255,34 @@ function emit(t){const s=sm.find(a=>a.userData.l<=0);if(!s)return;t.getWorldPosi
 function stopMusic(){music.pause()}
 $('snd').onclick=()=>{if(musicBlocked&&!muted){startMusic(true);return}muted=!muted;$('snd').textContent=muted?'🔇':'🔊';$('snd').setAttribute('aria-pressed',String(!muted));$('snd').setAttribute('aria-label',muted?'Bật nhạc nền':'Tắt nhạc nền');if(muted){cancelSpeech();stopMusic()}else startMusic(true)};
 
-/* ---------- Nhân vật & Tối ưu bảng tên ---------- */
+/* ---------- Nhân vật & Bộ nhớ đệm Geometry/Texture (Tối ưu Multiplayer) ---------- */
 let ch=null,P,held,actors=[],people=[],activeIndex=0,leaderIndex=0,phase='idle',groupWalkFrom=[];
 const DEFAULT_PRAYER='Cầu cho gia đình bình an, sức khỏe, vạn sự như ý.';
+
 function updateLabel(name,actor=ch,isPraying=false,isLeader=false){
  if(!actor)return;
+ const isRemote=Boolean(actor.isRemote);
  const x=actor.labelCanvas.getContext('2d');x.clearRect(0,0,512,128);
  x.save();
- const activeGlow=isPraying||isLeader;
- x.fillStyle=isPraying?'#fff7cc':isLeader?'#ffe57f':'#ffe9b0';
+ const activeGlow=isPraying||(isLeader&&!isRemote);
+ x.fillStyle=isPraying?'#fff7cc':isRemote?'#e6dac8':isLeader?'#ffe57f':'#ffe9b0';
  x.shadowColor=activeGlow?'rgba(255,205,60,1)':'rgba(25,8,4,.95)';
  x.shadowBlur=activeGlow?22:8;
  x.shadowOffsetX=activeGlow?0:1;
  x.shadowOffsetY=activeGlow?0:2;
- x.font=`bold ${activeGlow?54:50}px system-ui,-apple-system,sans-serif`;
+ x.font=`bold ${activeGlow?54:isRemote?44:50}px system-ui,-apple-system,sans-serif`;
  x.textAlign='center';x.textBaseline='middle';
- const displayText=isLeader&&actors.length>1?`👑 ${name}`:name;
+ const displayText=(isLeader&&!isRemote&&actors.length>1)?`👑 ${name}`:name;
  x.fillText(displayText,256,66,460);
  if(activeGlow)x.fillText(displayText,256,66,460);
  x.restore();
  actor.labelTexture.needsUpdate=true;actor.name=name;actor.labelHighlight=isPraying;actor.labelLeader=isLeader;
 }
-function disposeCharacter(root){
- const geometries=new Set(),materials=new Set(),textures=new Set();
- root.traverse(o=>{
-  if(o.geometry)geometries.add(o.geometry);
-  const list=Array.isArray(o.material)?o.material:[o.material];
-  list.filter(Boolean).forEach(m=>{materials.add(m);Object.values(m).forEach(v=>{if(v&&v.isTexture)textures.add(v)})});
- });
- geometries.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());textures.forEach(t=>t.dispose());
-}
-function addFlower(parent,x,y,z,r,petalMat,centerMat){
- for(let i=0;i<5;i++){
-  const a=-Math.PI/2+i*Math.PI*2/5,p=mk(Sp(r*.48,8),petalMat,x+Math.cos(a)*r*.58,y+Math.sin(a)*r*.58,z,parent);
-  p.scale.set(1,1,.42);
- }
- mk(Sp(r*.34,8),centerMat,x,y,z+.015,parent);
-}
-// Texture mắt anime chuyển sắc + họa tiết vải áo/váy sinh động
+
+// Bộ nhớ đệm Texture & Geometry dùng chung để tránh rò rỉ VRAM khi nhiều người ra vào phòng
+const SHARED_CHAR_CACHE={};
 function createAnimeEyeTexture(){
+ if(SHARED_CHAR_CACHE.eyeTex)return SHARED_CHAR_CACHE.eyeTex;
  const c=document.createElement('canvas');c.width=c.height=128;
  const x=c.getContext('2d');
  const g=x.createLinearGradient(0,12,0,118);
@@ -297,24 +290,25 @@ function createAnimeEyeTexture(){
  x.fillStyle=g;x.beginPath();x.ellipse(64,64,46,56,0,0,Math.PI*2);x.fill();
  x.fillStyle='#140d14';x.beginPath();x.ellipse(64,58,22,27,0,0,Math.PI*2);x.fill();
  x.fillStyle='rgba(255,220,130,.35)';x.beginPath();x.ellipse(64,88,24,14,0,0,Math.PI*2);x.fill();
- return new THREE.CanvasTexture(c);
+ SHARED_CHAR_CACHE.eyeTex=new THREE.CanvasTexture(c);
+ SHARED_CHAR_CACHE.eyeTex.userData={shared:true};
+ return SHARED_CHAR_CACHE.eyeTex;
 }
 function createOutfitTexture(isFemale){
+ const key=isFemale?'outfitF':'outfitM';
+ if(SHARED_CHAR_CACHE[key])return SHARED_CHAR_CACHE[key];
  const c=document.createElement('canvas');c.width=c.height=256;
  const x=c.getContext('2d');
  if(isFemale){
-  // Kẻ caro pastel ngọt ngào cho chân váy nữ
   x.fillStyle='#fff2f6';x.fillRect(0,0,256,256);
   x.fillStyle='rgba(255,158,187,.28)';
   for(let i=0;i<256;i+=32){x.fillRect(i,0,16,256);x.fillRect(0,i,256,16)}
   x.fillStyle='rgba(255,215,120,.25)';
   for(let i=8;i<256;i+=64){x.fillRect(i,0,4,256);x.fillRect(0,i,256,4)}
  }else{
-  // Áo sweater xanh dương kèm huy hiệu cỏ 4 lá & mặt gấu nhỏ ở mặt trước
   x.fillStyle='#63b3ed';x.fillRect(0,0,256,256);
   x.fillStyle='rgba(255,255,255,.12)';
   for(let y=0;y<256;y+=16)x.fillRect(0,y,256,2);
-  // Vị trí ngực trước của LatheGeometry (u quanh 0.25 hoặc 0.75 tùy chiều)
   [64,192].forEach(cx=>{
    x.save();x.translate(cx,148);
    x.fillStyle='#fff8e7';x.beginPath();x.arc(0,0,20,0,Math.PI*2);x.fill();
@@ -327,21 +321,40 @@ function createOutfitTexture(isFemale){
   });
  }
  const tex=new THREE.CanvasTexture(c);tex.wrapS=tex.wrapT=THREE.RepeatWrapping;
+ tex.userData={shared:true};
+ SHARED_CHAR_CACHE[key]=tex;
  return tex;
 }
-// Hàm tạo khối thân/áo liền mạch bo tròn bằng LatheGeometry
+function disposeCharacter(root){
+ const geometries=new Set(),materials=new Set(),textures=new Set();
+ root.traverse(o=>{
+  if(o.geometry&&!o.geometry.userData?.shared)geometries.add(o.geometry);
+  const list=Array.isArray(o.material)?o.material:[o.material];
+  list.filter(Boolean).forEach(m=>{
+   if(!m.userData?.shared)materials.add(m);
+   Object.values(m).forEach(v=>{if(v&&v.isTexture&&!v.userData?.shared&&v!==blobTex&&v!==glowTex)textures.add(v)});
+  });
+ });
+ geometries.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());textures.forEach(t=>t.dispose());
+}
+function addFlower(parent,x,y,z,r,petalMat,centerMat){
+ for(let i=0;i<5;i++){
+  const a=-Math.PI/2+i*Math.PI*2/5,p=mk(Sp(r*.48,8),petalMat,x+Math.cos(a)*r*.58,y+Math.sin(a)*r*.58,z,parent);
+  p.scale.set(1,1,.42);
+ }
+ mk(Sp(r*.34,8),centerMat,x,y,z+.015,parent);
+}
 function mkSmoothLathe(pts,seg=28){
  const v=pts.map(([r,y])=>new THREE.Vector2(r,y));
  const g=new THREE.LatheGeometry(v,seg);
  g.computeVertexNormals();
  return g;
 }
-function build(person={name:'',gender:'m'},replace=true){
- if(replace&&ch){scene.remove(ch.root);disposeCharacter(ch.root)}
+
+function build(person={name:'',gender:'m'},replace=true,isRemote=false){
+ if(replace&&!isRemote&&ch){scene.remove(ch.root);disposeCharacter(ch.root)}
  const f=person.gender==='f',name=person.name||'Bạn';
- // Chất liệu da mịn hồng hào kiểu Figure (tương thích Three.js r128)
  const skin=new THREE.MeshPhysicalMaterial({color:0xffe0c4,roughness:.42,metalness:.02,clearcoat:.08,clearcoatRoughness:.5,sheen:new THREE.Color(0xffb5a3)});
- // Bảng màu trang phục hiện đại, trẻ trung & đáng yêu (Pastel Trendy)
  const top=new THREE.MeshPhysicalMaterial({color:f?0xff9ebb:0xffffff,map:f?null:createOutfitTexture(false),roughness:.52,sheen:new THREE.Color(f?0xffd6e5:0xbbe3ff)});
  const innerMat=new THREE.MeshPhysicalMaterial({color:0xfffaf0,roughness:.48});
  const bot=new THREE.MeshPhysicalMaterial({color:f?0xffffff:0x3b4d63,map:f?createOutfitTexture(true):null,roughness:.58});
@@ -351,50 +364,41 @@ function build(person={name:'',gender:'m'},replace=true){
  const shoeMain=new THREE.MeshPhysicalMaterial({color:f?0xff85a9:0x4a90d9,roughness:.42});
  const root=new THREE.Group(),hip=new THREE.Group();hip.position.y=.56;root.add(hip);scene.add(root);
  const torso=new THREE.Group();hip.add(torso);
- // Thân áo hiện đại phom rộng (Hoodie/Sweater cho Nam & Cardigan/Babydoll cho Nữ)
  const bodyGeo=mkSmoothLathe([
   [0,-.10],[.285,-.10],[.295,-.03],[.272,.08],[.26,.24],[.245,.42],[.195,.53],[.11,.57],[0,.57]
  ],30);
  const bodyMesh=mk(bodyGeo,top,0,0,0,torso);bodyMesh.scale.set(1.05,1,.94);bodyMesh.rotation.y=Math.PI/2;
  if(f){
-  // Cổ áo búp bê (Peter Pan collar) trắng kem hai bên xinh xắn
   [-1,1].forEach(s=>{
    const peterCollar=mk(Sp(.095,14),innerMat,s*.115,.53,.14,torso);
    peterCollar.scale.set(1.25,.35,.95);peterCollar.rotation.set(.35,s*.3,-s*.25);
   });
-  // Nơ ruy-băng nhỏ trước ngực + hàng cúc ngọc trai cardigan
   mk(Sp(.042,12),accent,0,.46,.235,torso).scale.set(1.3,.85,.7);
   [-1,1].forEach(s=>{
    const bowWing=mk(Sp(.055,10),accent,s*.052,.46,.23,torso);
    bowWing.scale.set(1.25,.75,.55);bowWing.rotation.z=s*.25;
   });
   for(let i=0;i<3;i++)mk(Sp(.022,10),innerMat,0,.35-i*.11,.255-i*.003,torso);
-  // Chân váy xếp ly babydoll xòe bồng bềnh trẻ trung + viền ren hồng
   const skirtGeo=mkSmoothLathe([
    [.39,-.33],[.37,-.20],[.31,-.06],[.26,.04],[0,.04]
   ],28);
   mk(skirtGeo,bot,0,0,0,hip).scale.set(1.05,1,.95);
   const hemGeo=mkSmoothLathe([[.385,-.34],[.395,-.31],[.385,-.28]],28);
   mk(hemGeo,accent,0,0,0,hip).scale.set(1.05,1,.95);
-  // Nơ hồng nhỏ xinh bên hông váy
   addFlower(hip,.18,-.21,.305,.068,M(0xff7aa8),M(0xffe066));
  }else{
-  // Cổ áo sơ mi trắng bẻ nhẹ bên trong áo sweater + mũ hoodie mềm phía sau lưng
   [-1,1].forEach(s=>{
    const shirtCollar=mk(B(.075,.11,.028),innerMat,s*.075,.52,.195,torso);
    shirtCollar.rotation.set(-.35,s*.25,-s*.52);
   });
-  // Túi kangaroo trẻ trung trước bụng + dây rút áo hoodie trắng
   mk(B(.24,.15,.05),M(0x4fa3e0,{roughness:.55}),0,.08,.245,torso);
   [-1,1].forEach(s=>{
    mk(C(.009,.009,.15,8),innerMat,s*.055,.41,.235,torso).rotation.x=-.12;
    mk(Sp(.016,8),accent,s*.055,.33,.252,torso);
   });
-  // Mũ hoodie gập gọn sau vai tạo dáng năng động
   const hoodGeo=mkSmoothLathe([[.16,.44],[.25,.48],[.26,.56],[.17,.58]],22);
   const hood=mk(hoodGeo,M(0x52a3df,{roughness:.5}),0,.02,-.06,torso);hood.scale.set(1.05,.9,.85);
  }
- // Ba lô gấu bông mini xinh xắn sau lưng
  const backpack=new THREE.Group();backpack.position.set(0,.22,-.26);torso.add(backpack);
  const bagMat=M(f?0xfff5f8:0xf6d365,{roughness:.55});
  const bagTrim=M(f?0xff85a9:0xe09f3e,{roughness:.45});
@@ -404,7 +408,6 @@ function build(person={name:'',gender:'m'},replace=true){
   mk(Sp(.038,10),bagTrim,s*.085,.13,-.01,backpack);
   mk(B(.028,.28,.16),bagTrim,s*.135,.04,.14,backpack).rotation.x=-.12;
  });
- // Chân chibi ngắn mũm mĩm + tất cổ cao & giày Sneaker / Mary Jane hiện đại
  const leg=x=>{
   const g=new THREE.Group();g.position.set(x,.02,0);hip.add(g);
   const legGeo=mkSmoothLathe([
@@ -429,7 +432,6 @@ function build(person={name:'',gender:'m'},replace=true){
   return g
  };
  const legL=leg(.125),legR=leg(-.125);
- // Tay áo phồng nhẹ hiện đại + bo cổ tay trẻ trung
  const arm=x=>{
   const g=new THREE.Group();g.position.set(x,.47,0);torso.add(g);
   const sleeveGeo=mkSmoothLathe([
@@ -442,11 +444,9 @@ function build(person={name:'',gender:'m'},replace=true){
   return g
  };
  const armL=arm(.27),armR=arm(-.27);
- // Đầu chibi to tròn bầu bĩnh (~tỷ lệ 2.3 đầu), có má phính và tóc mái ôm trán
  const head=new THREE.Group();head.position.y=.55;torso.add(head);
  mk(C(.105,.125,.12,18),skin,0,.03,0,head);
  const headMesh=mk(Sp(.49,32),skin,0,.47,0,head);headMesh.scale.set(1.05,.97,1.01);
- // Mái tóc ôm tròn đầu + tóc mái tự nhiên
  const cap=mk(new THREE.SphereGeometry(.515,28,20,0,Math.PI*2,0,Math.PI*.55),hr,0,.52,-.02,head);cap.rotation.x=-.18;cap.scale.set(1.05,.98,1.02);
  [-.22,-.07,.08,.22].forEach(bx=>{
   const bang=mk(Sp(.14,14),hr,bx,.73-Math.abs(bx)*.14,.42-Math.abs(bx)*.16,head);
@@ -469,7 +469,6 @@ function build(person={name:'',gender:'m'},replace=true){
    lash.rotation.z=s*.35;
   }
   openEyes.push(openGroup);
-  // Đường mắt nhắm cười cong dịu dàng (◡ ◡) khi cầu nguyện hoặc cúi lạy
   const closedArc=mk(new THREE.TorusGeometry(.055,.013,8,16,Math.PI),hr,0,-.01,.025,g);
   closedArc.rotation.z=Math.PI;closedArc.visible=false;
   closedEyes.push(closedArc);
@@ -479,7 +478,6 @@ function build(person={name:'',gender:'m'},replace=true){
   blushList.push(blushMat);
  });
  mk(new THREE.TorusGeometry(.062,.015,8,16,Math.PI),M(0x9c3636),0,.345,.475,head).rotation.z=Math.PI;
- // Mầm cỏ 4 lá may mắn rung rinh trên đỉnh đầu (đồng bộ với cỏ 4 lá trên bàn thờ!)
  const sprout=new THREE.Group();sprout.position.set(0,.98,.02);head.add(sprout);
  const sproutStemMat=M(0x46994b,{roughness:.45});
  const sproutLeafMat=M(0x6bd463,{roughness:.35,emissive:0x1b4d1d,emissiveIntensity:.25});
@@ -489,7 +487,6 @@ function build(person={name:'',gender:'m'},replace=true){
   const pt=mk(Sp(.045,10),sproutLeafMat,.042,.01,0,lf);pt.scale.set(1.35,.32,.95);pt.rotation.z=.22;
  }
  if(f){
-  // Tóc dài mượt + 2 lọn tóc mai ôm má + 2 búi tóc tròn gắn nơ pastel xinh xắn
   const backHair=mk(Sp(.52,24),hr,0,.35,-.12,head);backHair.scale.set(1.06,1.15,.88);
   [-1,1].forEach(s=>{
    const sideLock=mk(Sp(.14,14),hr,s*.46,.22,.14,head);sideLock.scale.set(.75,1.75,.78);sideLock.rotation.z=s*.12;
@@ -498,22 +495,35 @@ function build(person={name:'',gender:'m'},replace=true){
   });
   mk(B(.08,.026,.024),M(0xffe066),-.28,.66,.41,head).rotation.z=.35;
  }else{
-  // Chỏm tóc bồng bềnh hiện đại cho nam
   const tuft=mk(Sp(.14,14),hr,0,.97,.07,head);tuft.scale.set(1.15,.85,1.25);tuft.rotation.x=.3;
   const sideTuft=mk(Sp(.11,12),hr,.12,.94,.11,head);sideTuft.scale.set(1,.75,1.1);sideTuft.rotation.set(.25,.3,-.2);
  }
  const tipMaterial=M(0xff6a20,{emissive:0xff5a10,emissiveIntensity:0});
- held=mkInc(torso,5,.48,.22,tipMaterial);held.g.position.set(0,.36,.44);
- // Vòng sáng vàng dưới chân đánh dấu nhân vật đang là Leader khi điều khiển tự do
+ const actorHeld=mkInc(torso,5,.48,.22,tipMaterial);actorHeld.g.position.set(0,.36,.44);
+ // Vòng sáng vàng dưới chân đánh dấu nhân vật đang là Leader khi điều khiển tự do + bóng tròn mềm dưới chân
  const leaderRing=mk(new THREE.RingGeometry(.34,.44,28),new THREE.MeshBasicMaterial({color:0xffdf6b,side:THREE.DoubleSide,transparent:true,opacity:.85}),0,.02,0,root);
  leaderRing.rotation.x=-Math.PI/2;leaderRing.visible=false;leaderRing.castShadow=leaderRing.receiveShadow=false;
+ const footShadow=new THREE.Mesh(new THREE.PlaneGeometry(.82,.82),new THREE.MeshBasicMaterial({map:blobTex,transparent:true,opacity:.42,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-2}));
+ footShadow.rotation.x=-Math.PI/2;footShadow.position.set(0,.018,0);root.add(footShadow);
+
+ // Nếu là nhân vật của người chơi khác (isRemote): tắt castShadow động để giữ 60 FPS khi đông người
+ if(isRemote){
+  root.traverse(o=>{if(o.isMesh)o.castShadow=false});
+ }
+
  const labelCanvas=document.createElement('canvas');labelCanvas.width=512;labelCanvas.height=128;
  const labelTexture=new THREE.CanvasTexture(labelCanvas);
- const lb=new THREE.Sprite(new THREE.SpriteMaterial({map:labelTexture,depthTest:false}));lb.scale.set(1.68,.42,1);lb.position.y=1.34;lb.renderOrder=9;head.add(lb);
+ const lb=new THREE.Sprite(new THREE.SpriteMaterial({map:labelTexture,depthTest:false}));
+ lb.scale.set(isRemote?1.45:1.68,isRemote?.36:.42,1);lb.position.y=1.34;lb.renderOrder=isRemote?7:9;head.add(lb);
  root.position.set(0,0,15.5);root.rotation.y=Math.PI;
- ch={root,hip,torso,head,legL,legR,armL,armR,openEyes,closedEyes,blushList,sprout,leaderRing,gender:person.gender||'m',name,held,tipMaterial,labelCanvas,labelTexture,labelHighlight:false,labelLeader:false,blinkOffset:Math.random()*3.5,P:{...ID},laneX:0,faceAngle:Math.PI,walkWeight:0,walkPhase:Math.random()*6.28};
- P=ch.P;face=Math.PI;updateLabel(name,ch,false,false);return ch;
+ const builtActor={root,hip,torso,head,legL,legR,armL,armR,openEyes,closedEyes,blushList,sprout,leaderRing,gender:person.gender||'m',name,held:actorHeld,tipMaterial,labelCanvas,labelTexture,labelHighlight:false,labelLeader:false,blinkOffset:Math.random()*3.5,P:{...ID},laneX:0,faceAngle:Math.PI,walkWeight:0,walkPhase:Math.random()*6.28,isRemote};
+ updateLabel(name,builtActor,false,false);
+ if(!isRemote){
+  ch=builtActor;P=ch.P;held=ch.held;face=Math.PI;
+ }
+ return builtActor;
 }
+
 function makePersonCard(person,index){
  const card=document.createElement('section');card.className='person-card';card.dataset.index=index;
  const title=document.createElement('strong');title.textContent=`Người cầu nguyện ${index+1}`;card.append(title);
@@ -533,10 +543,9 @@ function readPeopleForm(){
 function activateActor(actor){ch=actor;P=actor.P;held=actor.held;face=actor.root.rotation.y}
 function makeParticipants(data=people){
  actors.forEach(actor=>{scene.remove(actor.root);disposeCharacter(actor.root)});
- actors=[];ch=null;bowlI.g.visible=false;leaderIndex=0;
+ actors=[];ch=null;leaderIndex=0;
  data.forEach((person,index)=>{
-  const actor=build(person,false);
-  // Khoảng cách giữa các nhân vật rộng thoáng (~cách nhau 1 thân người = 1.45m)
+  const actor=build(person,false,false);
   actor.laneX=(index-(data.length-1)/2)*1.45;
   actor.root.position.set(actor.laneX,0,15.5);actor.root.rotation.y=Math.PI;actor.faceAngle=Math.PI;actor.held.g.visible=true;
   actors.push(actor);
@@ -562,7 +571,7 @@ $('people-fields').addEventListener('click',e=>{
  people=readPeopleForm();makeParticipants(people);
 });
 
-/* ---------- Hiệu ứng chữ lời cầu nguyện bay lên & Giọng đọc (chỉ bật trên máy tính) ---------- */
+/* ---------- Hiệu ứng chữ lời cầu nguyện bay lên & Giọng đọc (chỉ bật trên máy tính cho phiên của mình) ---------- */
 const isMobile=/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
 let sb=false,viV=null,speechToken=0,ttsAud=null,ttsTimer=null;
 function pickVoice(){
@@ -593,7 +602,6 @@ function unlockSpeechFromGesture(){
    ttsAud.playsInline=true;
    ttsAud.referrerPolicy='no-referrer';
   }
-  // Mở khóa Audio element trong lúc người dùng vừa click nút Thắp nhang
   ttsAud.src='data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
   const p=ttsAud.play();
   if(p&&typeof p.then==='function')p.then(()=>{ttsAud.pause();ttsAud.currentTime=0}).catch(()=>{});
@@ -660,7 +668,6 @@ function clearFloatingPrayers(){
  }
 }
 function setSkyPrayersSuspended(suspended){
- // Khi các nhân vật bắt đầu đọc lời cầu nguyện: ẩn đột ngột toàn bộ thẻ lời chúc bay và giữ nguyên trạng thái
  activeSkyPrayers.forEach(p=>{
   p.sprite.visible=!suspended;
  });
@@ -685,9 +692,6 @@ function spawnPrayerLine(actor,line){
  x.shadowColor='rgba(255,175,40,.95)';x.shadowBlur=16;
  x.fillStyle='#fff3c4';
  x.fillText(line,384,64,720);
- // Lấy mẫu các điểm ảnh của chữ -> sau này mỗi điểm sẽ hóa thành một tàn đóm
- const img=x.getImageData(0,0,768,128).data,pts=[],maxPts=isMobile?160:300;
- for(let k=0;k<5000&&pts.length<maxPts*2;k++){const px=Math.random()*768|0,py=Math.random()*128|0;if(img[(py*768+px)*4+3]>150)pts.push(px,py)}
  const tex=new THREE.CanvasTexture(c);
  const mat=new THREE.SpriteMaterial({map:tex,transparent:true,depthWrite:false,depthTest:false,opacity:0});
  const sprite=new THREE.Sprite(mat);
@@ -696,87 +700,38 @@ function spawnPrayerLine(actor,line){
  actor.head.getWorldPosition(_v);
  sprite.position.set(_v.x,2.52,_v.z-.05);
  scene.add(sprite);
- floatingPrayers.push({sprite,pts,dissolved:false,dissolveAt:3.2,age:0,life:3.7,vy:.22,drift:(Math.random()-.5)*.06,phase:Math.random()*6.28});
+ floatingPrayers.push({sprite,age:0,life:6.2,vy:.22,drift:(Math.random()-.5)*.06,phase:Math.random()*6.28});
 }
-function launchPrayer(actor,person,index=-1){
- floatTimers.forEach(id=>clearTimeout(id));
- floatTimers=[];
- prayingActorIndex=index;
- setSkyPrayersSuspended(true);
- const rawText=person.prayer||DEFAULT_PRAYER;
+function launchPrayer(actor,person,index=-1,isRemoteSpeaker=false){
+ if(!isRemoteSpeaker){
+  floatTimers.forEach(id=>clearTimeout(id));
+  floatTimers=[];
+  prayingActorIndex=index;
+  setSkyPrayersSuspended(true);
+  syncMySessionState({activeSpeakerIdx:index});
+ }
+ const rawText=(person&&person.prayer)||DEFAULT_PRAYER;
  if(actor&&rawText){
   const lines=wrapPrayerLines(rawText,24);
   const step=1.65;
   lines.forEach((line,i)=>{
-   const id=setTimeout(()=>{if(running&&phase==='group')spawnPrayerLine(actor,line)},i*step*1000);
-   floatTimers.push(id);
+   const id=setTimeout(()=>{
+    if(isRemoteSpeaker||running)spawnPrayerLine(actor,line);
+   },i*step*1000);
+   if(!isRemoteSpeaker)floatTimers.push(id);
   });
  }
- if(!isMobile)speak(`Lời cầu nguyện của ${person.name}: ${rawText}`);
-}
-/* ---------- Chữ lời cầu nguyện tan thành tàn đóm vàng bay lên trời ---------- */
-const emberSystems=[];
-function sampleCardPoints(ctx,w,h){
- const d=ctx.getImageData(0,0,w,h).data,pts=[],kinds=[],tMax=isMobile?110:220,cMax=isMobile?70:140;let tc=0,cc=0;
- for(let k=0;k<9000&&(tc<tMax||cc<cMax);k++){
-  const px=Math.random()*w|0,py=Math.random()*h|0,o=(py*w+px)*4;
-  if(d[o+3]<100)continue;
-  const isText=d[o+2]>170;
-  if(isText){if(tc>=tMax)continue;tc++}else{if(cc>=cMax)continue;cc++}
-  pts.push(px,py);kinds.push(isText?1:0);
- }
- return{pts,kinds};
-}
-function dissolvePrayer(fp){dissolveSprite(fp.sprite,fp.pts,768,128)}
-function dissolveSprite(sp,pts,cw,ch,kinds){
- const n=pts.length/2;if(!n)return;
- const e=cam.matrixWorld.elements,rx=e[0],ry=e[1],rz=e[2],ux=e[4],uy=e[5],uz=e[6];
- const sw=sp.scale.x,sh=sp.scale.y,pos=new Float32Array(n*3),col=new Float32Array(n*3);
- const st={n,age:0,pos,col,base:new Float32Array(n*3),vel:new Float32Array(n*3),delay:new Float32Array(n),life:new Float32Array(n),ph:new Float32Array(n)};
- for(let i=0;i<n;i++){
-  const u=(pts[i*2]-cw/2)/cw,v=(ch/2-pts[i*2+1])/ch,lx=u*sw,ly=v*sh;
-  pos[i*3]=sp.position.x+rx*lx+ux*ly;pos[i*3+1]=sp.position.y+ry*lx+uy*ly;pos[i*3+2]=sp.position.z+rz*lx+uz*ly;
-  const t=Math.random();
-  st.base.set(kinds&&kinds[i]===0?(t<.6?[1,.6,.22]:[.9,.38,.12]):t<.5?[1,.88,.5]:t<.85?[1,.66,.26]:[1,.45,.14],i*3);
-  st.delay[i]=(u+.5)*1.5+Math.random()*.35;            // chữ tan dần từ trái sang phải
-  st.life[i]=2.2+Math.random()*2.2;
-  st.vel[i*3]=.16+Math.random()*.3;st.vel[i*3+1]=.32+Math.random()*.6;st.vel[i*3+2]=(Math.random()-.5)*.2;
-  st.ph[i]=Math.random()*6.28;
- }
- const g=new THREE.BufferGeometry();
- g.setAttribute('position',new THREE.BufferAttribute(pos,3));g.setAttribute('color',new THREE.BufferAttribute(col,3));
- st.obj=new THREE.Points(g,new THREE.PointsMaterial({size:.1,map:glowTex,vertexColors:true,transparent:true,depthWrite:false,depthTest:!!kinds,blending:THREE.AdditiveBlending}));
- st.obj.renderOrder=12;st.obj.frustumCulled=false;scene.add(st.obj);emberSystems.push(st);
-}
-function updateEmbers(dt,tt){
- for(let k=emberSystems.length-1;k>=0;k--){
-  const s=emberSystems[k],P=s.pos,C=s.col;s.age+=dt;let alive=false;
-  for(let i=0;i<s.n;i++){
-   const t=s.age-s.delay[i];let b=0;
-   if(t<0){alive=true;b=Math.min(1,s.age/.4)*(.8+.2*Math.sin(tt*9+s.ph[i]))}
-   else{
-    const q=t/s.life[i];
-    if(q<1){
-     alive=true;
-     P[i*3]+=(s.vel[i*3]+Math.sin(tt*1.8+s.ph[i])*.12)*dt;P[i*3+1]+=s.vel[i*3+1]*dt*(1+q);P[i*3+2]+=s.vel[i*3+2]*dt;
-     b=Math.pow(1-q,1.3)*(.75+.25*Math.sin(tt*14+s.ph[i]));
-    }
-   }
-   C[i*3]=s.base[i*3]*b;C[i*3+1]=s.base[i*3+1]*b;C[i*3+2]=s.base[i*3+2]*b;
-  }
-  s.obj.geometry.attributes.position.needsUpdate=true;s.obj.geometry.attributes.color.needsUpdate=true;
-  if(!alive){scene.remove(s.obj);s.obj.geometry.dispose();s.obj.material.dispose();emberSystems.splice(k,1)}
- }
+ // Chỉ phát âm thanh giọng đọc TTS cho chính phiên của mình để tránh nhiễu âm thanh
+ if(!isRemoteSpeaker&&!isMobile&&person)speak(`Lời cầu nguyện của ${person.name}: ${rawText}`);
 }
 if(!isMobile)pickVoice();
 
-/* ---------- Hệ thống Lưu Trữ & Lời Chúc Cộng Đồng Bay Trên Cao (Ẩn Tên) ---------- */
+/* ---------- Hệ thống Lưu Trữ Lời Chúc Cộng Đồng Bay Trên Cao (`/prayers`) ---------- */
 const FIREBASE_DB_URL='https://thapnhang-default-rtdb.asia-southeast1.firebasedatabase.app';
 let communityPrayersPool=[];
 const activeSkyPrayers=[];
 let skySpawnAccumulator=0,skyPoolCursor=0;
 
-// Lưu lời chúc lên Firebase Database (nếu để trống thì lưu câu DEFAULT_PRAYER như bình thường, hỗ trợ đủ 300 ký tự)
 async function savePrayerToCloud(person){
  if(!FIREBASE_DB_URL)return;
  const rawPrayer=(person.prayer||'').trim()||DEFAULT_PRAYER;
@@ -792,7 +747,6 @@ async function savePrayerToCloud(person){
  }
 }
 
-// Tải lời chúc đã lưu từ Firebase Database (có bộ lọc chống trùng nội dung chữ)
 function normalizePrayerText(str){
  return String(str||'').trim().replace(/\s+/g,' ').toLowerCase();
 }
@@ -810,7 +764,6 @@ async function loadPrayersFromCloud(){
    const rawEntries=Object.entries(data)
     .filter(([,item])=>item&&typeof item==='object'&&String(item.text||'').trim())
     .map(([id,item])=>({id,text:String(item.text).trim()}));
-   // Lọc chống trùng lặp nội dung chữ (chỉ giữ lại 1 bản cho mỗi nội dung lời chúc)
    const seenTexts=new Set();
    const uniqueList=[];
    for(let i=rawEntries.length-1;i>=0;i--){
@@ -837,7 +790,6 @@ async function loadPrayersFromCloud(){
 }
 loadPrayersFromCloud();
 
-// Hàm ngắt dòng chính xác theo chiều rộng pixel thực tế trên Canvas (đảm bảo không mất bất kỳ từ nào tới 300 ký tự)
 function wrapTextByPixelWidth(ctx,text,maxWidth){
  const words=String(text||'').trim().split(/\s+/).filter(Boolean);
  if(!words.length)return[''];
@@ -857,11 +809,9 @@ function wrapTextByPixelWidth(ctx,text,maxWidth){
  return lines;
 }
 
-// Tạo thẻ lời chúc 3D tự động co giãn chiều cao theo độ dài văn bản (hiển thị trọn vẹn 100% lời chúc tới 300 ký tự)
 function createSkyPrayerSprite(item){
  const fullText=`“${String(item.text||'').trim()}”`;
  const len=fullText.length;
- // Tự động chọn cỡ chữ & độ rộng khung tối ưu theo độ dài lời chúc
  const fontSize=len<=75?36:len<=165?31:27;
  const lineHeight=Math.round(fontSize*1.36);
  const canvasW=len<=75?820:len<=165?880:940;
@@ -882,7 +832,6 @@ function createSkyPrayerSprite(item){
  const ctx=c.getContext('2d');
 
  const cardX=16,cardY=16,cardW=canvasW-32;
- // Nền thẻ lụa vàng hổ phách ấm sáng chuyển sắc
  const bgGrad=ctx.createLinearGradient(0,cardY,0,cardY+cardH);
  bgGrad.addColorStop(0,'rgba(142, 62, 20, 0.88)');
  bgGrad.addColorStop(0.5,'rgba(108, 42, 14, 0.86)');
@@ -895,7 +844,6 @@ function createSkyPrayerSprite(item){
  else ctx.rect(cardX,cardY,cardW,cardH);
  ctx.fill();ctx.stroke();
 
- // Viền chỉ vàng mảnh bên trong tạo vẻ trang trọng như thẻ ước nguyện
  ctx.strokeStyle='rgba(255, 236, 160, 0.32)';
  ctx.lineWidth=1.5;
  ctx.beginPath();
@@ -903,7 +851,6 @@ function createSkyPrayerSprite(item){
  else ctx.rect(cardX+10,cardY+10,cardW-20,cardH-20);
  ctx.stroke();
 
- // Vẽ đầy đủ tất cả các dòng của lời chúc
  ctx.shadowColor='rgba(255, 195, 55, 0.95)';
  ctx.shadowBlur=14;
  ctx.fillStyle='#fffdf0';
@@ -917,24 +864,20 @@ function createSkyPrayerSprite(item){
  });
 
  const tex=new THREE.CanvasTexture(c);
- const sk=sampleCardPoints(ctx,canvasW,canvasH);
  const mat=new THREE.SpriteMaterial({map:tex,transparent:true,depthWrite:false,opacity:0});
  const sprite=new THREE.Sprite(mat);
- // Giữ đúng tỷ lệ khung hình thực tế trong không gian 3D để chữ luôn sắc nét, không bị bẹp
  const baseW=canvasW/255;
  const baseH=canvasH/255;
  sprite.scale.set(baseW,baseH,1);
- sprite.userData={baseW,baseH,lineCount:lines.length,pts:sk.pts,kinds:sk.kinds,cw:canvasW,ch:canvasH};
+ sprite.userData={baseW,baseH,lineCount:lines.length};
  sprite.renderOrder=8;
  return sprite;
 }
 
 function spawnRandomSkyPrayer(){
- // Số lượng thẻ bay tối đa không bao giờ vượt quá số lời chúc thực tế trong Database (và tối đa 16 thẻ cùng lúc)
  const maxConcurrent=Math.min(16,communityPrayersPool.length);
  if(!maxConcurrent||activeSkyPrayers.length>=maxConcurrent)return;
 
- // Tìm một lời chúc chưa hiển thị trên bầu trời (kiểm tra cả ID lẫn nội dung chữ để chống trùng tuyệt đối)
  const activeIds=new Set(activeSkyPrayers.map(p=>p.id));
  const activeTexts=new Set(activeSkyPrayers.map(p=>normalizePrayerText(p.text)));
  let pickedItem=null;
@@ -951,10 +894,8 @@ function spawnRandomSkyPrayer(){
 
  let x=0,y=0,z=0,found=false;
  for(let attempt=0;attempt<10;attempt++){
-  // Bay khắp bề ngang chánh điện (-5.8m đến 5.8m) và chiều sâu từ bàn thờ (-9.2m) đến cửa chánh điện (11.5m)
   const tx=(Math.random()-.5)*11.6;
   const tz=-9.2+Math.random()*20.7;
-  // Độ cao từ ngang bụng nhân vật (0.7m) tới sát trần chánh điện (5.6m); nếu ở ngay trên bàn thờ thì từ 2.0m trở lên
   const minY=(tz<-3.6&&Math.abs(tx)<3.4)?2.0:0.7;
   const ty=minY+Math.random()*(5.6-minY);
   const tooClose=activeSkyPrayers.some(p=>Math.hypot(p.sprite.position.x-tx,p.sprite.position.y-ty,p.sprite.position.z-tz)<2.2);
@@ -965,7 +906,6 @@ function spawnRandomSkyPrayer(){
  sprite.position.set(x,y,z);
  scene.add(sprite);
  
- // Giải thuật 7 bậc giới hạn số ký tự để tính toán thời gian vòng đời (life) tối ưu
  const rawTextLength=String(pickedItem.text||'').trim().length;
  let dynamicLife=5.0;
  if(rawTextLength<=40)dynamicLife=5.0;
@@ -990,16 +930,7 @@ function spawnRandomSkyPrayer(){
  });
 }
 
-function clearSkyPrayers(){
- while(activeSkyPrayers.length){
-  const p=activeSkyPrayers.pop();
-  scene.remove(p.sprite);
-  p.sprite.material.map.dispose();
-  p.sprite.material.dispose();
- }
-}
-
-/* ---------- Kịch bản hoạt cảnh & Hệ thống điều khiển tự do (Free Roam) ---------- */
+/* ---------- Kịch bản hoạt cảnh, Hàng Đợi Cộng Đồng & Hệ Thống Multiplayer (`/live_sessions`) ---------- */
 const ID={hipY:.56,leg:0,torso:0,head:0,arm:0,armZ:-.10,eye:0,incY:.36,incZ:.44};
 const pz=o=>({...ID,...o});
 let face=0,seq=[],si=0,st=0,from,wf,running=false,wa=0,wph=0,cm='idle';
@@ -1011,43 +942,306 @@ const moveKeys={w:false,a:false,s:false,d:false};
 const joyState={active:false,id:null,dx:0,dy:0};
 const raycaster=new THREE.Raycaster(),pointerNDC=new THREE.Vector2();
 
-function setLeader(index){
- if(!actors.length)return;
- leaderIndex=Math.max(0,Math.min(actors.length-1,index));
- const leader=actors[leaderIndex];
- ch=leader;P=leader.P;held=leader.held;face=leader.faceAngle;
- // Gán vị trí tụ tập ngẫu nhiên (lộn xộn tự nhiên phía sau/hai bên Leader) & độ trễ phản ứng cho từng thành viên đi theo
+// --- CẤU HÌNH MULTIPLAYER REAL-TIME ---
+const MY_SESSION_ID='sess_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,7);
+const remoteSessions=new Map(); // sessionId -> { id, data, actors, leaderIdx, walkWeight, walkPhase, lastSpokenIdx, offerIdx }
+let fbDb=null,sessionsRef=null,mySessionRef=null;
+let mySessionActive=false,myJoinedAt=0,myQueueRank=-1;
+let lastPosSyncTime=0,lastSyncedX=999,lastSyncedZ=999,lastSyncedRot=999;
+const MAX_VISIBLE_REMOTE_SESSIONS=15;
+const SESSION_TTL_MS=75000; // Quét rác các phiên mất kết nối quá 75 giây
+
+function assignFollowersOffsets(actorList,leadIdx){
  let slot=0;
- actors.forEach((a,i)=>{
-  const isLead=phase==='panoramic'&&i===leaderIndex;
-  if(a.leaderRing)a.leaderRing.visible=isLead&&actors.length>1;
-  updateLabel(a.name,a,false,isLead);
-  if(i!==leaderIndex){
-   // Phân bố góc tản ra hai bên và phía sau (không xếp hàng thẳng) với khoảng cách ~1 thân người (1.35m - 1.95m)
+ actorList.forEach((a,i)=>{
+  if(i!==leadIdx){
    const side=(slot%2===0?1:-1);
    const tier=Math.floor(slot/2);
-   const baseSpread=(0.55+tier*0.48)*side+(Math.random()-.5)*0.32;
-   const dist=1.35+tier*0.65+(Math.random()*0.35);
+   const baseSpread=(0.55+tier*0.48)*side+(Math.random()-.5)*0.24;
+   const dist=1.35+tier*0.65+(Math.random()*0.25);
    a.gatherSideOffset=Math.sin(baseSpread)*dist;
    a.gatherBackOffset=Math.cos(baseSpread)*dist;
-   a.reactDelayMax=0.22+slot*0.14+Math.random()*0.18;
+   a.reactDelayMax=0.20+slot*0.13+Math.random()*0.15;
    a.reactTimer=a.reactDelayMax;
-   a.speedFactor=0.92+Math.random()*0.16;
+   a.speedFactor=0.94+Math.random()*0.14;
    slot++;
   }
  });
 }
 
-// Giới hạn vùng di chuyển & xử lý va chạm (tường chánh điện, sân rộng ngoài trời, hàng cột đỏ, cây thông, đèn đá, bàn thờ)
+function setLeader(index){
+ if(!actors.length)return;
+ leaderIndex=Math.max(0,Math.min(actors.length-1,index));
+ const leader=actors[leaderIndex];
+ ch=leader;P=leader.P;held=leader.held;face=leader.faceAngle;
+ actors.forEach((a,i)=>{
+  const isLead=phase==='panoramic'&&i===leaderIndex;
+  if(a.leaderRing)a.leaderRing.visible=isLead&&actors.length>1;
+  updateLabel(a.name,a,false,isLead);
+ });
+ assignFollowersOffsets(actors,leaderIndex);
+ if(mySessionActive&&phase==='panoramic'){
+  syncMySessionState({
+   leaderIdx:leaderIndex,
+   pos:{
+    x:Number(leader.root.position.x.toFixed(2)),
+    z:Number(leader.root.position.z.toFixed(2)),
+    rot:Number(leader.faceAngle.toFixed(2))
+   }
+  });
+ }
+}
+
+// Khởi tạo kết nối Firebase Realtime Database qua WebSocket
+function initMultiplayerFirebase(){
+ try{
+  if(!window.firebase)return;
+  if(!firebase.apps.length){
+   firebase.initializeApp({databaseURL:FIREBASE_DB_URL});
+  }
+  fbDb=firebase.database();
+  sessionsRef=fbDb.ref('live_sessions');
+
+  sessionsRef.on('child_added',snap=>handleRemoteSessionSnapshot(snap.key,snap.val()));
+  sessionsRef.on('child_changed',snap=>handleRemoteSessionSnapshot(snap.key,snap.val()));
+  sessionsRef.on('child_removed',snap=>removeRemoteSession(snap.key));
+
+  // Cập nhật nhịp tim (Heartbeat) mỗi 15s & tự động dọn các phiên mồ côi quá hạn
+  setInterval(()=>{
+   const now=Date.now();
+   if(mySessionActive&&mySessionRef){
+    mySessionRef.update({lastActive:firebase.database.ServerValue.TIMESTAMP}).catch(()=>{});
+   }
+   remoteSessions.forEach((sess,sid)=>{
+    if(sess.data&&sess.data.lastActive&&(now-Number(sess.data.lastActive)>SESSION_TTL_MS)){
+     // Dọn dẹp phiên mồ côi bị kẹt mạng quá 75s
+     sessionsRef.child(sid).remove().catch(()=>{});
+     removeRemoteSession(sid);
+    }
+   });
+   evaluateAltarQueue();
+   updateLiveCounterUI();
+  },12000);
+
+  updateLiveCounterUI();
+ }catch(e){
+  console.warn('Không thể khởi tạo Multiplayer Firebase:',e);
+ }
+}
+
+function updateLiveCounterUI(){
+ let totalPeople=mySessionActive?people.length:0;
+ let sessionCount=mySessionActive?1:0;
+ remoteSessions.forEach(sess=>{
+  const mLen=(sess.data?.members?.length)||1;
+  totalPeople+=mLen;
+  sessionCount++;
+ });
+ const el=$('live-count');
+ if(!el)return;
+ if(totalPeople===0){
+  el.textContent='Chánh điện thanh tịnh (Chưa có đoàn hành lễ)';
+ }else{
+  el.textContent=`${totalPeople} người đang ở chánh điện (${sessionCount} đoàn)`;
+ }
+}
+
+function syncMySessionState(patch){
+ if(!mySessionActive||!mySessionRef)return;
+ const payload={...patch,lastActive:firebase.database.ServerValue.TIMESTAMP};
+ mySessionRef.update(payload).catch(()=>{});
+}
+
+function startMyLiveSession(){
+ if(!sessionsRef)return;
+ mySessionActive=true;
+ myJoinedAt=Date.now();
+ mySessionRef=sessionsRef.child(MY_SESSION_ID);
+ // Tự động xóa sạch phiên trên Server ngay khi người dùng tắt tab, rớt mạng hoặc đóng trình duyệt
+ mySessionRef.onDisconnect().remove();
+ const cleanMembers=people.map(p=>({
+  name:(p.name||'Khách').slice(0,24),
+  gender:p.gender==='f'?'f':'m',
+  prayer:(p.prayer||DEFAULT_PRAYER).slice(0,300)
+ }));
+ mySessionRef.set({
+  joinedAt:myJoinedAt,
+  lastActive:firebase.database.ServerValue.TIMESTAMP,
+  state:'queuing',
+  activeSpeakerIdx:-1,
+  offerIdx:0,
+  leaderIdx:0,
+  pos:{x:0,z:15.5,rot:Math.PI},
+  members:cleanMembers
+ }).then(()=>{
+  evaluateAltarQueue();
+  updateLiveCounterUI();
+ }).catch(e=>console.warn('Lỗi đăng ký phiên:',e));
+}
+
+function stopMyLiveSession(){
+ mySessionActive=false;
+ myQueueRank=-1;
+ $('queue-banner').hidden=true;
+ if(mySessionRef){
+  try{mySessionRef.onDisconnect().cancel()}catch(e){}
+  mySessionRef.remove().catch(()=>{});
+  mySessionRef=null;
+ }
+ updateLiveCounterUI();
+}
+
+window.addEventListener('beforeunload',()=>{
+ if(mySessionRef)mySessionRef.remove();
+});
+
+// Quản lý việc tạo, cập nhật và xóa các đoàn người chơi khác (Remote Sessions)
+function handleRemoteSessionSnapshot(sid,data){
+ if(!sid||sid===MY_SESSION_ID||!data||!Array.isArray(data.members)||!data.members.length)return;
+ // Bỏ qua nếu phiên đã quá hạn TTL
+ if(data.lastActive&&(Date.now()-Number(data.lastActive)>SESSION_TTL_MS)){
+  if(sessionsRef)sessionsRef.child(sid).remove().catch(()=>{});
+  removeRemoteSession(sid);
+  return;
+ }
+
+ let sess=remoteSessions.get(sid);
+ if(!sess){
+  // Kiểm tra giới hạn AOI (tối đa MAX_VISIBLE_REMOTE_SESSIONS đoàn cùng lúc để bảo vệ FPS)
+  if(remoteSessions.size>=MAX_VISIBLE_REMOTE_SESSIONS&&data.state==='roaming')return;
+  const builtActors=data.members.map((m,idx)=>{
+   const a=build({name:m.name||`Khách ${idx+1}`,gender:m.gender||'m'},false,true);
+   a.laneX=(idx-(data.members.length-1)/2)*1.45;
+   const startX=(data.pos?.x||0)+a.laneX;
+   const startZ=data.pos?.z??15.5;
+   a.root.position.set(startX,0,startZ);
+   a.faceAngle=data.pos?.rot??Math.PI;
+   a.root.rotation.y=a.faceAngle;
+   return a;
+  });
+  assignFollowersOffsets(builtActors,data.leaderIdx||0);
+  sess={
+   id:sid,
+   data,
+   actors:builtActors,
+   leaderIdx:data.leaderIdx||0,
+   walkWeight:0,
+   walkPhase:Math.random()*6.28,
+   lastSpokenIdx:-1,
+   stateTimer:0,
+   lastState:data.state||'queuing'
+  };
+  remoteSessions.set(sid,sess);
+ }else{
+  const prevState=sess.data.state;
+  sess.data=data;
+  if(prevState!==data.state){
+   sess.stateTimer=0;
+   sess.lastState=data.state;
+  }
+  const newLead=Math.max(0,Math.min(sess.actors.length-1,Number(data.leaderIdx)||0));
+  if(newLead!==sess.leaderIdx){
+   sess.leaderIdx=newLead;
+   assignFollowersOffsets(sess.actors,newLead);
+  }
+ }
+
+ // Nếu đoàn của người khác đang ở bước đọc lời cầu nguyện, hiển thị chữ bay trên đầu nhân vật đó
+ if(data.state==='praying'){
+  bowlI.g.visible=true;
+  const spk=Number(data.activeSpeakerIdx);
+  if(spk>=0&&spk<sess.actors.length&&spk!==sess.lastSpokenIdx){
+   sess.lastSpokenIdx=spk;
+   launchPrayer(sess.actors[spk],data.members[spk],spk,true);
+  }
+ }else{
+  sess.lastSpokenIdx=-1;
+  if(data.state==='roaming'){
+   bowlI.g.visible=true;
+  }
+ }
+
+ evaluateAltarQueue();
+ updateLiveCounterUI();
+}
+
+function removeRemoteSession(sid){
+ const sess=remoteSessions.get(sid);
+ if(!sess)return;
+ sess.actors.forEach(a=>{
+  scene.remove(a.root);
+  disposeCharacter(a.root);
+ });
+ remoteSessions.delete(sid);
+ evaluateAltarQueue();
+ updateLiveCounterUI();
+}
+
+// --- HỆ THỐNG HÀNG ĐỢI TỰ TRỊ (SERVERLESS ALTAR QUEUE) ---
+const RITUAL_STATES=new Set(['queuing','approaching','offering','praying']);
+
+function getRitualQueueSorted(){
+ const list=[];
+ if(mySessionActive&&phase!=='panoramic'&&phase!=='idle'){
+  list.push({
+   id:MY_SESSION_ID,
+   joinedAt:myJoinedAt||Date.now(),
+   state:phase==='queue'?'queuing':phase==='approach'?'approaching':phase==='offer'?'offering':'praying',
+   leaderName:people[0]?.name||'Bạn',
+   memberCount:people.length
+  });
+ }
+ remoteSessions.forEach((sess,sid)=>{
+  const st=sess.data?.state;
+  if(RITUAL_STATES.has(st)){
+   list.push({
+    id:sid,
+    joinedAt:Number(sess.data?.joinedAt)||0,
+    state:st,
+    leaderName:sess.data?.members?.[0]?.name||'Khách hành hương',
+    memberCount:sess.data?.members?.length||1
+   });
+  }
+ });
+ list.sort((a,b)=>(a.joinedAt-b.joinedAt)||a.id.localeCompare(b.id));
+ return list;
+}
+
+function evaluateAltarQueue(){
+ if(!mySessionActive||!running)return;
+ const queue=getRitualQueueSorted();
+ const myIdx=queue.findIndex(item=>item.id===MY_SESSION_ID);
+ myQueueRank=myIdx;
+
+ // Kiểm tra xem có đoàn nào khác đang thực sự đứng làm lễ ở bàn thờ (approaching / offering / praying) hay không
+ const activeAtAltar=queue.find(item=>item.id!==MY_SESSION_ID&&['approaching','offering','praying'].includes(item.state));
+
+ if(phase==='queue'){
+  if(myIdx===0&&!activeAtAltar){
+   // Đã tới lượt của đoàn mình! Bắt đầu tiến lên bàn thờ thắp nhang
+   $('queue-banner').hidden=true;
+   beginGroupApproach();
+  }else{
+   // Vẫn đang xếp hàng chờ đoàn phía trước
+   const frontGroup=activeAtAltar||queue[0];
+   const rankNum=Math.max(2,myIdx+1);
+   const banner=$('queue-banner');
+   banner.hidden=false;
+   banner.innerHTML=`🙏 Đang đợi đoàn của <strong>${frontGroup?frontGroup.leaderName:'khách phía trước'}</strong> hành lễ...<br><small>Đoàn của bạn đang xếp thứ <strong>${rankNum}</strong> trên thảm đỏ — sẽ tự động tiến lên khi tới lượt.</small>`;
+   // Cập nhật vị trí đứng chờ trên thảm đỏ theo thứ tự hàng đợi
+   const targetQueueZ=Math.min(18.0,1.6+Math.max(1,myIdx)*2.7);
+   syncMySessionState({state:'queuing',pos:{x:0,z:Number(targetQueueZ.toFixed(2)),rot:Math.PI}});
+  }
+ }
+}
+
+// --- THUẬT TOÁN TÌM VỊ TRÍ THẢ NGẪU NHIÊN KHÔNG ĐÈ LÊN NHAU SAU KHI HÀNH LỄ ---
 const PILLAR_Z=[12,8,4,0,-4,-8];
 const PINE_TREES=[[-10,16],[10,17],[-12,25],[12,26],[-9,32],[9,33]];
 function clampAndCollidePosition(x,z,prevX=x,prevZ=z){
- // 1. Giới hạn chiều sâu từ trong chánh điện (-8.0) ra hết toàn bộ sân ngoài trời (40.5)
  let nx=x,nz=Math.max(-8.0,Math.min(40.5,z));
- // 2. Giới hạn bề ngang: Trong chánh điện (z < 12.5) bị chặn bởi 2 tường bên (-6.3..6.3), ra ngoài sân (z >= 12.5) mở rộng tới (-18.5..18.5)
  if(nz<12.5){
   if(Math.abs(prevX)>6.35&&prevZ>=12.2){
-   // Nếu đang ở ngoài sân rộng bên hông chánh điện thì chặn không cho đi xuyên qua mặt ngoài tường hông
    nz=Math.max(12.5,nz);
    nx=Math.max(-18.5,Math.min(18.5,nx));
   }else{
@@ -1056,11 +1250,9 @@ function clampAndCollidePosition(x,z,prevX=x,prevZ=z){
  }else{
   nx=Math.max(-18.5,Math.min(18.5,nx));
  }
- // 3. Chặn vùng bàn thờ chính phía sâu (-8.4)
  if(nz<-6.8&&Math.abs(nx)<3.4){
   nz=-6.8;
  }
- // 4. Chặn vùng bàn lễ vật & lư hương (x: -2.75..2.75, z: -5.5..-3.55)
  if(nx>-2.75&&nx<2.75&&nz>-5.55&&nz<-3.55){
   const dFront=Math.abs(nz - (-3.55));
   const dBack=Math.abs(nz - (-5.55));
@@ -1072,7 +1264,6 @@ function clampAndCollidePosition(x,z,prevX=x,prevZ=z){
   else if(minD===dLeft)nx=-2.75;
   else nx=2.75;
  }
- // 5. Va chạm tròn mềm với 2 hàng cột đỏ (x = -5, 5)
  for(const pz of PILLAR_Z){
   for(const px of [-5,5]){
    const dx=nx-px,dz=nz-pz,dist=Math.hypot(dx,dz),minR=0.72;
@@ -1082,7 +1273,6 @@ function clampAndCollidePosition(x,z,prevX=x,prevZ=z){
    }
   }
  }
- // 6. Va chạm với 2 đèn đá ngoài sân (x = -3, 3; z = 14)
  for(const lx of [-3,3]){
   const dx=nx-lx,dz=nz-14,dist=Math.hypot(dx,dz),minR=0.75;
   if(dist<minR&&dist>0.0001){
@@ -1090,7 +1280,6 @@ function clampAndCollidePosition(x,z,prevX=x,prevZ=z){
    nz=14+(dz/dist)*minR;
   }
  }
- // 7. Va chạm với thân 6 cây thông ngoài sân
  for(const [tx,tz] of PINE_TREES){
   const dx=nx-tx,dz=nz-tz,dist=Math.hypot(dx,dz),minR=0.85;
   if(dist<minR&&dist>0.0001){
@@ -1099,6 +1288,71 @@ function clampAndCollidePosition(x,z,prevX=x,prevZ=z){
   }
  }
  return[nx,nz];
+}
+
+function findNonOverlappingRoamSpot(){
+ // Thu thập tất cả vị trí của những người chơi khác đang có mặt trong chánh điện
+ const occupied=[];
+ remoteSessions.forEach(sess=>{
+  if(sess.data?.pos){
+   occupied.push([Number(sess.data.pos.x)||0,Number(sess.data.pos.z)||0]);
+  }
+  sess.actors.forEach(a=>occupied.push([a.root.position.x,a.root.position.z]));
+ });
+
+ // Thử lấy mẫu 30 vị trí ngẫu nhiên trong hai cánh chánh điện (tránh lối đi thảm đỏ ở giữa để nhường chỗ cho đoàn đang xếp hàng) hoặc sân chùa
+ for(let attempt=0;attempt<30;attempt++){
+  let rx,rz;
+  if(attempt<22){
+   // Trong lòng chánh điện hai bên tả/hữu (|x| từ 2.0 đến 4.2, z từ -1.2 đến 10.2)
+   const side=Math.random()<.5?-1:1;
+   rx=side*(2.0+Math.random()*2.2);
+   rz=-1.2+Math.random()*11.4;
+  }else{
+   // Ngoài sân chánh điện thoáng rộng
+   rx=(Math.random()-.5)*11.0;
+   if(Math.abs(rx)<2.0)rx=rx<0?-2.4:2.4;
+   rz=13.0+Math.random()*7.5;
+  }
+  const [cx,cz]=clampAndCollidePosition(rx,rz,rx,rz);
+  const minClearance=attempt<18?2.4:1.6;
+  const conflict=occupied.some(([ox,oz])=>Math.hypot(cx-ox,cz-oz)<minClearance);
+  if(!conflict)return[cx,cz];
+ }
+ // Fallback nếu cực kỳ đông người
+ const fallbackSide=Math.random()<.5?-1:1;
+ return clampAndCollidePosition(fallbackSide*(2.3+Math.random()*1.8),2.5+Math.random()*6.5);
+}
+
+// --- KỊCH BẢN HOẠT CẢNH HÀNH LỄ CỦA PHIÊN CHÍNH MÌNH ---
+let roamTargetSpot=[0,3.2];
+
+function beginQueueOrApproach(){
+ const HOLD=pz({arm:-1.25,armZ:.52});
+ activeIndex=0;
+ actors.forEach(a=>{
+  a.P={...HOLD};
+  a.held.g.visible=true;
+  a.tipMaterial.emissiveIntensity=0;
+  a.root.position.set(a.laneX,0,15.5);
+  a.root.rotation.y=Math.PI;
+  a.faceAngle=Math.PI;
+  if(a.leaderRing)a.leaderRing.visible=false;
+ });
+ activateActor(actors[0]);P=actors[0].P;face=Math.PI;
+
+ const queue=getRitualQueueSorted();
+ const myIdx=queue.findIndex(item=>item.id===MY_SESSION_ID);
+ const activeAtAltar=queue.find(item=>item.id!==MY_SESSION_ID&&['approaching','offering','praying'].includes(item.state));
+
+ if((myIdx<=0)&&!activeAtAltar){
+  $('queue-banner').hidden=true;
+  beginGroupApproach();
+ }else{
+  phase='queue';
+  cm='follow';
+  evaluateAltarQueue();
+ }
 }
 
 function mkOfferSeq(actor){
@@ -1113,9 +1367,10 @@ function mkOfferSeq(actor){
 function beginGroupApproach(){
  const HOLD=pz({arm:-1.25,armZ:.52});
  phase='approach';cm='follow';activeIndex=0;
- actors.forEach(a=>{a.P={...ID};a.held.g.visible=true;a.tipMaterial.emissiveIntensity=0;a.root.position.set(a.laneX,0,15.5);a.root.rotation.y=Math.PI;a.faceAngle=Math.PI;if(a.leaderRing)a.leaderRing.visible=false});
+ actors.forEach(a=>{a.P={...HOLD};a.held.g.visible=true;a.tipMaterial.emissiveIntensity=0;a.root.rotation.y=Math.PI;a.faceAngle=Math.PI;if(a.leaderRing)a.leaderRing.visible=false});
  activateActor(actors[0]);P=actors[0].P;face=Math.PI;
- seq=[{d:1.6,p:HOLD,face:Math.PI,cm:'follow'},{walkGroupZ:-3.7,speed:1.45,p:HOLD}];si=0;startStep();
+ syncMySessionState({state:'approaching',pos:{x:0,z:-3.7,rot:Math.PI}});
+ seq=[{d:1.2,p:HOLD,face:Math.PI,cm:'follow'},{walkGroupZ:-3.7,speed:1.55,p:HOLD}];si=0;startStep();
 }
 function mkGroupSeq(){
  const KN=pz({hipY:.24,leg:1.35,arm:-1.15,armZ:.52});
@@ -1126,23 +1381,44 @@ function mkGroupSeq(){
  const rawFor=person=>person.prayer||DEFAULT_PRAYER;
  const durFor=raw=>Math.max(4.5,wrapPrayerLines(raw,24).length*1.65+2.6);
  const firstRaw=rawFor(people[0]),firstDur=durFor(firstRaw);
- s.push({d:1.2,p:HANDS,on:()=>launchPrayer(actors[0],people[0],0)});
+ s.push({d:1.2,p:HANDS,on:()=>launchPrayer(actors[0],people[0],0,false)});
  s.push({d:firstDur,wait:1,p:HANDS});
  for(let i=1;i<people.length;i++){
   const raw=rawFor(people[i]),dur=durFor(raw);
-  s.push({d:dur,wait:1,p:HANDS,on:()=>launchPrayer(actors[i],people[i],i)});
+  s.push({d:dur,wait:1,p:HANDS,on:()=>launchPrayer(actors[i],people[i],i,false)});
  }
- // Sau khi cầu nguyện xong, nhân vật đứng dậy, đi ra đứng ở ngay giữa chánh điện (z = 3.2) và dừng lại
+ // Chọn điểm thả ngẫu nhiên không đè lên bất kỳ ai trong chánh điện
+ roamTargetSpot=findNonOverlappingRoamSpot();
+ const exitFace=Math.atan2(roamTargetSpot[0],roamTargetSpot[1]-(-2.5));
  s.push(
-  {d:1.1,p:ID,face:0,cm:'exit',on:()=>{prayingActorIndex=-1;clearFloatingPrayers();setSkyPrayersSuspended(false)}},
-  {walkGroupZ:3.2,speed:1.4,p:ID}
+  {d:1.0,p:ID,face:exitFace,cm:'exit',on:()=>{
+   prayingActorIndex=-1;clearFloatingPrayers();setSkyPrayersSuspended(false);
+   syncMySessionState({
+    state:'roaming',
+    activeSpeakerIdx:-1,
+    pos:{x:Number(roamTargetSpot[0].toFixed(2)),z:Number(roamTargetSpot[1].toFixed(2)),rot:Number(exitFace.toFixed(2))}
+   });
+  }},
+  {walkGroupSpot:roamTargetSpot,speed:1.55,p:ID}
  );
  return s;
 }
 function startStep(){
  const s=seq[si];from={...P};st=0;wf=[ch.root.position.x,ch.root.position.z];
- if(s.walk)s.dur=Math.hypot(s.walk[0]-wf[0],s.walk[1]-wf[1])/s.speed;
- else if(s.walkGroupZ!==undefined){s.dur=Math.abs(s.walkGroupZ-ch.root.position.z)/s.speed;groupWalkFrom=actors.map(a=>[a.root.position.x,a.root.position.z])}
+ if(s.walk)s.dur=Math.max(0.2,Math.hypot(s.walk[0]-wf[0],s.walk[1]-wf[1])/s.speed);
+ else if(s.walkGroupZ!==undefined){
+  s.dur=Math.max(0.2,Math.abs(s.walkGroupZ-ch.root.position.z)/s.speed);
+  groupWalkFrom=actors.map(a=>[a.root.position.x,a.root.position.z]);
+ }else if(s.walkGroupSpot){
+  const [tx,tz]=s.walkGroupSpot;
+  s.dur=Math.max(0.3,Math.hypot(tx-ch.root.position.x,tz-ch.root.position.z)/s.speed);
+  groupWalkFrom=actors.map(a=>[a.root.position.x,a.root.position.z]);
+  s.groupTargets=actors.map((a,i)=>{
+   const jitterX=(i===0?0:(i%2===0?1:-1)*0.95)+(Math.random()-.5)*0.25;
+   const jitterZ=(i===0?0:0.85*Math.ceil(i/2))+(Math.random()-.5)*0.25;
+   return clampAndCollidePosition(tx+jitterX,tz+jitterZ,tx,tz);
+  });
+ }
  else s.dur=s.d;
  if(s.face!==undefined){face=s.face;actors.forEach(a=>{if(phase==='group'||phase==='approach'||a===ch)a.faceAngle=face})}
  if(s.cm){cm=s.cm;orb.a*=.4;orb.p*=.4}
@@ -1151,35 +1427,28 @@ function startStep(){
 function beginOffer(index){
  activeIndex=index;activateActor(actors[index]);ch.root.position.set(ch.laneX,0,-3.7);ch.root.rotation.y=Math.PI;ch.faceAngle=Math.PI;
  ch.held.g.visible=true;ch.tipMaterial.emissiveIntensity=0;P={...ID};ch.P=P;face=Math.PI;
- phase='offer';seq=mkOfferSeq(ch);si=0;startStep();
+ phase='offer';
+ syncMySessionState({state:'offering',offerIdx:index,pos:{x:0,z:-3.0,rot:Math.PI}});
+ seq=mkOfferSeq(ch);si=0;startStep();
 }
 function beginGroupRitual(){
  phase='group';cm='follow';activeIndex=0;actors.forEach(a=>{a.P=pz({hipY:.24,leg:1.35,arm:-1.15,armZ:.52});a.held.g.visible=false});
- activateActor(actors[0]);P=actors[0].P;face=Math.PI;seq=mkGroupSeq();si=0;startStep();
+ activateActor(actors[0]);P=actors[0].P;face=Math.PI;
+ syncMySessionState({state:'praying',activeSpeakerIdx:-1,pos:{x:0,z:-2.5,rot:Math.PI}});
+ seq=mkGroupSeq();si=0;startStep();
 }
 function finish(){
  running=false;phase='panoramic';cancelSpeech();clearFloatingPrayers();setSkyPrayersSuspended(false);
- // Khi vừa kết thúc lễ ở giữa chánh điện, sắp xếp các nhân vật đứng tụ tập tự nhiên, cách nhau khoảng 1 thân người
- actors.forEach((a,i)=>{
+ $('queue-banner').hidden=true;
+ actors.forEach(a=>{
   a.P={...ID};
-  if(actors.length>1){
-   const jitterZ=(i%2===0?0.38:-0.35)+(Math.random()-.5)*0.25;
-   const jitterX=a.laneX+(Math.random()-.5)*0.22;
-   a.root.position.set(jitterX,0,3.2+jitterZ);
-   a.faceAngle=(Math.random()-.5)*0.55;
-   a.root.rotation.y=a.faceAngle;
-  }else{
-   a.faceAngle=a.root.rotation.y;
-  }
+  a.faceAngle=a.root.rotation.y;
   a.walkWeight=0;
  });
  setLeader(0);
- // Chuyển góc camera sang chế độ xoay toàn cảnh & theo dõi Leader
  cm='panoramic';
  orb.a=0.45;orb.p=0.15;
- // Tải lại danh sách Database sau khi kết thúc lượt lễ để cập nhật thêm lời chúc mới vào chu kỳ bay
  loadPrayersFromCloud();
- // Hiện nút "Xả vai" và Cần gạt ảo
  $('exit-role').hidden=false;
  $('joy-zone').hidden=false;
 }
@@ -1193,9 +1462,10 @@ function resetRoamControls(){
 $('exit-role').onclick=()=>{
  $('exit-role').hidden=true;
  resetRoamControls();
+ // Xóa phiên trực tuyến của mình khỏi Firebase ngay khi bấm Xả Vai
+ stopMyLiveSession();
  phase='idle';cm='idle';orb.a=orb.p=0;
  cancelSpeech();clearFloatingPrayers();setSkyPrayersSuspended(false);
- // Đưa bảng thiết lập về trạng thái vừa bắt đầu vào app (chọn số người cầu nguyện từ đầu)
  $('people-form').hidden=true;
  $('go').hidden=true;
  $('go').disabled=false;
@@ -1210,10 +1480,13 @@ $('go').onclick=()=>{
  if(running||!actors.length)return;people=readPeopleForm();
  $('exit-role').hidden=true;
  resetRoamControls();
- // Lưu lời chúc của từng người lên Database (nếu để trống vẫn lưu câu DEFAULT_PRAYER như bình thường)
+ // 1. Lưu vĩnh viễn lời chúc vào nhánh /prayers
  people.forEach(p=>savePrayerToCloud(p));
  makeParticipants(people);
- startMusic(true);unlockSpeechFromGesture();running=true;activeIndex=0;beginGroupApproach();
+ startMusic(true);unlockSpeechFromGesture();running=true;activeIndex=0;
+ // 2. Đăng ký phiên trực tuyến vào /live_sessions và kiểm tra hàng đợi
+ startMyLiveSession();
+ beginQueueOrApproach();
  $('go').disabled=true;$('count-back').disabled=true;$('people-fields').querySelectorAll('input,button').forEach(el=>el.disabled=true);$('ui').classList.add('hide');
 };
 
@@ -1238,7 +1511,7 @@ R.domElement.addEventListener('pointermove',e=>{
 });
 const stopDrag=e=>{
  if(orb.drag&&!pointerMoved&&phase==='panoramic'&&actors.length>1&&e&&e.clientX!==undefined){
-  // Kiểm tra click/chạm vào nhân vật để đổi người dẫn đầu (Leader)
+  // Chỉ raycast vào mảng actors của chính mình để đổi Leader của mình
   const rect=R.domElement.getBoundingClientRect();
   pointerNDC.x=((e.clientX-rect.left)/rect.width)*2-1;
   pointerNDC.y=-((e.clientY-rect.top)/rect.height)*2+1;
@@ -1259,7 +1532,6 @@ const stopDrag=e=>{
 };
 R.domElement.addEventListener('pointerup',stopDrag);R.domElement.addEventListener('pointercancel',stopDrag);R.domElement.addEventListener('lostpointercapture',()=>orb.drag=false);
 
-// Bàn phím điều khiển di chuyển nhân vật (khi ở giai đoạn panoramic) hoặc xoay camera
 addEventListener('keydown',e=>{
  if(e.target&&['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName))return;
  const k=e.key.toLowerCase();
@@ -1292,7 +1564,7 @@ addEventListener('keyup',e=>{
 });
 addEventListener('blur',()=>{Object.keys(moveKeys).forEach(k=>moveKeys[k]=false)});
 
-// Sự kiện Cần gạt ảo (Virtual Joystick) góc dưới bên trái
+// Sự kiện Cần gạt ảo (Virtual Joystick)
 {
  const joyZone=$('joy-zone'),joyKnob=$('joy-knob'),maxRad=36;
  const updateJoy=e=>{
@@ -1334,9 +1606,156 @@ document.addEventListener('visibilitychange',()=>{
  else{if(musicRequested&&!muted)startMusic();if(!isMobile){try{if(sb)speechSynthesis.resume()}catch(e){}if(sb&&ttsAud&&ttsAud.paused&&ttsAud.src&&!muted)try{ttsAud.play()}catch(e){}}}
 });
 
-/* ---------- Vòng lặp ---------- */
+/* ---------- Nội suy chuyển động & Hoạt cảnh cho các Đoàn Người Chơi Khác (Remote Sessions) ---------- */
+const POSE_HOLD=pz({arm:-1.25,armZ:.52});
+const POSE_KNEEL=pz({hipY:.24,leg:1.35,arm:-1.15,armZ:.52});
+const POSE_BOW=pz({hipY:.24,leg:1.35,torso:1.18,arm:-2.05,armZ:.15,eye:1});
+const POSE_HANDS=pz({arm:-1.12,armZ:.52,torso:.16,head:.42,eye:1});
+
+function updateRemoteSessions(dt,allActorsForSeparation){
+ const queue=getRitualQueueSorted();
+ remoteSessions.forEach((sess,sid)=>{
+  sess.stateTimer+=dt;
+  const st=sess.data?.state||'queuing';
+  const leadIdx=Math.max(0,Math.min(sess.actors.length-1,sess.leaderIdx||0));
+  const leader=sess.actors[leadIdx]||sess.actors[0];
+  if(!leader)return;
+
+  if(st==='queuing'){
+   // Đứng xếp hàng trên thảm đỏ theo thứ tự trong hàng đợi
+   const qIdx=Math.max(1,queue.findIndex(item=>item.id===sid));
+   const targetZ=Math.min(18.0,1.6+qIdx*2.7);
+   sess.actors.forEach(a=>{
+    const tx=a.laneX,tz=targetZ;
+    const dx=tx-a.root.position.x,dz=tz-a.root.position.z,dist=Math.hypot(dx,dz);
+    if(dist>0.06){
+     const step=Math.min(dist,1.55*dt);
+     a.root.position.x+=(dx/dist)*step;
+     a.root.position.z+=(dz/dist)*step;
+     a.faceAngle=Math.atan2(dx,dz);
+     a.walkWeight+=(1-a.walkWeight)*Math.min(1,dt*7);
+    }else{
+     a.faceAngle=Math.PI;
+     a.walkWeight+=(0-a.walkWeight)*Math.min(1,dt*7);
+    }
+    a.walkPhase+=dt*6.2*a.walkWeight;
+    a.held.g.visible=true;
+    a.tipMaterial.emissiveIntensity=0;
+    animateActor(a,POSE_HOLD,dt,a.walkWeight,false,a.faceAngle,a.walkPhase);
+   });
+  }else if(st==='approaching'||st==='offering'){
+   // Tiến vào trước bàn thờ và cắm nhang
+   const targetZ=st==='approaching'?-3.7:-2.5;
+   sess.actors.forEach((a,idx)=>{
+    const isOfferingNow=(st==='offering'&&idx===Number(sess.data?.offerIdx||0));
+    const tx=isOfferingNow?0:a.laneX;
+    const tz=isOfferingNow?-3.7:targetZ;
+    const dx=tx-a.root.position.x,dz=tz-a.root.position.z,dist=Math.hypot(dx,dz);
+    if(dist>0.06){
+     const step=Math.min(dist,1.4*dt);
+     a.root.position.x+=(dx/dist)*step;
+     a.root.position.z+=(dz/dist)*step;
+     a.faceAngle=Math.atan2(dx,dz);
+     a.walkWeight+=(1-a.walkWeight)*Math.min(1,dt*7);
+    }else{
+     a.faceAngle=Math.PI;
+     a.walkWeight+=(0-a.walkWeight)*Math.min(1,dt*7);
+    }
+    a.walkPhase+=dt*6.2*a.walkWeight;
+    a.held.g.visible=(st==='approaching')||(idx>=Number(sess.data?.offerIdx||0));
+    a.tipMaterial.emissiveIntensity=a.held.g.visible?1.8:0;
+    const targetPose=(st==='offering'&&dist<=0.1&&!isOfferingNow)?POSE_KNEEL:POSE_HOLD;
+    animateActor(a,targetPose,dt,a.walkWeight,false,a.faceAngle,a.walkPhase);
+   });
+  }else if(st==='praying'){
+   // Quỳ lạy 3 nhịp và chắp tay khấn
+   const spkIdx=Number(sess.data?.activeSpeakerIdx??-1);
+   const bowCycle=sess.stateTimer%2.9;
+   const targetPose=spkIdx>=0?POSE_HANDS:(bowCycle<1.6?POSE_BOW:POSE_KNEEL);
+   sess.actors.forEach((a,idx)=>{
+    a.held.g.visible=false;
+    a.root.position.x+=(a.laneX-a.root.position.x)*Math.min(1,dt*5);
+    a.root.position.z+=(-2.5-a.root.position.z)*Math.min(1,dt*5);
+    a.faceAngle=Math.PI;
+    a.walkWeight=0;
+    // Nội suy mượt giữa các tư thế quỳ/lạy/khấn
+    for(const k in a.P)a.P[k]+=(targetPose[k]-a.P[k])*Math.min(1,dt*6);
+    animateActor(a,a.P,dt,0,idx===spkIdx,Math.PI,0);
+   });
+  }else{
+   // Chế độ đi dạo tự do (roaming): Nội suy mượt vị trí Leader & các thành viên đi theo
+   const targetX=Number(sess.data?.pos?.x)||0;
+   const targetZ=Number(sess.data?.pos?.z)||3.2;
+   const targetRot=Number(sess.data?.pos?.rot)||0;
+
+   const dx=targetX-leader.root.position.x;
+   const dz=targetZ-leader.root.position.z;
+   const dist=Math.hypot(dx,dz);
+   const speed=2.5;
+
+   if(dist>0.05){
+    const step=Math.min(dist,speed*dt*Math.min(1.8,1+dist*0.25));
+    leader.root.position.x+=(dx/dist)*step;
+    leader.root.position.z+=(dz/dist)*step;
+    leader.faceAngle=Math.atan2(dx,dz);
+    leader.walkWeight+=(Math.min(1,dist*1.4)-leader.walkWeight)*Math.min(1,dt*8);
+   }else{
+    leader.faceAngle=targetRot;
+    leader.walkWeight+=(0-leader.walkWeight)*Math.min(1,dt*8);
+   }
+   leader.walkPhase+=dt*6.8*leader.walkWeight;
+   leader.held.g.visible=false;
+   for(const k in leader.P)leader.P[k]+=(ID[k]-leader.P[k])*Math.min(1,dt*7);
+   animateActor(leader,leader.P,dt,leader.walkWeight,false,leader.faceAngle,leader.walkPhase);
+
+   // Các thành viên đi theo Leader của đoàn người chơi khác
+   const lSin=Math.sin(leader.faceAngle),lCos=Math.cos(leader.faceAngle);
+   for(let i=0;i<sess.actors.length;i++){
+    if(i===leadIdx)continue;
+    const follower=sess.actors[i];
+    follower.held.g.visible=false;
+    for(const k in follower.P)follower.P[k]+=(ID[k]-follower.P[k])*Math.min(1,dt*7);
+
+    const sideOff=follower.gatherSideOffset||((i%2?1:-1)*1.35);
+    const backOff=follower.gatherBackOffset||1.45;
+    let ftx=leader.root.position.x - lSin*backOff + lCos*sideOff;
+    let ftz=leader.root.position.z - lCos*backOff - lSin*sideOff;
+
+    for(const other of allActorsForSeparation){
+     if(other===follower)continue;
+     const ox=follower.root.position.x-other.root.position.x;
+     const oz=follower.root.position.z-other.root.position.z;
+     const od=Math.hypot(ox,oz);
+     if(od<1.25&&od>0.001){
+      const push=(1.25-od)*0.75;
+      ftx+=(ox/od)*push;
+      ftz+=(oz/od)*push;
+     }
+    }
+
+    const fdx=ftx-follower.root.position.x;
+    const fdz=ftz-follower.root.position.z;
+    const fDist=Math.hypot(fdx,fdz);
+    if(fDist>0.32){
+     const fStep=Math.min(fDist-0.1,speed*(follower.speedFactor||1)*dt);
+     const [nx,nz]=clampAndCollidePosition(follower.root.position.x+(fdx/fDist)*fStep,follower.root.position.z+(fdz/fDist)*fStep,follower.root.position.x,follower.root.position.z);
+     follower.root.position.set(nx,0,nz);
+     follower.faceAngle=Math.atan2(fdx,fdz);
+     follower.walkWeight+=(Math.min(1,fDist*0.85+0.2)-follower.walkWeight)*Math.min(1,dt*6);
+    }else{
+     follower.walkWeight+=(0-follower.walkWeight)*Math.min(1,dt*7);
+    }
+    follower.walkPhase+=dt*6.8*follower.walkWeight;
+    animateActor(follower,follower.P,dt,follower.walkWeight,false,follower.faceAngle,follower.walkPhase);
+   }
+  }
+ });
+}
+
+/* ---------- Vòng lặp chính (60 FPS) ---------- */
 const clock=new THREE.Clock(),cp=new THREE.Vector3(),lk=new THREE.Vector3(),lkc=new THREE.Vector3(0,1.4,15);let tt=0,sacc=0;
 function resize(){const w=innerWidth,h=innerHeight;R.setSize(w,h);cam.aspect=w/h;cam.fov=w/h<1?70:50;cam.updateProjectionMatrix()}
+
 function animateActor(actor,pose,dt,walkWeight,isPraying=false,targetFace=face,stepPhase=wph){
  const r=actor.root,d=Math.atan2(Math.sin(targetFace-r.rotation.y),Math.cos(targetFace-r.rotation.y));r.rotation.y+=d*Math.min(1,dt*6);
  const sw=pose.arm>-.6?walkWeight:0,sn=Math.sin(stepPhase);
@@ -1347,7 +1766,6 @@ function animateActor(actor,pose,dt,walkWeight,isPraying=false,targetFace=face,s
  actor.armL.rotation.set(pose.arm-sn*.38*sw-bowPulse*.6,0,-pose.armZ);actor.armR.rotation.set(pose.arm+sn*.38*sw-bowPulse*.6,0,pose.armZ);
  actor.torso.rotation.x=pose.torso+bowPulse;actor.torso.scale.y=1+Math.sin(tt*2.2)*.012;
  actor.head.rotation.x=pose.head+nod;actor.head.rotation.z=Math.sin(tt*1.6)*(isPraying?.02:.05);
- // Mầm cỏ 4 lá trên đầu lắc lư vui mắt theo bước đi và nhịp gật gù
  if(actor.sprout){
   actor.sprout.rotation.z=Math.sin(tt*3.4+actor.blinkOffset)*.12+sn*.16*walkWeight;
   actor.sprout.rotation.x=-nod*.75+Math.cos(tt*2.6)*.06;
@@ -1356,37 +1774,89 @@ function animateActor(actor,pose,dt,walkWeight,isPraying=false,targetFace=face,s
   const pulse=1+Math.sin(tt*4)*.08;
   actor.leaderRing.scale.set(pulse,pulse,1);
  }
- // Biểu cảm mắt nhắm cười dịu dàng (◡ ◡) khi khấn & chớp mắt tự động khi mở mắt
  const eyesClosed=pose.eye>.55;
  const blinkCycle=(tt+actor.blinkOffset)%3.6;
  const blinkScale=blinkCycle<.12?Math.max(.12,Math.abs(blinkCycle-.06)/.06):1;
  actor.openEyes.forEach(e=>{e.visible=!eyesClosed;e.scale.y=blinkScale});
  actor.closedEyes.forEach(e=>{e.visible=eyesClosed});
  actor.blushList.forEach(m=>{m.emissiveIntensity=eyesClosed||isPraying?.42:.15});
- const isLead=phase==='panoramic'&&actors[leaderIndex]===actor;
+ const isLead=!actor.isRemote&&phase==='panoramic'&&actors[leaderIndex]===actor;
  if(actor.labelHighlight!==isPraying||actor.labelLeader!==isLead)updateLabel(actor.name,actor,isPraying,isLead);
  actor.held.g.position.set(0,pose.incY,pose.incZ);
- const lit=running&&((phase==='approach'&&si>=1)||(phase==='offer'&&actor===ch&&si<=1))&&actor.held.g.visible;
- actor.tipMaterial.emissiveIntensity=lit?Math.min(2,actor.tipMaterial.emissiveIntensity+dt*1.5):0;
+ if(!actor.isRemote){
+  const lit=running&&((phase==='approach'&&si>=1)||(phase==='offer'&&actor===ch&&si<=1))&&actor.held.g.visible;
+  actor.tipMaterial.emissiveIntensity=lit?Math.min(2,actor.tipMaterial.emissiveIntensity+dt*1.5):0;
+ }
 }
+
 function sequenceFinished(){
  if(phase==='approach')beginOffer(0);
  else if(phase==='offer'&&activeIndex+1<actors.length)beginOffer(activeIndex+1);
  else if(phase==='offer')beginGroupRitual();
  else finish();
 }
-addEventListener('resize',resize);resize();makeParticipants([{name:'Người 1',gender:'m',prayer:''}]);cam.position.set(2.6,2.4,19.4);
-function loop(){requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.05);tt+=dt;let wk=0;
- if(running){const s=seq[si];st+=dt;if(!isMobile&&s.wait&&sb&&st>=s.dur&&(s.w=(s.w||0)+dt)<25)st=s.dur-.001;const k=Math.min(st/s.dur,1),e=k*k*(3-2*k);
+
+addEventListener('resize',resize);resize();
+makeParticipants([{name:'Người 1',gender:'m',prayer:''}]);
+cam.position.set(2.6,2.4,19.4);
+initMultiplayerFirebase();
+
+function loop(){
+ requestAnimationFrame(loop);
+ const dt=Math.min(clock.getDelta(),.05);tt+=dt;let wk=0;
+
+ // Tập hợp toàn bộ các nhân vật đang hiện diện trong chánh điện để tính lực đẩy chống đè lên nhau
+ const allSceneActors=[...actors];
+ remoteSessions.forEach(sess=>allSceneActors.push(...sess.actors));
+
+ // 1. Cập nhật đoàn của chính mình khi đang trong chuỗi hành lễ hoặc xếp hàng đợi
+ if(running&&phase==='queue'){
+  // Đang đứng trong hàng đợi trên thảm đỏ: di chuyển mượt lên vị trí hàng đợi
+  const targetQueueZ=Math.min(18.0,1.6+Math.max(1,myQueueRank)*2.7);
+  let anyWalking=0;
+  actors.forEach(a=>{
+   const dx=a.laneX-a.root.position.x,dz=targetQueueZ-a.root.position.z,dist=Math.hypot(dx,dz);
+   if(dist>0.06){
+    const step=Math.min(dist,1.55*dt);
+    a.root.position.x+=(dx/dist)*step;
+    a.root.position.z+=(dz/dist)*step;
+    a.faceAngle=Math.atan2(dx,dz);
+    anyWalking=1;
+   }else{
+    a.faceAngle=Math.PI;
+   }
+  });
+  wk=anyWalking;
+  wa+=(wk-wa)*Math.min(1,dt*4.5);wph+=dt*6.2*wa;
+  actors.forEach(a=>animateActor(a,POSE_HOLD,dt,wa,false,a.faceAngle,wph));
+ }else if(running){
+  const s=seq[si];st+=dt;
+  if(!isMobile&&s.wait&&sb&&st>=s.dur&&(s.w=(s.w||0)+dt)<25)st=s.dur-.001;
+  const k=Math.min(st/s.dur,1),e=k*k*(3-2*k);
   for(const key in P)P[key]=from[key]+(s.p[key]-from[key])*e;
-  if(s.walk||s.walkGroupZ!==undefined){const m=k*k*(3-2*k);wk=Math.sin(k*Math.PI);
-   if(s.walk){ch.root.position.x=wf[0]+(s.walk[0]-wf[0])*m;ch.root.position.z=wf[1]+(s.walk[1]-wf[1])*m}
-   else actors.forEach((a,i)=>{a.root.position.x=groupWalkFrom[i][0];a.root.position.z=groupWalkFrom[i][1]+(s.walkGroupZ-groupWalkFrom[i][1])*m});
+  if(s.walk||s.walkGroupZ!==undefined||s.walkGroupSpot){
+   const m=k*k*(3-2*k);wk=Math.sin(k*Math.PI);
+   if(s.walk){
+    ch.root.position.x=wf[0]+(s.walk[0]-wf[0])*m;
+    ch.root.position.z=wf[1]+(s.walk[1]-wf[1])*m;
+   }else if(s.walkGroupSpot){
+    actors.forEach((a,i)=>{
+     const [gx,gz]=s.groupTargets[i];
+     a.root.position.x=groupWalkFrom[i][0]+(gx-groupWalkFrom[i][0])*m;
+     a.root.position.z=groupWalkFrom[i][1]+(gz-groupWalkFrom[i][1])*m;
+    });
+   }else{
+    actors.forEach((a,i)=>{
+     a.root.position.x=groupWalkFrom[i][0];
+     a.root.position.z=groupWalkFrom[i][1]+(s.walkGroupZ-groupWalkFrom[i][1])*m;
+    });
+   }
   }
-  if(k>=1){if(s.end)s.end();si++;if(si>=seq.length)sequenceFinished();else startStep()}}
- wa+=(wk-wa)*Math.min(1,dt*4.5);wph+=dt*6.2*wa;
- // Điều khiển di chuyển tự do & nhóm bạn đi theo kiểu tụ tập ngẫu nhiên có độ trễ
- if(!running&&phase==='panoramic'&&actors.length){
+  if(k>=1){if(s.end)s.end();si++;if(si>=seq.length)sequenceFinished();else startStep()}
+  wa+=(wk-wa)*Math.min(1,dt*4.5);wph+=dt*6.2*wa;
+  actors.forEach((a,idx)=>animateActor(a,phase==='group'||phase==='approach'?P:a.P,dt,phase==='group'||phase==='approach'||a===ch?wa:0,running&&phase==='group'&&idx===prayingActorIndex,face,wph));
+ }else if(!running&&phase==='panoramic'&&actors.length){
+  // 2. Điều khiển di chuyển tự do (Free Roam) cho phiên của mình + đồng bộ tọa độ lên Firebase (6Hz)
   const leader=actors[leaderIndex]||actors[0];
   let inX=(moveKeys.d?1:0)-(moveKeys.a?1:0)+joyState.dx;
   let inY=(moveKeys.s?1:0)-(moveKeys.w?1:0)+joyState.dy;
@@ -1396,12 +1866,29 @@ function loop(){requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.
   const leaderMoving=mag>0.06;
   if(leaderMoving){
    lastUserCamInput=performance.now();
-   // Tính hướng di chuyển tương đối theo góc nhìn hiện tại của Camera
    const forwardX=-Math.sin(orb.a),forwardZ=-Math.cos(orb.a);
    const rightX=Math.cos(orb.a),rightZ=-Math.sin(orb.a);
    const vx=forwardX*(-inY)+rightX*inX;
    const vz=forwardZ*(-inY)+rightZ*inX;
-   const [nx,nz]=clampAndCollidePosition(leader.root.position.x+vx*speed*dt,leader.root.position.z+vz*speed*dt,leader.root.position.x,leader.root.position.z);
+   let desiredX=leader.root.position.x+vx*speed*dt;
+   let desiredZ=leader.root.position.z+vz*speed*dt;
+
+   // Lực đẩy mềm giữa Leader của mình và tất cả nhân vật của người chơi khác để không đi xuyên qua nhau
+   remoteSessions.forEach(sess=>{
+    sess.actors.forEach(other=>{
+     const ox=desiredX-other.root.position.x;
+     const oz=desiredZ-other.root.position.z;
+     const od=Math.hypot(ox,oz);
+     const minSep=1.18;
+     if(od<minSep&&od>0.001){
+      const push=(minSep-od)*0.7;
+      desiredX+=(ox/od)*push;
+      desiredZ+=(oz/od)*push;
+     }
+    });
+   });
+
+   const [nx,nz]=clampAndCollidePosition(desiredX,desiredZ,leader.root.position.x,leader.root.position.z);
    leader.root.position.set(nx,0,nz);
    leader.faceAngle=Math.atan2(vx,vz);
    leader.walkWeight+=(Math.min(1,mag)-leader.walkWeight)*Math.min(1,dt*8);
@@ -1411,25 +1898,37 @@ function loop(){requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.
   leader.walkPhase+=dt*6.8*leader.walkWeight;
   animateActor(leader,leader.P,dt,leader.walkWeight,false,leader.faceAngle,leader.walkPhase);
 
-  // Các nhân vật còn lại delay một chút rồi di chuyển tới vị trí tụ tập ngẫu nhiên quanh Leader (và giữ khoảng cách không đè lên nhau)
+  // Đồng bộ tọa độ Leader của mình lên Firebase (tối đa mỗi 150ms và chỉ khi thực sự di chuyển)
+  const nowMs=performance.now();
+  if(mySessionActive&&(nowMs-lastPosSyncTime>150)){
+   const curX=leader.root.position.x,curZ=leader.root.position.z,curRot=leader.faceAngle;
+   if(Math.hypot(curX-lastSyncedX,curZ-lastSyncedZ)>0.08||Math.abs(curRot-lastSyncedRot)>0.15){
+    lastPosSyncTime=nowMs;
+    lastSyncedX=curX;lastSyncedZ=curZ;lastSyncedRot=curRot;
+    syncMySessionState({
+     pos:{x:Number(curX.toFixed(2)),z:Number(curZ.toFixed(2)),rot:Number(curRot.toFixed(2))},
+     leaderIdx:leaderIndex
+    });
+   }
+  }
+
+  // Các thành viên còn lại trong nhóm của mình bước theo Leader
   const lSin=Math.sin(leader.faceAngle),lCos=Math.cos(leader.faceAngle);
   for(let i=0;i<actors.length;i++){
    if(i===leaderIndex)continue;
    const follower=actors[i];
-   // Tọa độ mục tiêu của từng thành viên nằm lệch ngẫu nhiên phía sau & hai bên Leader
    const sideOff=follower.gatherSideOffset||((i%2?1:-1)*1.35);
    const backOff=follower.gatherBackOffset||1.45;
    let targetX=leader.root.position.x - lSin*backOff + lCos*sideOff;
    let targetZ=leader.root.position.z - lCos*backOff - lSin*sideOff;
 
-   // Lực đẩy nhẹ giữa các nhân vật để luôn giữ khoảng cách ~1 thân người (1.35m), đứng lộn xộn tự nhiên không bị trùng nhau
-   for(let j=0;j<actors.length;j++){
-    if(i===j)continue;
-    const other=actors[j];
+   // Lực đẩy mềm với tất cả nhân vật trong cảnh (cả trong nhóm lẫn người chơi khác)
+   for(const other of allSceneActors){
+    if(other===follower)continue;
     const ox=follower.root.position.x-other.root.position.x;
     const oz=follower.root.position.z-other.root.position.z;
     const od=Math.hypot(ox,oz);
-    const minSep=1.35;
+    const minSep=1.32;
     if(od<minSep&&od>0.001){
      const push=(minSep-od)*0.85;
      targetX+=(ox/od)*push;
@@ -1441,7 +1940,6 @@ function loop(){requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.
    const dz=targetZ-follower.root.position.z;
    const distToTarget=Math.hypot(dx,dz);
 
-   // Xử lý độ trễ (delay) trước khi bước theo Leader
    if(distToTarget>0.38){
     if(follower.reactTimer>0){
      follower.reactTimer-=dt;
@@ -1457,7 +1955,6 @@ function loop(){requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.
      follower.walkWeight+=(fWeight-follower.walkWeight)*Math.min(1,dt*6);
     }
    }else{
-    // Khi đã đứng vào vị trí tụ tập quanh Leader thì nạp lại delay cho lần di chuyển tiếp theo
     if(!leaderMoving)follower.reactTimer=follower.reactDelayMax||0.3;
     follower.walkWeight+=(0-follower.walkWeight)*Math.min(1,dt*7);
    }
@@ -1465,25 +1962,44 @@ function loop(){requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.
    animateActor(follower,follower.P,dt,follower.walkWeight,false,follower.faceAngle,follower.walkPhase);
   }
  }else{
-  actors.forEach((a,idx)=>animateActor(a,phase==='group'||phase==='approach'?P:a.P,dt,phase==='group'||phase==='approach'||a===ch?wa:0,running&&phase==='group'&&idx===prayingActorIndex,face,wph));
+  wa+=(0-wa)*Math.min(1,dt*4.5);
+  actors.forEach(a=>animateActor(a,a.P,dt,0,false,face,wph));
  }
- sacc+=dt;if(sacc>.12){sacc=0;if(running&&held.g.visible&&ch.tipMaterial.emissiveIntensity>.5)emit(held.tips[Math.random()*5|0]);if(bowlI.g.visible){emit(bowlI.tips[Math.random()*13|0]);if(Math.random()<.7)emit(bowlI.tips[Math.random()*13|0])}}
+
+ // 3. Cập nhật tất cả các đoàn người chơi khác trong chánh điện
+ updateRemoteSessions(dt,allSceneActors);
+
+ // 4. Khói nhang & hạt sáng
+ sacc+=dt;
+ if(sacc>.12){
+  sacc=0;
+  if(running&&held.g.visible&&ch.tipMaterial.emissiveIntensity>.5)emit(held.tips[Math.random()*5|0]);
+  remoteSessions.forEach(sess=>{
+   sess.actors.forEach(ra=>{
+    if(ra.held.g.visible&&ra.tipMaterial.emissiveIntensity>.5&&Math.random()<.45){
+     emit(ra.held.tips[Math.random()*5|0]);
+    }
+   });
+  });
+  if(bowlI.g.visible){emit(bowlI.tips[Math.random()*13|0]);if(Math.random()<.7)emit(bowlI.tips[Math.random()*13|0])}
+ }
  sm.forEach(s=>{const u=s.userData;if(u.l>0){u.l-=dt/4.2;const k=1-u.l;s.position.y+=u.v*dt*(1+k*.5);s.position.x+=Math.sin(u.ph+tt*1.3)*.16*dt*(.4+k*1.5);s.position.z+=Math.cos(u.ph*1.7+tt*1.1)*.1*dt*k;s.scale.setScalar(.14+k*1.0);s.material.opacity=Math.min(1,k*8)*Math.max(0,u.l)*.34}else s.material.opacity=0});
- updateEmbers(dt,tt);
- // 1. Lời chúc của chính nhân vật đang khấn bay trên đầu sau khi quỳ lạy
+
+ // 5. Chữ lời cầu nguyện bay từ trên đầu người đang khấn
  for(let i=floatingPrayers.length-1;i>=0;i--){
   const fp=floatingPrayers[i];fp.age+=dt;
   if(fp.age>=fp.life){
    scene.remove(fp.sprite);fp.sprite.material.map.dispose();fp.sprite.material.dispose();
    floatingPrayers.splice(i,1);continue;
   }
-  const p=fp.age/fp.life,fadeIn=Math.min(1,fp.age/.85);if(!fp.dissolved&&fp.age>=fp.dissolveAt){fp.dissolved=true;dissolvePrayer(fp)}const fadeOut=fp.dissolved?Math.max(0,1-(fp.age-fp.dissolveAt)/.4):1;
+  const p=fp.age/fp.life,fadeIn=Math.min(1,fp.age/.85),fadeOut=p>.58?Math.max(0,1-(p-.58)/.42):1;
   fp.sprite.position.y+=fp.vy*dt;
   fp.sprite.position.x+=Math.sin(fp.phase+tt*1.1)*fp.drift*dt;
   fp.sprite.scale.set(2.35*(1+p*.12),.39*(1+p*.12),1);
   fp.sprite.material.opacity=fadeIn*fadeOut*.96;
  }
- // 2. Lời chúc cộng đồng bay lơ lửng khắp chánh điện (tạm ẩn đột ngột và đóng băng nguyên trạng khi có người đang đọc lời cầu nguyện)
+
+ // 6. Thẻ lời chúc cộng đồng bay lơ lửng trên trần chánh điện
  const skyPrayersPaused=running&&phase==='group'&&prayingActorIndex!==-1;
  if(!skyPrayersPaused){
   if(communityPrayersPool.length>0&&((running&&ch&&ch.root.position.z<12)||activeSkyPrayers.length>0||!running)){
@@ -1503,12 +2019,10 @@ function loop(){requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.
     activeSkyPrayers.splice(i,1);
     continue;
    }
-   if(!spItem.dissolved&&spItem.age>=spItem.life-.4){spItem.dissolved=true;const ud=spItem.sprite.userData;dissolveSprite(spItem.sprite,ud.pts,ud.cw,ud.ch,ud.kinds)}
-    const progress=spItem.age/spItem.life;
+   const progress=spItem.age/spItem.life;
    const fadeIn=Math.min(1,spItem.age/0.7);
-   // Khi kết thúc vòng đời (30% cuối ~ 1.5s cuối): bay vút nhanh lên cao, giãn nhẹ và tan biến dần
-   const dissolvePhase=0;
-   const fadeOut=spItem.dissolved?Math.max(0,1-(spItem.age-(spItem.life-.4))/.4):1;
+   const dissolvePhase=progress>0.7?(progress-0.7)/0.3:0;
+   const fadeOut=1-dissolvePhase*dissolvePhase;
    const upwardBoost=1+dissolvePhase*3.2;
    if(spItem.sprite.position.y<6.2)spItem.sprite.position.y+=spItem.vy*upwardBoost*dt;
    spItem.sprite.position.x+=Math.sin(spItem.phase+tt*1.1)*spItem.driftX*(1+dissolvePhase)*dt;
@@ -1517,6 +2031,7 @@ function loop(){requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.
    spItem.sprite.material.opacity=fadeIn*fadeOut*0.95;
   }
  }
+
  luckyClover.position.y=2.62+Math.sin(tt*1.6)*.07;
  luckyClover.rotation.y=.36+Math.sin(tt*.85)*.22;
  luckyClover.rotation.x=.08+Math.cos(tt*1.1)*.05;
@@ -1525,11 +2040,12 @@ function loop(){requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.
  flames.forEach(([f,l,gl],i)=>{const q=1+Math.sin(tt*14+i*3)*.15+Math.random()*.08;f.scale.set(q,2.9*q,q);l.intensity=.8+Math.sin(tt*11+i)*.15;if(gl){const gq=1.25+Math.sin(tt*9+i*2)*.12+Math.random()*.05;gl.scale.set(gq,gq,1);gl.material.opacity=.5+Math.sin(tt*13+i)*.08}});
  pl.forEach((l,i)=>l.intensity=1.15+Math.sin(tt*3+i)*.08);
  dust.position.y=Math.sin(tt*.7)*.12;dust.rotation.y=tt*.02;
+
+ // 7. Điều khiển Camera độc lập cho riêng phiên của mình (bám theo nhân vật `ch` của mình)
  const r=ch.root;
  if(cm==='idle'){lk.set(0,1.4,15.5);cp.set(lk.x+Math.sin(.55+orb.a)*4.6,2.4+orb.p,lk.z+Math.cos(.55+orb.a)*4.6)}
  else if(cm==='follow'){lk.set(0,1.6,r.position.z-1.5);const dist=Math.max(5.5,Math.min(7.5,r.position.z+7.5));cp.set(lk.x+Math.sin(.38+orb.a)*dist,2.9+orb.p,lk.z+Math.cos(.38+orb.a)*dist)}
  else if(cm==='panoramic'){
-  // Nếu người dùng không kéo chuột, không bấm phím hoặc gạt joystick trong 1.2s thì camera xoay nhẹ nhàng quanh nhân vật Leader
   if(!orb.drag&&!joyState.active&&(performance.now()-lastUserCamInput>1200)){
    orb.a+=dt*0.168;
   }
@@ -1537,9 +2053,10 @@ function loop(){requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.
   const panoRadius=6.0;
   cp.set(lk.x+Math.sin(orb.a)*panoRadius,2.75+orb.p,lk.z+Math.cos(orb.a)*panoRadius);
  }
- else{lk.set(0,1.3,r.position.z);cp.set(lk.x+Math.sin(.9+orb.a)*5.5,2.8+orb.p,lk.z+Math.cos(.9+orb.a)*5.5)}
+ else{lk.set(r.position.x*.5,1.3,r.position.z);cp.set(lk.x+Math.sin(.9+orb.a)*5.5,2.8+orb.p,lk.z+Math.cos(.9+orb.a)*5.5)}
  cam.position.lerp(cp,1-Math.exp(-dt*2.5));lkc.lerp(lk,1-Math.exp(-dt*4));cam.lookAt(lkc);
- R.render(scene,cam)}
+ R.render(scene,cam);
+}
 loop();
 } catch(error) {
  console.error('Không thể khởi tạo cảnh 3D:',error);
