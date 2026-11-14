@@ -647,6 +647,12 @@ function clearFloatingPrayers(){
   fp.sprite.material.dispose();
  }
 }
+function setSkyPrayersSuspended(suspended){
+ // Khi các nhân vật bắt đầu đọc lời cầu nguyện: ẩn đột ngột toàn bộ thẻ lời chúc bay và giữ nguyên trạng thái
+ activeSkyPrayers.forEach(p=>{
+  p.sprite.visible=!suspended;
+ });
+}
 function wrapPrayerLines(text,maxLen=24){
  const words=text.trim().split(/\s+/).filter(Boolean);
  const lines=[];let line='';
@@ -681,6 +687,7 @@ function launchPrayer(actor,person,index=-1){
  floatTimers.forEach(id=>clearTimeout(id));
  floatTimers=[];
  prayingActorIndex=index;
+ setSkyPrayersSuspended(true);
  const rawText=person.prayer||DEFAULT_PRAYER;
  if(actor&&rawText){
   const lines=wrapPrayerLines(rawText,24);
@@ -1057,7 +1064,7 @@ function mkGroupSeq(){
  }
  // Sau khi cầu nguyện xong, nhân vật đứng dậy, đi ra đứng ở ngay giữa chánh điện (z = 3.2) và dừng lại
  s.push(
-  {d:1.1,p:ID,face:0,cm:'exit',on:()=>{prayingActorIndex=-1}},
+  {d:1.1,p:ID,face:0,cm:'exit',on:()=>{prayingActorIndex=-1;clearFloatingPrayers();setSkyPrayersSuspended(false)}},
   {walkGroupZ:3.2,speed:1.4,p:ID}
  );
  return s;
@@ -1081,7 +1088,7 @@ function beginGroupRitual(){
  activateActor(actors[0]);P=actors[0].P;face=Math.PI;seq=mkGroupSeq();si=0;startStep();
 }
 function finish(){
- running=false;phase='panoramic';cancelSpeech();clearFloatingPrayers();
+ running=false;phase='panoramic';cancelSpeech();clearFloatingPrayers();setSkyPrayersSuspended(false);
  // Khi vừa kết thúc lễ ở giữa chánh điện, sắp xếp các nhân vật đứng tụ tập tự nhiên, cách nhau khoảng 1 thân người
  actors.forEach((a,i)=>{
   a.P={...ID};
@@ -1117,7 +1124,7 @@ $('exit-role').onclick=()=>{
  $('exit-role').hidden=true;
  resetRoamControls();
  phase='idle';cm='idle';orb.a=orb.p=0;
- cancelSpeech();clearFloatingPrayers();
+ cancelSpeech();clearFloatingPrayers();setSkyPrayersSuspended(false);
  // Đưa bảng thiết lập về trạng thái vừa bắt đầu vào app (chọn số người cầu nguyện từ đầu)
  $('people-form').hidden=true;
  $('go').hidden=true;
@@ -1405,35 +1412,38 @@ function loop(){requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.
   fp.sprite.scale.set(2.35*(1+p*.12),.39*(1+p*.12),1);
   fp.sprite.material.opacity=fadeIn*fadeOut*.96;
  }
- // 2. Lời chúc cộng đồng bay lơ lửng khắp chánh điện (vẫn duy trì hoạt động bình thường cả khi kết thúc lượt lễ)
- if(communityPrayersPool.length>0&&((running&&ch&&ch.root.position.z<12)||activeSkyPrayers.length>0||!running)){
-  skySpawnAccumulator+=dt;
-  if(skySpawnAccumulator>0.55){
-   skySpawnAccumulator=0;
-   spawnRandomSkyPrayer();
+ // 2. Lời chúc cộng đồng bay lơ lửng khắp chánh điện (tạm ẩn đột ngột và đóng băng nguyên trạng khi có người đang đọc lời cầu nguyện)
+ const skyPrayersPaused=running&&phase==='group'&&prayingActorIndex!==-1;
+ if(!skyPrayersPaused){
+  if(communityPrayersPool.length>0&&((running&&ch&&ch.root.position.z<12)||activeSkyPrayers.length>0||!running)){
+   skySpawnAccumulator+=dt;
+   if(skySpawnAccumulator>0.55){
+    skySpawnAccumulator=0;
+    spawnRandomSkyPrayer();
+   }
   }
- }
- for(let i=activeSkyPrayers.length-1;i>=0;i--){
-  const spItem=activeSkyPrayers[i];
-  spItem.age+=dt;
-  if(spItem.age>=spItem.life){
-   scene.remove(spItem.sprite);
-   spItem.sprite.material.map.dispose();
-   spItem.sprite.material.dispose();
-   activeSkyPrayers.splice(i,1);
-   continue;
+  for(let i=activeSkyPrayers.length-1;i>=0;i--){
+   const spItem=activeSkyPrayers[i];
+   spItem.age+=dt;
+   if(spItem.age>=spItem.life){
+    scene.remove(spItem.sprite);
+    spItem.sprite.material.map.dispose();
+    spItem.sprite.material.dispose();
+    activeSkyPrayers.splice(i,1);
+    continue;
+   }
+   const progress=spItem.age/spItem.life;
+   const fadeIn=Math.min(1,spItem.age/0.7);
+   // Khi kết thúc vòng đời (30% cuối ~ 1.5s cuối): bay vút nhanh lên cao, giãn nhẹ và tan biến dần
+   const dissolvePhase=progress>0.7?(progress-0.7)/0.3:0;
+   const fadeOut=1-dissolvePhase*dissolvePhase;
+   const upwardBoost=1+dissolvePhase*3.2;
+   if(spItem.sprite.position.y<6.2)spItem.sprite.position.y+=spItem.vy*upwardBoost*dt;
+   spItem.sprite.position.x+=Math.sin(spItem.phase+tt*1.1)*spItem.driftX*(1+dissolvePhase)*dt;
+   const scaleGrow=1+dissolvePhase*0.18;
+   spItem.sprite.scale.set(spItem.baseW*scaleGrow,spItem.baseH*scaleGrow,1);
+   spItem.sprite.material.opacity=fadeIn*fadeOut*0.95;
   }
-  const progress=spItem.age/spItem.life;
-  const fadeIn=Math.min(1,spItem.age/0.7);
-  // Khi kết thúc vòng đời (30% cuối ~ 1.5s cuối): bay vút nhanh lên cao, giãn nhẹ và tan biến dần
-  const dissolvePhase=progress>0.7?(progress-0.7)/0.3:0;
-  const fadeOut=1-dissolvePhase*dissolvePhase;
-  const upwardBoost=1+dissolvePhase*3.2;
-  if(spItem.sprite.position.y<6.2)spItem.sprite.position.y+=spItem.vy*upwardBoost*dt;
-  spItem.sprite.position.x+=Math.sin(spItem.phase+tt*1.1)*spItem.driftX*(1+dissolvePhase)*dt;
-  const scaleGrow=1+dissolvePhase*0.18;
-  spItem.sprite.scale.set(spItem.baseW*scaleGrow,spItem.baseH*scaleGrow,1);
-  spItem.sprite.material.opacity=fadeIn*fadeOut*0.95;
  }
  luckyClover.position.y=2.62+Math.sin(tt*1.6)*.07;
  luckyClover.rotation.y=.36+Math.sin(tt*.85)*.22;
