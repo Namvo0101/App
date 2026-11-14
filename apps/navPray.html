@@ -39,6 +39,11 @@ input{width:150px}
 #exit-role{position:fixed;z-index:12;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 24px);transform:translateX(-50%);background:linear-gradient(135deg,#f2b84b,#d97706);color:#2b1206;border:1px solid #fff3c4aa;border-radius:999px;padding:11px 26px;font-size:16px;font-weight:700;cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,.65);backdrop-filter:blur(6px);transition:transform .2s,opacity .3s}
 #exit-role:active{transform:translateX(-50%) scale(.96)}
 #copyright{position:fixed;z-index:11;right:14px;bottom:calc(env(safe-area-inset-bottom,0px) + 12px);font-size:12px;color:#ffe9b0cc;letter-spacing:.3px;pointer-events:none;text-shadow:0 1px 4px rgba(0,0,0,.85)}
+/* Cần gạt ảo (Virtual Joystick) mờ nhẹ góc trái dưới & Hướng dẫn điều khiển */
+#joy-zone{position:fixed;z-index:12;left:calc(env(safe-area-inset-left,0px) + 18px);bottom:calc(env(safe-area-inset-bottom,0px) + 22px);width:112px;height:112px;border-radius:50%;background:radial-gradient(circle,rgba(242,184,75,.14) 0%,rgba(36,16,10,.42) 100%);border:1.5px solid rgba(242,184,75,.38);backdrop-filter:blur(4px);touch-action:none;display:flex;align-items:center;justify-content:center;opacity:.68;transition:opacity .25s,transform .2s;box-shadow:0 4px 16px rgba(0,0,0,.35)}
+#joy-zone.active{opacity:.95;border-color:rgba(242,184,75,.75)}
+#joy-knob{width:46px;height:46px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#ffe89e,#d98a2b);border:1.5px solid rgba(255,248,220,.85);box-shadow:0 3px 10px rgba(0,0,0,.5);pointer-events:none;transform:translate3d(0,0,0);transition:transform .08s ease-out}
+#joy-zone.active #joy-knob{transition:none}
 </style></head><body>
 <div id="ui"><div class="panel">
 <h1>🪔 Thắp Nhang Cầu Nguyện 🪔</h1>
@@ -46,6 +51,7 @@ input{width:150px}
 <div id="people-form" hidden><button id="count-back" type="button">Đổi số người</button><div id="people-fields"></div></div>
 <button id="go" type="button" hidden>🔥 Thắp nhang</button>
 </div></div>
+<div id="joy-zone" aria-label="Cần gạt di chuyển nhân vật" hidden><div id="joy-knob"></div></div>
 <button id="exit-role" type="button" hidden>Xả Vai</button>
 <button id="snd" type="button" title="Bật/Tắt nhạc nền" aria-label="Tắt nhạc nền" aria-pressed="true">🔊</button>
 <div id="copyright">© Nam Võ</div>
@@ -234,23 +240,25 @@ function stopMusic(){music.pause()}
 $('snd').onclick=()=>{if(musicBlocked&&!muted){startMusic(true);return}muted=!muted;$('snd').textContent=muted?'🔇':'🔊';$('snd').setAttribute('aria-pressed',String(!muted));$('snd').setAttribute('aria-label',muted?'Bật nhạc nền':'Tắt nhạc nền');if(muted){cancelSpeech();stopMusic()}else startMusic(true)};
 
 /* ---------- Nhân vật & Tối ưu bảng tên ---------- */
-let ch=null,P,held,actors=[],people=[],activeIndex=0,phase='idle',groupWalkFrom=[];
+let ch=null,P,held,actors=[],people=[],activeIndex=0,leaderIndex=0,phase='idle',groupWalkFrom=[];
 const DEFAULT_PRAYER='Cầu cho gia đình bình an, sức khỏe, vạn sự như ý.';
-function updateLabel(name,actor=ch,isPraying=false){
+function updateLabel(name,actor=ch,isPraying=false,isLeader=false){
  if(!actor)return;
  const x=actor.labelCanvas.getContext('2d');x.clearRect(0,0,512,128);
  x.save();
- x.fillStyle=isPraying?'#fff7cc':'#ffe9b0';
- x.shadowColor=isPraying?'rgba(255,205,60,1)':'rgba(25,8,4,.95)';
- x.shadowBlur=isPraying?22:8;
- x.shadowOffsetX=isPraying?0:1;
- x.shadowOffsetY=isPraying?0:2;
- x.font=`bold ${isPraying?56:50}px system-ui,-apple-system,sans-serif`;
+ const activeGlow=isPraying||isLeader;
+ x.fillStyle=isPraying?'#fff7cc':isLeader?'#ffe57f':'#ffe9b0';
+ x.shadowColor=activeGlow?'rgba(255,205,60,1)':'rgba(25,8,4,.95)';
+ x.shadowBlur=activeGlow?22:8;
+ x.shadowOffsetX=activeGlow?0:1;
+ x.shadowOffsetY=activeGlow?0:2;
+ x.font=`bold ${activeGlow?54:50}px system-ui,-apple-system,sans-serif`;
  x.textAlign='center';x.textBaseline='middle';
- x.fillText(name,256,66,460);
- if(isPraying)x.fillText(name,256,66,460);
+ const displayText=isLeader&&actors.length>1?`👑 ${name}`:name;
+ x.fillText(displayText,256,66,460);
+ if(activeGlow)x.fillText(displayText,256,66,460);
  x.restore();
- actor.labelTexture.needsUpdate=true;actor.name=name;actor.labelHighlight=isPraying;
+ actor.labelTexture.needsUpdate=true;actor.name=name;actor.labelHighlight=isPraying;actor.labelLeader=isLeader;
 }
 function disposeCharacter(root){
  const geometries=new Set(),materials=new Set(),textures=new Set();
@@ -484,12 +492,15 @@ function build(person={name:'',gender:'m'},replace=true){
  }
  const tipMaterial=M(0xff6a20,{emissive:0xff5a10,emissiveIntensity:0});
  held=mkInc(torso,5,.48,.22,tipMaterial);held.g.position.set(0,.36,.44);
+ // Vòng sáng vàng dưới chân đánh dấu nhân vật đang là Leader khi điều khiển tự do
+ const leaderRing=mk(new THREE.RingGeometry(.34,.44,28),new THREE.MeshBasicMaterial({color:0xffdf6b,side:THREE.DoubleSide,transparent:true,opacity:.85}),0,.02,0,root);
+ leaderRing.rotation.x=-Math.PI/2;leaderRing.visible=false;leaderRing.castShadow=leaderRing.receiveShadow=false;
  const labelCanvas=document.createElement('canvas');labelCanvas.width=512;labelCanvas.height=128;
  const labelTexture=new THREE.CanvasTexture(labelCanvas);
  const lb=new THREE.Sprite(new THREE.SpriteMaterial({map:labelTexture,depthTest:false}));lb.scale.set(1.68,.42,1);lb.position.y=1.34;lb.renderOrder=9;head.add(lb);
  root.position.set(0,0,15.5);root.rotation.y=Math.PI;
- ch={root,hip,torso,head,legL,legR,armL,armR,openEyes,closedEyes,blushList,sprout,gender:person.gender||'m',name,held,tipMaterial,labelCanvas,labelTexture,labelHighlight:false,blinkOffset:Math.random()*3.5,P:{...ID},laneX:0};
- P=ch.P;face=Math.PI;updateLabel(name,ch,false);return ch;
+ ch={root,hip,torso,head,legL,legR,armL,armR,openEyes,closedEyes,blushList,sprout,leaderRing,gender:person.gender||'m',name,held,tipMaterial,labelCanvas,labelTexture,labelHighlight:false,labelLeader:false,blinkOffset:Math.random()*3.5,P:{...ID},laneX:0,faceAngle:Math.PI,walkWeight:0,walkPhase:Math.random()*6.28};
+ P=ch.P;face=Math.PI;updateLabel(name,ch,false,false);return ch;
 }
 function makePersonCard(person,index){
  const card=document.createElement('section');card.className='person-card';card.dataset.index=index;
@@ -510,10 +521,12 @@ function readPeopleForm(){
 function activateActor(actor){ch=actor;P=actor.P;held=actor.held;face=actor.root.rotation.y}
 function makeParticipants(data=people){
  actors.forEach(actor=>{scene.remove(actor.root);disposeCharacter(actor.root)});
- actors=[];ch=null;bowlI.g.visible=false;
+ actors=[];ch=null;bowlI.g.visible=false;leaderIndex=0;
  data.forEach((person,index)=>{
-  const actor=build(person,false);actor.laneX=(index-(data.length-1)/2)*1.05;
-  actor.root.position.set(actor.laneX,0,15.5);actor.root.rotation.y=Math.PI;actor.held.g.visible=true;
+  const actor=build(person,false);
+  // Khoảng cách giữa các nhân vật rộng thoáng (~cách nhau 1 thân người = 1.45m)
+  actor.laneX=(index-(data.length-1)/2)*1.45;
+  actor.root.position.set(actor.laneX,0,15.5);actor.root.rotation.y=Math.PI;actor.faceAngle=Math.PI;actor.held.g.visible=true;
   actors.push(actor);
  });
  if(actors.length)activateActor(actors[0]);
@@ -722,7 +735,6 @@ async function loadPrayersFromCloud(){
     .filter(([,item])=>item&&typeof item==='object'&&String(item.text||'').trim())
     .map(([id,item])=>({id,text:String(item.text).trim()}));
    // Lọc chống trùng lặp nội dung chữ (chỉ giữ lại 1 bản cho mỗi nội dung lời chúc)
-   // Lọc chống trùng lặp nội dung chữ (lấy tất cả lời chúc không trùng trong Database)
    const seenTexts=new Set();
    const uniqueList=[];
    for(let i=rawEntries.length-1;i>=0;i--){
@@ -910,12 +922,108 @@ function clearSkyPrayers(){
  }
 }
 
-/* ---------- Kịch bản hoạt cảnh ---------- */
+/* ---------- Kịch bản hoạt cảnh & Hệ thống điều khiển tự do (Free Roam) ---------- */
 const ID={hipY:.56,leg:0,torso:0,head:0,arm:0,armZ:-.10,eye:0,incY:.36,incZ:.44};
 const pz=o=>({...ID,...o});
 let face=0,seq=[],si=0,st=0,from,wf,running=false,wa=0,wph=0,cm='idle';
 let orb={a:0,p:0,drag:false,x:0,y:0};
 const say=()=>{};
+
+// Trạng thái điều khiển bàn phím, cần gạt ảo & chọn Leader
+const moveKeys={w:false,a:false,s:false,d:false};
+const joyState={active:false,id:null,dx:0,dy:0};
+const raycaster=new THREE.Raycaster(),pointerNDC=new THREE.Vector2();
+
+function setLeader(index){
+ if(!actors.length)return;
+ leaderIndex=Math.max(0,Math.min(actors.length-1,index));
+ const leader=actors[leaderIndex];
+ ch=leader;P=leader.P;held=leader.held;face=leader.faceAngle;
+ // Gán vị trí tụ tập ngẫu nhiên (lộn xộn tự nhiên phía sau/hai bên Leader) & độ trễ phản ứng cho từng thành viên đi theo
+ let slot=0;
+ actors.forEach((a,i)=>{
+  const isLead=phase==='panoramic'&&i===leaderIndex;
+  if(a.leaderRing)a.leaderRing.visible=isLead&&actors.length>1;
+  updateLabel(a.name,a,false,isLead);
+  if(i!==leaderIndex){
+   // Phân bố góc tản ra hai bên và phía sau (không xếp hàng thẳng) với khoảng cách ~1 thân người (1.35m - 1.95m)
+   const side=(slot%2===0?1:-1);
+   const tier=Math.floor(slot/2);
+   const baseSpread=(0.55+tier*0.48)*side+(Math.random()-.5)*0.32;
+   const dist=1.35+tier*0.65+(Math.random()*0.35);
+   a.gatherSideOffset=Math.sin(baseSpread)*dist;
+   a.gatherBackOffset=Math.cos(baseSpread)*dist;
+   a.reactDelayMax=0.22+slot*0.14+Math.random()*0.18;
+   a.reactTimer=a.reactDelayMax;
+   a.speedFactor=0.92+Math.random()*0.16;
+   slot++;
+  }
+ });
+}
+
+// Giới hạn vùng di chuyển & xử lý va chạm (tường chánh điện, sân rộng ngoài trời, hàng cột đỏ, cây thông, đèn đá, bàn thờ)
+const PILLAR_Z=[12,8,4,0,-4,-8];
+const PINE_TREES=[[-10,16],[10,17],[-12,25],[12,26],[-9,32],[9,33]];
+function clampAndCollidePosition(x,z,prevX=x,prevZ=z){
+ // 1. Giới hạn chiều sâu từ trong chánh điện (-8.0) ra hết toàn bộ sân ngoài trời (40.5)
+ let nx=x,nz=Math.max(-8.0,Math.min(40.5,z));
+ // 2. Giới hạn bề ngang: Trong chánh điện (z < 12.5) bị chặn bởi 2 tường bên (-6.3..6.3), ra ngoài sân (z >= 12.5) mở rộng tới (-18.5..18.5)
+ if(nz<12.5){
+  if(Math.abs(prevX)>6.35&&prevZ>=12.2){
+   // Nếu đang ở ngoài sân rộng bên hông chánh điện thì chặn không cho đi xuyên qua mặt ngoài tường hông
+   nz=Math.max(12.5,nz);
+   nx=Math.max(-18.5,Math.min(18.5,nx));
+  }else{
+   nx=Math.max(-6.3,Math.min(6.3,nx));
+  }
+ }else{
+  nx=Math.max(-18.5,Math.min(18.5,nx));
+ }
+ // 3. Chặn vùng bàn thờ chính phía sâu (-8.4)
+ if(nz<-6.8&&Math.abs(nx)<3.4){
+  nz=-6.8;
+ }
+ // 4. Chặn vùng bàn lễ vật & lư hương (x: -2.75..2.75, z: -5.5..-3.55)
+ if(nx>-2.75&&nx<2.75&&nz>-5.55&&nz<-3.55){
+  const dFront=Math.abs(nz - (-3.55));
+  const dBack=Math.abs(nz - (-5.55));
+  const dLeft=Math.abs(nx - (-2.75));
+  const dRight=Math.abs(nx - 2.75);
+  const minD=Math.min(dFront,dBack,dLeft,dRight);
+  if(minD===dFront)nz=-3.55;
+  else if(minD===dBack)nz=-5.55;
+  else if(minD===dLeft)nx=-2.75;
+  else nx=2.75;
+ }
+ // 5. Va chạm tròn mềm với 2 hàng cột đỏ (x = -5, 5)
+ for(const pz of PILLAR_Z){
+  for(const px of [-5,5]){
+   const dx=nx-px,dz=nz-pz,dist=Math.hypot(dx,dz),minR=0.72;
+   if(dist<minR&&dist>0.0001){
+    nx=px+(dx/dist)*minR;
+    nz=pz+(dz/dist)*minR;
+   }
+  }
+ }
+ // 6. Va chạm với 2 đèn đá ngoài sân (x = -3, 3; z = 14)
+ for(const lx of [-3,3]){
+  const dx=nx-lx,dz=nz-14,dist=Math.hypot(dx,dz),minR=0.75;
+  if(dist<minR&&dist>0.0001){
+   nx=lx+(dx/dist)*minR;
+   nz=14+(dz/dist)*minR;
+  }
+ }
+ // 7. Va chạm với thân 6 cây thông ngoài sân
+ for(const [tx,tz] of PINE_TREES){
+  const dx=nx-tx,dz=nz-tz,dist=Math.hypot(dx,dz),minR=0.85;
+  if(dist<minR&&dist>0.0001){
+   nx=tx+(dx/dist)*minR;
+   nz=tz+(dz/dist)*minR;
+  }
+ }
+ return[nx,nz];
+}
+
 function mkOfferSeq(actor){
  const HOLD=pz({arm:-1.25,armZ:.52}),KN=pz({hipY:.24,leg:1.35,arm:-1.15,armZ:.52});
  return[
@@ -928,7 +1036,7 @@ function mkOfferSeq(actor){
 function beginGroupApproach(){
  const HOLD=pz({arm:-1.25,armZ:.52});
  phase='approach';cm='follow';activeIndex=0;
- actors.forEach(a=>{a.P={...ID};a.held.g.visible=true;a.tipMaterial.emissiveIntensity=0;a.root.position.set(a.laneX,0,15.5);a.root.rotation.y=Math.PI});
+ actors.forEach(a=>{a.P={...ID};a.held.g.visible=true;a.tipMaterial.emissiveIntensity=0;a.root.position.set(a.laneX,0,15.5);a.root.rotation.y=Math.PI;a.faceAngle=Math.PI;if(a.leaderRing)a.leaderRing.visible=false});
  activateActor(actors[0]);P=actors[0].P;face=Math.PI;
  seq=[{d:1.6,p:HOLD,face:Math.PI,cm:'follow'},{walkGroupZ:-3.7,speed:1.45,p:HOLD}];si=0;startStep();
 }
@@ -959,12 +1067,12 @@ function startStep(){
  if(s.walk)s.dur=Math.hypot(s.walk[0]-wf[0],s.walk[1]-wf[1])/s.speed;
  else if(s.walkGroupZ!==undefined){s.dur=Math.abs(s.walkGroupZ-ch.root.position.z)/s.speed;groupWalkFrom=actors.map(a=>[a.root.position.x,a.root.position.z])}
  else s.dur=s.d;
- if(s.face!==undefined)face=s.face;
+ if(s.face!==undefined){face=s.face;actors.forEach(a=>{if(phase==='group'||phase==='approach'||a===ch)a.faceAngle=face})}
  if(s.cm){cm=s.cm;orb.a*=.4;orb.p*=.4}
  say(s.msg);if(s.on)s.on();
 }
 function beginOffer(index){
- activeIndex=index;activateActor(actors[index]);ch.root.position.set(ch.laneX,0,-3.7);ch.root.rotation.y=Math.PI;
+ activeIndex=index;activateActor(actors[index]);ch.root.position.set(ch.laneX,0,-3.7);ch.root.rotation.y=Math.PI;ch.faceAngle=Math.PI;
  ch.held.g.visible=true;ch.tipMaterial.emissiveIntensity=0;P={...ID};ch.P=P;face=Math.PI;
  phase='offer';seq=mkOfferSeq(ch);si=0;startStep();
 }
@@ -974,16 +1082,40 @@ function beginGroupRitual(){
 }
 function finish(){
  running=false;phase='panoramic';cancelSpeech();clearFloatingPrayers();
- // Chuyển góc camera sang chế độ xoay toàn cảnh nhẹ nhàng quanh nhân vật ở giữa chánh điện
+ // Khi vừa kết thúc lễ ở giữa chánh điện, sắp xếp các nhân vật đứng tụ tập tự nhiên, cách nhau khoảng 1 thân người
+ actors.forEach((a,i)=>{
+  a.P={...ID};
+  if(actors.length>1){
+   const jitterZ=(i%2===0?0.38:-0.35)+(Math.random()-.5)*0.25;
+   const jitterX=a.laneX+(Math.random()-.5)*0.22;
+   a.root.position.set(jitterX,0,3.2+jitterZ);
+   a.faceAngle=(Math.random()-.5)*0.55;
+   a.root.rotation.y=a.faceAngle;
+  }else{
+   a.faceAngle=a.root.rotation.y;
+  }
+  a.walkWeight=0;
+ });
+ setLeader(0);
+ // Chuyển góc camera sang chế độ xoay toàn cảnh & theo dõi Leader
  cm='panoramic';
  orb.a=0.45;orb.p=0.15;
  // Tải lại danh sách Database sau khi kết thúc lượt lễ để cập nhật thêm lời chúc mới vào chu kỳ bay
  loadPrayersFromCloud();
- // Hiện nút "Xả vai" để khi người dùng bấm vào mới quay lại bảng thiết lập ban đầu
+ // Hiện nút "Xả vai" và Cần gạt ảo
  $('exit-role').hidden=false;
+ $('joy-zone').hidden=false;
+}
+function resetRoamControls(){
+ Object.keys(moveKeys).forEach(k=>moveKeys[k]=false);
+ joyState.active=false;joyState.id=null;joyState.dx=0;joyState.dy=0;
+ $('joy-zone').classList.remove('active');
+ $('joy-knob').style.transform='translate3d(0,0,0)';
+ $('joy-zone').hidden=true;
 }
 $('exit-role').onclick=()=>{
  $('exit-role').hidden=true;
+ resetRoamControls();
  phase='idle';cm='idle';orb.a=orb.p=0;
  cancelSpeech();clearFloatingPrayers();
  // Đưa bảng thiết lập về trạng thái vừa bắt đầu vào app (chọn số người cầu nguyện từ đầu)
@@ -1000,6 +1132,7 @@ $('exit-role').onclick=()=>{
 $('go').onclick=()=>{
  if(running||!actors.length)return;people=readPeopleForm();
  $('exit-role').hidden=true;
+ resetRoamControls();
  // Lưu lời chúc của từng người lên Database (nếu để trống vẫn lưu câu DEFAULT_PRAYER như bình thường)
  people.forEach(p=>savePrayerToCloud(p));
  makeParticipants(people);
@@ -1007,11 +1140,18 @@ $('go').onclick=()=>{
  $('go').disabled=true;$('count-back').disabled=true;$('people-fields').querySelectorAll('input,button').forEach(el=>el.disabled=true);$('ui').classList.add('hide');
 };
 
-/* ---------- Điều khiển xoay Camera bằng chuột/cảm ứng ---------- */
-let lastUserCamInput=0;
-R.domElement.addEventListener('pointerdown',e=>{if(!e.isPrimary)return;orb.drag=true;orb.x=e.clientX;orb.y=e.clientY;lastUserCamInput=performance.now();R.domElement.setPointerCapture(e.pointerId)});
+/* ---------- Điều khiển xoay Camera, Chọn Leader & Di chuyển nhân vật ---------- */
+let lastUserCamInput=0,pointerDownPos={x:0,y:0},pointerMoved=false;
+R.domElement.addEventListener('pointerdown',e=>{
+ if(!e.isPrimary)return;
+ orb.drag=true;orb.x=e.clientX;orb.y=e.clientY;
+ pointerDownPos.x=e.clientX;pointerDownPos.y=e.clientY;pointerMoved=false;
+ lastUserCamInput=performance.now();
+ R.domElement.setPointerCapture(e.pointerId);
+});
 R.domElement.addEventListener('pointermove',e=>{
  if(!orb.drag)return;
+ if(Math.hypot(e.clientX-pointerDownPos.x,e.clientY-pointerDownPos.y)>6)pointerMoved=true;
  const dx=(e.clientX-orb.x)*.006,dy=(e.clientY-orb.y)*.005;
  if(cm==='panoramic')orb.a-=dx;
  else orb.a=Math.max(-1.4,Math.min(1.4,orb.a-dx));
@@ -1019,9 +1159,44 @@ R.domElement.addEventListener('pointermove',e=>{
  orb.x=e.clientX;orb.y=e.clientY;
  lastUserCamInput=performance.now();
 });
-const stopDrag=()=>{orb.drag=false};
-R.domElement.addEventListener('pointerup',stopDrag);R.domElement.addEventListener('pointercancel',stopDrag);R.domElement.addEventListener('lostpointercapture',stopDrag);
-R.domElement.addEventListener('keydown',e=>{
+const stopDrag=e=>{
+ if(orb.drag&&!pointerMoved&&phase==='panoramic'&&actors.length>1&&e&&e.clientX!==undefined){
+  // Kiểm tra click/chạm vào nhân vật để đổi người dẫn đầu (Leader)
+  const rect=R.domElement.getBoundingClientRect();
+  pointerNDC.x=((e.clientX-rect.left)/rect.width)*2-1;
+  pointerNDC.y=-((e.clientY-rect.top)/rect.height)*2+1;
+  raycaster.setFromCamera(pointerNDC,cam);
+  const roots=actors.map(a=>a.root);
+  const hits=raycaster.intersectObjects(roots,true);
+  if(hits.length){
+   let obj=hits[0].object;
+   while(obj&&!roots.includes(obj))obj=obj.parent;
+   const idx=roots.indexOf(obj);
+   if(idx!==-1&&idx!==leaderIndex){
+    setLeader(idx);
+    lastUserCamInput=performance.now();
+   }
+  }
+ }
+ orb.drag=false;
+};
+R.domElement.addEventListener('pointerup',stopDrag);R.domElement.addEventListener('pointercancel',stopDrag);R.domElement.addEventListener('lostpointercapture',()=>orb.drag=false);
+
+// Bàn phím điều khiển di chuyển nhân vật (khi ở giai đoạn panoramic) hoặc xoay camera
+addEventListener('keydown',e=>{
+ if(e.target&&['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName))return;
+ const k=e.key.toLowerCase();
+ if(phase==='panoramic'){
+  if(k==='w'||e.key==='ArrowUp'){moveKeys.w=true;e.preventDefault();return}
+  if(k==='s'||e.key==='ArrowDown'){moveKeys.s=true;e.preventDefault();return}
+  if(k==='a'||e.key==='ArrowLeft'){moveKeys.a=true;e.preventDefault();return}
+  if(k==='d'||e.key==='ArrowRight'){moveKeys.d=true;e.preventDefault();return}
+  if(k>='1'&&k<='5'){
+   const idx=Number(k)-1;
+   if(idx<actors.length)setLeader(idx);
+   return;
+  }
+ }
  const step=.08;
  if(e.key==='ArrowLeft')orb.a=cm==='panoramic'?orb.a-step:Math.max(-1.4,orb.a-step);
  else if(e.key==='ArrowRight')orb.a=cm==='panoramic'?orb.a+step:Math.min(1.4,orb.a+step);
@@ -1031,6 +1206,52 @@ R.domElement.addEventListener('keydown',e=>{
  lastUserCamInput=performance.now();
  e.preventDefault();
 });
+addEventListener('keyup',e=>{
+ const k=e.key.toLowerCase();
+ if(k==='w'||e.key==='ArrowUp')moveKeys.w=false;
+ if(k==='s'||e.key==='ArrowDown')moveKeys.s=false;
+ if(k==='a'||e.key==='ArrowLeft')moveKeys.a=false;
+ if(k==='d'||e.key==='ArrowRight')moveKeys.d=false;
+});
+addEventListener('blur',()=>{Object.keys(moveKeys).forEach(k=>moveKeys[k]=false)});
+
+// Sự kiện Cần gạt ảo (Virtual Joystick) góc dưới bên trái
+{
+ const joyZone=$('joy-zone'),joyKnob=$('joy-knob'),maxRad=36;
+ const updateJoy=e=>{
+  const rect=joyZone.getBoundingClientRect();
+  const cx=rect.left+rect.width/2,cy=rect.top+rect.height/2;
+  let dx=e.clientX-cx,dy=e.clientY-cy;
+  const dist=Math.hypot(dx,dy);
+  if(dist>maxRad){dx=(dx/dist)*maxRad;dy=(dy/dist)*maxRad}
+  joyKnob.style.transform=`translate3d(${dx.toFixed(1)}px,${dy.toFixed(1)}px,0)`;
+  joyState.dx=dx/maxRad;
+  joyState.dy=dy/maxRad;
+  lastUserCamInput=performance.now();
+ };
+ joyZone.addEventListener('pointerdown',e=>{
+  e.stopPropagation();
+  joyState.active=true;joyState.id=e.pointerId;
+  joyZone.classList.add('active');
+  joyZone.setPointerCapture(e.pointerId);
+  updateJoy(e);
+ });
+ joyZone.addEventListener('pointermove',e=>{
+  if(!joyState.active||e.pointerId!==joyState.id)return;
+  e.stopPropagation();
+  updateJoy(e);
+ });
+ const endJoy=e=>{
+  if(!joyState.active||(e.pointerId!==undefined&&e.pointerId!==joyState.id))return;
+  joyState.active=false;joyState.id=null;joyState.dx=0;joyState.dy=0;
+  joyZone.classList.remove('active');
+  joyKnob.style.transform='translate3d(0,0,0)';
+ };
+ joyZone.addEventListener('pointerup',endJoy);
+ joyZone.addEventListener('pointercancel',endJoy);
+ joyZone.addEventListener('lostpointercapture',endJoy);
+}
+
 document.addEventListener('visibilitychange',()=>{
  if(document.hidden){stopMusic();if(!isMobile){try{if(sb)speechSynthesis.pause()}catch(e){}if(ttsAud&&!ttsAud.paused)try{ttsAud.pause()}catch(e){}}}
  else{if(musicRequested&&!muted)startMusic();if(!isMobile){try{if(sb)speechSynthesis.resume()}catch(e){}if(sb&&ttsAud&&ttsAud.paused&&ttsAud.src&&!muted)try{ttsAud.play()}catch(e){}}}
@@ -1039,9 +1260,9 @@ document.addEventListener('visibilitychange',()=>{
 /* ---------- Vòng lặp ---------- */
 const clock=new THREE.Clock(),cp=new THREE.Vector3(),lk=new THREE.Vector3(),lkc=new THREE.Vector3(0,1.4,15);let tt=0,sacc=0;
 function resize(){const w=innerWidth,h=innerHeight;R.setSize(w,h);cam.aspect=w/h;cam.fov=w/h<1?70:50;cam.updateProjectionMatrix()}
-function animateActor(actor,pose,dt,walkWeight,isPraying=false){
- const r=actor.root,d=Math.atan2(Math.sin(face-r.rotation.y),Math.cos(face-r.rotation.y));r.rotation.y+=d*Math.min(1,dt*4);
- const sw=pose.arm>-.6?walkWeight:0,sn=Math.sin(wph);
+function animateActor(actor,pose,dt,walkWeight,isPraying=false,targetFace=face,stepPhase=wph){
+ const r=actor.root,d=Math.atan2(Math.sin(targetFace-r.rotation.y),Math.cos(targetFace-r.rotation.y));r.rotation.y+=d*Math.min(1,dt*6);
+ const sw=pose.arm>-.6?walkWeight:0,sn=Math.sin(stepPhase);
  const nod=isPraying?Math.sin(tt*4.8)*.13:0;
  const bowPulse=isPraying?Math.sin(tt*4.8)*.035:0;
  actor.hip.position.y=pose.hipY+Math.abs(sn)*.035*walkWeight;
@@ -1054,6 +1275,10 @@ function animateActor(actor,pose,dt,walkWeight,isPraying=false){
   actor.sprout.rotation.z=Math.sin(tt*3.4+actor.blinkOffset)*.12+sn*.16*walkWeight;
   actor.sprout.rotation.x=-nod*.75+Math.cos(tt*2.6)*.06;
  }
+ if(actor.leaderRing&&actor.leaderRing.visible){
+  const pulse=1+Math.sin(tt*4)*.08;
+  actor.leaderRing.scale.set(pulse,pulse,1);
+ }
  // Biểu cảm mắt nhắm cười dịu dàng (◡ ◡) khi khấn & chớp mắt tự động khi mở mắt
  const eyesClosed=pose.eye>.55;
  const blinkCycle=(tt+actor.blinkOffset)%3.6;
@@ -1061,7 +1286,8 @@ function animateActor(actor,pose,dt,walkWeight,isPraying=false){
  actor.openEyes.forEach(e=>{e.visible=!eyesClosed;e.scale.y=blinkScale});
  actor.closedEyes.forEach(e=>{e.visible=eyesClosed});
  actor.blushList.forEach(m=>{m.emissiveIntensity=eyesClosed||isPraying?.42:.15});
- if(actor.labelHighlight!==isPraying)updateLabel(actor.name,actor,isPraying);
+ const isLead=phase==='panoramic'&&actors[leaderIndex]===actor;
+ if(actor.labelHighlight!==isPraying||actor.labelLeader!==isLead)updateLabel(actor.name,actor,isPraying,isLead);
  actor.held.g.position.set(0,pose.incY,pose.incZ);
  const lit=running&&((phase==='approach'&&si>=1)||(phase==='offer'&&actor===ch&&si<=1))&&actor.held.g.visible;
  actor.tipMaterial.emissiveIntensity=lit?Math.min(2,actor.tipMaterial.emissiveIntensity+dt*1.5):0;
@@ -1082,7 +1308,88 @@ function loop(){requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.
   }
   if(k>=1){if(s.end)s.end();si++;if(si>=seq.length)sequenceFinished();else startStep()}}
  wa+=(wk-wa)*Math.min(1,dt*4.5);wph+=dt*6.2*wa;
- actors.forEach((a,idx)=>animateActor(a,phase==='group'||phase==='approach'?P:a.P,dt,phase==='group'||phase==='approach'||a===ch?wa:0,running&&phase==='group'&&idx===prayingActorIndex));
+ // Điều khiển di chuyển tự do & nhóm bạn đi theo kiểu tụ tập ngẫu nhiên có độ trễ
+ if(!running&&phase==='panoramic'&&actors.length){
+  const leader=actors[leaderIndex]||actors[0];
+  let inX=(moveKeys.d?1:0)-(moveKeys.a?1:0)+joyState.dx;
+  let inY=(moveKeys.s?1:0)-(moveKeys.w?1:0)+joyState.dy;
+  const mag=Math.hypot(inX,inY);
+  if(mag>1){inX/=mag;inY/=mag}
+  const speed=2.45;
+  const leaderMoving=mag>0.06;
+  if(leaderMoving){
+   lastUserCamInput=performance.now();
+   // Tính hướng di chuyển tương đối theo góc nhìn hiện tại của Camera
+   const forwardX=-Math.sin(orb.a),forwardZ=-Math.cos(orb.a);
+   const rightX=Math.cos(orb.a),rightZ=-Math.sin(orb.a);
+   const vx=forwardX*(-inY)+rightX*inX;
+   const vz=forwardZ*(-inY)+rightZ*inX;
+   const [nx,nz]=clampAndCollidePosition(leader.root.position.x+vx*speed*dt,leader.root.position.z+vz*speed*dt,leader.root.position.x,leader.root.position.z);
+   leader.root.position.set(nx,0,nz);
+   leader.faceAngle=Math.atan2(vx,vz);
+   leader.walkWeight+=(Math.min(1,mag)-leader.walkWeight)*Math.min(1,dt*8);
+  }else{
+   leader.walkWeight+=(0-leader.walkWeight)*Math.min(1,dt*8);
+  }
+  leader.walkPhase+=dt*6.8*leader.walkWeight;
+  animateActor(leader,leader.P,dt,leader.walkWeight,false,leader.faceAngle,leader.walkPhase);
+
+  // Các nhân vật còn lại delay một chút rồi di chuyển tới vị trí tụ tập ngẫu nhiên quanh Leader (và giữ khoảng cách không đè lên nhau)
+  const lSin=Math.sin(leader.faceAngle),lCos=Math.cos(leader.faceAngle);
+  for(let i=0;i<actors.length;i++){
+   if(i===leaderIndex)continue;
+   const follower=actors[i];
+   // Tọa độ mục tiêu của từng thành viên nằm lệch ngẫu nhiên phía sau & hai bên Leader
+   const sideOff=follower.gatherSideOffset||((i%2?1:-1)*1.35);
+   const backOff=follower.gatherBackOffset||1.45;
+   let targetX=leader.root.position.x - lSin*backOff + lCos*sideOff;
+   let targetZ=leader.root.position.z - lCos*backOff - lSin*sideOff;
+
+   // Lực đẩy nhẹ giữa các nhân vật để luôn giữ khoảng cách ~1 thân người (1.35m), đứng lộn xộn tự nhiên không bị trùng nhau
+   for(let j=0;j<actors.length;j++){
+    if(i===j)continue;
+    const other=actors[j];
+    const ox=follower.root.position.x-other.root.position.x;
+    const oz=follower.root.position.z-other.root.position.z;
+    const od=Math.hypot(ox,oz);
+    const minSep=1.35;
+    if(od<minSep&&od>0.001){
+     const push=(minSep-od)*0.85;
+     targetX+=(ox/od)*push;
+     targetZ+=(oz/od)*push;
+    }
+   }
+
+   const dx=targetX-follower.root.position.x;
+   const dz=targetZ-follower.root.position.z;
+   const distToTarget=Math.hypot(dx,dz);
+
+   // Xử lý độ trễ (delay) trước khi bước theo Leader
+   if(distToTarget>0.38){
+    if(follower.reactTimer>0){
+     follower.reactTimer-=dt;
+     follower.walkWeight+=(0-follower.walkWeight)*Math.min(1,dt*7);
+    }else{
+     const fSpeed=speed*(follower.speedFactor||1)*Math.min(1.15,0.55+distToTarget*0.45);
+     const step=Math.min(distToTarget-0.12,fSpeed*dt);
+     const ux=dx/distToTarget,uz=dz/distToTarget;
+     const [fx,fz]=clampAndCollidePosition(follower.root.position.x+ux*step,follower.root.position.z+uz*step,follower.root.position.x,follower.root.position.z);
+     follower.root.position.set(fx,0,fz);
+     follower.faceAngle=Math.atan2(ux,uz);
+     const fWeight=Math.min(1,distToTarget*0.85+0.25);
+     follower.walkWeight+=(fWeight-follower.walkWeight)*Math.min(1,dt*6);
+    }
+   }else{
+    // Khi đã đứng vào vị trí tụ tập quanh Leader thì nạp lại delay cho lần di chuyển tiếp theo
+    if(!leaderMoving)follower.reactTimer=follower.reactDelayMax||0.3;
+    follower.walkWeight+=(0-follower.walkWeight)*Math.min(1,dt*7);
+   }
+   follower.walkPhase+=dt*6.8*follower.walkWeight;
+   animateActor(follower,follower.P,dt,follower.walkWeight,false,follower.faceAngle,follower.walkPhase);
+  }
+ }else{
+  actors.forEach((a,idx)=>animateActor(a,phase==='group'||phase==='approach'?P:a.P,dt,phase==='group'||phase==='approach'||a===ch?wa:0,running&&phase==='group'&&idx===prayingActorIndex,face,wph));
+ }
  sacc+=dt;if(sacc>.12){sacc=0;if(running&&held.g.visible&&ch.tipMaterial.emissiveIntensity>.5)emit(held.tips[Math.random()*5|0]);if(bowlI.g.visible&&Math.random()<.9)emit(bowlI.tips[Math.random()*13|0])}
  sm.forEach(s=>{const u=s.userData;if(u.l>0){u.l-=dt/3.5;s.position.y+=u.v*dt;s.position.x+=Math.sin(u.ph+tt*1.3)*.12*dt;const k=1-u.l;s.scale.setScalar(.12+k*.7);s.material.opacity=Math.max(0,u.l)*.4}else s.material.opacity=0});
  // 1. Lời chúc của chính nhân vật đang khấn bay trên đầu sau khi quỳ lạy
@@ -1140,12 +1447,12 @@ function loop(){requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.
  if(cm==='idle'){lk.set(0,1.4,15.5);cp.set(lk.x+Math.sin(.55+orb.a)*4.6,2.4+orb.p,lk.z+Math.cos(.55+orb.a)*4.6)}
  else if(cm==='follow'){lk.set(0,1.6,r.position.z-1.5);const dist=Math.max(5.5,Math.min(7.5,r.position.z+7.5));cp.set(lk.x+Math.sin(.38+orb.a)*dist,2.9+orb.p,lk.z+Math.cos(.38+orb.a)*dist)}
  else if(cm==='panoramic'){
-  // Nếu người dùng không kéo chuột hoặc bấm phím xoay góc nhìn thì hệ thống tự động xoay nhẹ nhàng quanh nhân vật (chậm hơn 30%)
-  if(!orb.drag&&(performance.now()-lastUserCamInput>400)){
+  // Nếu người dùng không kéo chuột, không bấm phím hoặc gạt joystick trong 1.2s thì camera xoay nhẹ nhàng quanh nhân vật Leader
+  if(!orb.drag&&!joyState.active&&(performance.now()-lastUserCamInput>1200)){
    orb.a+=dt*0.168;
   }
-  lk.set(0,1.65,r.position.z-0.6);
-  const panoRadius=6.2;
+  lk.set(r.position.x,1.55,r.position.z-0.3);
+  const panoRadius=6.0;
   cp.set(lk.x+Math.sin(orb.a)*panoRadius,2.75+orb.p,lk.z+Math.cos(orb.a)*panoRadius);
  }
  else{lk.set(0,1.3,r.position.z);cp.set(lk.x+Math.sin(.9+orb.a)*5.5,2.8+orb.p,lk.z+Math.cos(.9+orb.a)*5.5)}
