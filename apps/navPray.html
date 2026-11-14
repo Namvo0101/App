@@ -685,6 +685,9 @@ function spawnPrayerLine(actor,line){
  x.shadowColor='rgba(255,175,40,.95)';x.shadowBlur=16;
  x.fillStyle='#fff3c4';
  x.fillText(line,384,64,720);
+ // Lấy mẫu các điểm ảnh của chữ -> sau này mỗi điểm sẽ hóa thành một tàn đóm
+ const img=x.getImageData(0,0,768,128).data,pts=[],maxPts=isMobile?160:300;
+ for(let k=0;k<5000&&pts.length<maxPts*2;k++){const px=Math.random()*768|0,py=Math.random()*128|0;if(img[(py*768+px)*4+3]>150)pts.push(px,py)}
  const tex=new THREE.CanvasTexture(c);
  const mat=new THREE.SpriteMaterial({map:tex,transparent:true,depthWrite:false,depthTest:false,opacity:0});
  const sprite=new THREE.Sprite(mat);
@@ -693,7 +696,7 @@ function spawnPrayerLine(actor,line){
  actor.head.getWorldPosition(_v);
  sprite.position.set(_v.x,2.52,_v.z-.05);
  scene.add(sprite);
- floatingPrayers.push({sprite,age:0,life:6.2,vy:.22,drift:(Math.random()-.5)*.06,phase:Math.random()*6.28});
+ floatingPrayers.push({sprite,pts,dissolved:false,dissolveAt:3.2,age:0,life:3.7,vy:.22,drift:(Math.random()-.5)*.06,phase:Math.random()*6.28});
 }
 function launchPrayer(actor,person,index=-1){
  floatTimers.forEach(id=>clearTimeout(id));
@@ -710,6 +713,60 @@ function launchPrayer(actor,person,index=-1){
   });
  }
  if(!isMobile)speak(`Lời cầu nguyện của ${person.name}: ${rawText}`);
+}
+/* ---------- Chữ lời cầu nguyện tan thành tàn đóm vàng bay lên trời ---------- */
+const emberSystems=[];
+function sampleCardPoints(ctx,w,h){
+ const d=ctx.getImageData(0,0,w,h).data,pts=[],kinds=[],tMax=isMobile?110:220,cMax=isMobile?70:140;let tc=0,cc=0;
+ for(let k=0;k<9000&&(tc<tMax||cc<cMax);k++){
+  const px=Math.random()*w|0,py=Math.random()*h|0,o=(py*w+px)*4;
+  if(d[o+3]<100)continue;
+  const isText=d[o+2]>170;
+  if(isText){if(tc>=tMax)continue;tc++}else{if(cc>=cMax)continue;cc++}
+  pts.push(px,py);kinds.push(isText?1:0);
+ }
+ return{pts,kinds};
+}
+function dissolvePrayer(fp){dissolveSprite(fp.sprite,fp.pts,768,128)}
+function dissolveSprite(sp,pts,cw,ch,kinds){
+ const n=pts.length/2;if(!n)return;
+ const e=cam.matrixWorld.elements,rx=e[0],ry=e[1],rz=e[2],ux=e[4],uy=e[5],uz=e[6];
+ const sw=sp.scale.x,sh=sp.scale.y,pos=new Float32Array(n*3),col=new Float32Array(n*3);
+ const st={n,age:0,pos,col,base:new Float32Array(n*3),vel:new Float32Array(n*3),delay:new Float32Array(n),life:new Float32Array(n),ph:new Float32Array(n)};
+ for(let i=0;i<n;i++){
+  const u=(pts[i*2]-cw/2)/cw,v=(ch/2-pts[i*2+1])/ch,lx=u*sw,ly=v*sh;
+  pos[i*3]=sp.position.x+rx*lx+ux*ly;pos[i*3+1]=sp.position.y+ry*lx+uy*ly;pos[i*3+2]=sp.position.z+rz*lx+uz*ly;
+  const t=Math.random();
+  st.base.set(kinds&&kinds[i]===0?(t<.6?[1,.6,.22]:[.9,.38,.12]):t<.5?[1,.88,.5]:t<.85?[1,.66,.26]:[1,.45,.14],i*3);
+  st.delay[i]=(u+.5)*1.5+Math.random()*.35;            // chữ tan dần từ trái sang phải
+  st.life[i]=2.2+Math.random()*2.2;
+  st.vel[i*3]=.16+Math.random()*.3;st.vel[i*3+1]=.32+Math.random()*.6;st.vel[i*3+2]=(Math.random()-.5)*.2;
+  st.ph[i]=Math.random()*6.28;
+ }
+ const g=new THREE.BufferGeometry();
+ g.setAttribute('position',new THREE.BufferAttribute(pos,3));g.setAttribute('color',new THREE.BufferAttribute(col,3));
+ st.obj=new THREE.Points(g,new THREE.PointsMaterial({size:.1,map:glowTex,vertexColors:true,transparent:true,depthWrite:false,depthTest:!!kinds,blending:THREE.AdditiveBlending}));
+ st.obj.renderOrder=12;st.obj.frustumCulled=false;scene.add(st.obj);emberSystems.push(st);
+}
+function updateEmbers(dt,tt){
+ for(let k=emberSystems.length-1;k>=0;k--){
+  const s=emberSystems[k],P=s.pos,C=s.col;s.age+=dt;let alive=false;
+  for(let i=0;i<s.n;i++){
+   const t=s.age-s.delay[i];let b=0;
+   if(t<0){alive=true;b=Math.min(1,s.age/.4)*(.8+.2*Math.sin(tt*9+s.ph[i]))}
+   else{
+    const q=t/s.life[i];
+    if(q<1){
+     alive=true;
+     P[i*3]+=(s.vel[i*3]+Math.sin(tt*1.8+s.ph[i])*.12)*dt;P[i*3+1]+=s.vel[i*3+1]*dt*(1+q);P[i*3+2]+=s.vel[i*3+2]*dt;
+     b=Math.pow(1-q,1.3)*(.75+.25*Math.sin(tt*14+s.ph[i]));
+    }
+   }
+   C[i*3]=s.base[i*3]*b;C[i*3+1]=s.base[i*3+1]*b;C[i*3+2]=s.base[i*3+2]*b;
+  }
+  s.obj.geometry.attributes.position.needsUpdate=true;s.obj.geometry.attributes.color.needsUpdate=true;
+  if(!alive){scene.remove(s.obj);s.obj.geometry.dispose();s.obj.material.dispose();emberSystems.splice(k,1)}
+ }
 }
 if(!isMobile)pickVoice();
 
@@ -860,13 +917,14 @@ function createSkyPrayerSprite(item){
  });
 
  const tex=new THREE.CanvasTexture(c);
+ const sk=sampleCardPoints(ctx,canvasW,canvasH);
  const mat=new THREE.SpriteMaterial({map:tex,transparent:true,depthWrite:false,opacity:0});
  const sprite=new THREE.Sprite(mat);
  // Giữ đúng tỷ lệ khung hình thực tế trong không gian 3D để chữ luôn sắc nét, không bị bẹp
  const baseW=canvasW/255;
  const baseH=canvasH/255;
  sprite.scale.set(baseW,baseH,1);
- sprite.userData={baseW,baseH,lineCount:lines.length};
+ sprite.userData={baseW,baseH,lineCount:lines.length,pts:sk.pts,kinds:sk.kinds,cw:canvasW,ch:canvasH};
  sprite.renderOrder=8;
  return sprite;
 }
@@ -1411,6 +1469,7 @@ function loop(){requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.
  }
  sacc+=dt;if(sacc>.12){sacc=0;if(running&&held.g.visible&&ch.tipMaterial.emissiveIntensity>.5)emit(held.tips[Math.random()*5|0]);if(bowlI.g.visible){emit(bowlI.tips[Math.random()*13|0]);if(Math.random()<.7)emit(bowlI.tips[Math.random()*13|0])}}
  sm.forEach(s=>{const u=s.userData;if(u.l>0){u.l-=dt/4.2;const k=1-u.l;s.position.y+=u.v*dt*(1+k*.5);s.position.x+=Math.sin(u.ph+tt*1.3)*.16*dt*(.4+k*1.5);s.position.z+=Math.cos(u.ph*1.7+tt*1.1)*.1*dt*k;s.scale.setScalar(.14+k*1.0);s.material.opacity=Math.min(1,k*8)*Math.max(0,u.l)*.34}else s.material.opacity=0});
+ updateEmbers(dt,tt);
  // 1. Lời chúc của chính nhân vật đang khấn bay trên đầu sau khi quỳ lạy
  for(let i=floatingPrayers.length-1;i>=0;i--){
   const fp=floatingPrayers[i];fp.age+=dt;
@@ -1418,7 +1477,7 @@ function loop(){requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.
    scene.remove(fp.sprite);fp.sprite.material.map.dispose();fp.sprite.material.dispose();
    floatingPrayers.splice(i,1);continue;
   }
-  const p=fp.age/fp.life,fadeIn=Math.min(1,fp.age/.85),fadeOut=p>.58?Math.max(0,1-(p-.58)/.42):1;
+  const p=fp.age/fp.life,fadeIn=Math.min(1,fp.age/.85);if(!fp.dissolved&&fp.age>=fp.dissolveAt){fp.dissolved=true;dissolvePrayer(fp)}const fadeOut=fp.dissolved?Math.max(0,1-(fp.age-fp.dissolveAt)/.4):1;
   fp.sprite.position.y+=fp.vy*dt;
   fp.sprite.position.x+=Math.sin(fp.phase+tt*1.1)*fp.drift*dt;
   fp.sprite.scale.set(2.35*(1+p*.12),.39*(1+p*.12),1);
@@ -1444,11 +1503,12 @@ function loop(){requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.
     activeSkyPrayers.splice(i,1);
     continue;
    }
-   const progress=spItem.age/spItem.life;
+   if(!spItem.dissolved&&spItem.age>=spItem.life-.4){spItem.dissolved=true;const ud=spItem.sprite.userData;dissolveSprite(spItem.sprite,ud.pts,ud.cw,ud.ch,ud.kinds)}
+    const progress=spItem.age/spItem.life;
    const fadeIn=Math.min(1,spItem.age/0.7);
    // Khi kết thúc vòng đời (30% cuối ~ 1.5s cuối): bay vút nhanh lên cao, giãn nhẹ và tan biến dần
-   const dissolvePhase=progress>0.7?(progress-0.7)/0.3:0;
-   const fadeOut=1-dissolvePhase*dissolvePhase;
+   const dissolvePhase=0;
+   const fadeOut=spItem.dissolved?Math.max(0,1-(spItem.age-(spItem.life-.4))/.4):1;
    const upwardBoost=1+dissolvePhase*3.2;
    if(spItem.sprite.position.y<6.2)spItem.sprite.position.y+=spItem.vy*upwardBoost*dt;
    spItem.sprite.position.x+=Math.sin(spItem.phase+tt*1.1)*spItem.driftX*(1+dissolvePhase)*dt;
