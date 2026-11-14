@@ -65,6 +65,11 @@ header h1 {
   border-radius: 999px;
   font-weight: 600;
 }
+.badge.online {
+  background: rgba(76, 175, 80, 0.2);
+  border-color: #4caf5088;
+  color: #98ee99;
+}
 .badge.pending {
   background: rgba(217, 83, 79, 0.2);
   border-color: #d9534f88;
@@ -267,6 +272,7 @@ tr.row-deleted td {
   <header>
     <h1>🪔 Quản Trị Lời Cầu Nguyện (Admin)</h1>
     <div class="stats">
+      <span class="badge online" id="live-sessions-badge">🟢 Đang online: 0 đoàn</span>
       <span class="badge" id="total-count">Tổng: 0 lời chúc</span>
       <span class="badge pending" id="pending-count" hidden>0 thay đổi chưa lưu</span>
     </div>
@@ -277,9 +283,10 @@ tr.row-deleted td {
     <div class="box-title">🔗 Kết Nối Firebase Realtime Database</div>
     <div class="grid-config">
       <input id="db-url" type="url" placeholder="https://ten-project-default-rtdb.asia-southeast1.firebasedatabase.app">
-      <input id="db-secret" type="password" placeholder="Database Secret">
-      <div style="display:flex;gap:8px">
+      <input id="db-secret" type="password" placeholder="Database Secret (Tùy chọn)">
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button id="btn-load" class="btn-gold" type="button">🔄 Tải Dữ Liệu</button>
+        <button id="btn-clear-sessions" class="btn-danger" type="button" title="Dọn sạch các phiên trực tuyến bị treo trong /live_sessions">🧹 Dọn Phiên Treo</button>
         <button id="btn-export" class="btn-outline" type="button" title="Tải file JSON sao lưu về máy">📥 Xuất File Backup</button>
       </div>
     </div>
@@ -298,7 +305,7 @@ tr.row-deleted td {
   <!-- Bảng danh sách xem / sửa / xóa -->
   <section class="box">
     <div class="toolbar">
-      <div class="box-title" style="margin:0">📜 Danh Sách Lời Cầu Nguyện</div>
+      <div class="box-title" style="margin:0">📜 Danh Sách Lời Cầu Nguyện (`/prayers`)</div>
       <div class="search-wrap">
         <input id="search-input" type="search" placeholder="🔍 Tìm theo tên hoặc nội dung lời chúc...">
       </div>
@@ -337,31 +344,22 @@ tr.row-deleted td {
 <script>
 const $ = id => document.getElementById(id);
 
-// Khôi phục link Database và Database Secret đã lưu từ lần mở trước (nếu chưa có thì dùng link mặc định)
 const DEFAULT_DB_URL = 'https://thapnhang-default-rtdb.asia-southeast1.firebasedatabase.app';
 const savedUrl = localStorage.getItem('navPray_admin_db_url') || DEFAULT_DB_URL;
 const savedSecret = localStorage.getItem('navPray_admin_db_secret') || '';
 $('db-url').value = savedUrl;
 $('db-secret').value = savedSecret;
 
-// Chỉ cập nhật link Database đã lưu khi người dùng nhập lại link mới
 $('db-url').addEventListener('change', () => {
   const newUrl = $('db-url').value.trim().replace(/\/+$/, '');
-  if (newUrl) {
-    localStorage.setItem('navPray_admin_db_url', newUrl);
-  }
+  if (newUrl) localStorage.setItem('navPray_admin_db_url', newUrl);
 });
 
-// Chỉ cập nhật Database Secret đã lưu khi người dùng nhập lại key mới
 $('db-secret').addEventListener('change', () => {
   const newKey = $('db-secret').value.trim();
-  if (newKey) {
-    localStorage.setItem('navPray_admin_db_secret', newKey);
-  }
+  localStorage.setItem('navPray_admin_db_secret', newKey);
 });
 
-// Danh sách bản ghi quản lý trên bộ nhớ tạm
-// Mỗi phần tử: { id, name, text, ts, status: 'clean' | 'new' | 'modified' | 'deleted', editing: false }
 let records = [];
 let originalSnapshot = [];
 
@@ -374,17 +372,12 @@ function notify(msg, isError = false) {
 
 function getBaseUrl() {
   const inputUrl = $('db-url').value.trim().replace(/\/+$/, '');
-  if (inputUrl) {
-    localStorage.setItem('navPray_admin_db_url', inputUrl);
-  }
+  if (inputUrl) localStorage.setItem('navPray_admin_db_url', inputUrl);
   return inputUrl || localStorage.getItem('navPray_admin_db_url') || DEFAULT_DB_URL;
 }
 
 function buildAuthQuery() {
   const inputSecret = $('db-secret').value.trim();
-  if (inputSecret) {
-    localStorage.setItem('navPray_admin_db_secret', inputSecret);
-  }
   const secret = inputSecret || localStorage.getItem('navPray_admin_db_secret') || '';
   return secret ? `?auth=${encodeURIComponent(secret)}` : '';
 }
@@ -437,12 +430,10 @@ function renderTable() {
     else if (rec.status === 'modified') tr.className = 'row-modified';
     else if (rec.status === 'deleted') tr.className = 'row-deleted';
 
-    // Cột STT
     const tdIndex = document.createElement('td');
     tdIndex.textContent = idx + 1;
     tr.appendChild(tdIndex);
 
-    // Cột Tên
     const tdName = document.createElement('td');
     if (rec.editing) {
       const inpName = document.createElement('input');
@@ -461,7 +452,6 @@ function renderTable() {
     }
     tr.appendChild(tdName);
 
-    // Cột Nội dung lời chúc
     const tdText = document.createElement('td');
     if (rec.editing) {
       const inpText = document.createElement('input');
@@ -475,13 +465,11 @@ function renderTable() {
     }
     tr.appendChild(tdText);
 
-    // Cột Thời gian
     const tdTime = document.createElement('td');
     tdTime.className = 'time-col';
     tdTime.textContent = formatDate(rec.ts);
     tr.appendChild(tdTime);
 
-    // Cột Công cụ (Sửa / Xóa / Khôi phục)
     const tdActions = document.createElement('td');
     const actWrap = document.createElement('div');
     actWrap.className = 'actions';
@@ -554,7 +542,44 @@ function renderTable() {
   updateStats();
 }
 
-// 1. Tải toàn bộ lời chúc từ Firebase
+// Kiểm tra số lượng phiên đang trực tuyến trong /live_sessions
+async function refreshLiveSessionsCount() {
+  const baseUrl = getBaseUrl();
+  if (!baseUrl) return;
+  try {
+    const res = await fetch(`${baseUrl}/live_sessions.json${buildAuthQuery()}`);
+    if (!res.ok) return;
+    const data = await res.json();
+    let groupCount = 0;
+    let personCount = 0;
+    if (data && typeof data === 'object') {
+      Object.values(data).forEach(sess => {
+        if (sess && typeof sess === 'object') {
+          groupCount++;
+          personCount += Array.isArray(sess.members) ? sess.members.length : 1;
+        }
+      });
+    }
+    $('live-sessions-badge').textContent = `🟢 Đang online: ${groupCount} đoàn (${personCount} người)`;
+  } catch (e) {}
+}
+
+// Dọn sạch các phiên trực tuyến bị treo trong /live_sessions
+async function clearAllLiveSessions() {
+  const baseUrl = getBaseUrl();
+  if (!baseUrl) return;
+  try {
+    const res = await fetch(`${baseUrl}/live_sessions.json${buildAuthQuery()}`, {
+      method: 'DELETE'
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    await refreshLiveSessionsCount();
+    notify('🧹 Đã dọn sạch toàn bộ các phiên trực tuyến (/live_sessions) thành công!');
+  } catch (err) {
+    notify(`Không thể dọn phiên trực tuyến: ${err.message}`, true);
+  }
+}
+
 async function loadFromDatabase() {
   const baseUrl = getBaseUrl();
   if (!baseUrl) {
@@ -581,11 +606,11 @@ async function loadFromDatabase() {
           });
         }
       });
-      // Sắp xếp mới nhất lên đầu
       records.sort((a, b) => b.ts - a.ts);
     }
     originalSnapshot = JSON.parse(JSON.stringify(records));
     renderTable();
+    await refreshLiveSessionsCount();
     notify(`Đã tải thành công ${records.length} lời chúc từ Database.`);
   } catch (err) {
     console.error(err);
@@ -595,7 +620,6 @@ async function loadFromDatabase() {
   }
 }
 
-// 2. Thêm lời chúc mới vào bảng tạm
 function addNewRecord() {
   const name = $('add-name').value.trim() || 'Khách thập phương';
   const text = $('add-text').value.trim();
@@ -619,7 +643,6 @@ function addNewRecord() {
   notify('Đã thêm lời chúc mới vào danh sách. Nhấn "Lưu Thay Đổi Vào Database" để lưu lên Cloud.');
 }
 
-// 3. Lưu toàn bộ thay đổi (Thêm / Sửa / Xóa) lên Firebase Database
 async function commitChangesToDatabase() {
   const baseUrl = getBaseUrl();
   if (!baseUrl) {
@@ -674,14 +697,12 @@ async function commitChangesToDatabase() {
   }
 }
 
-// 4. Hoàn tác về trạng thái vừa tải
 function discardChanges() {
   records = JSON.parse(JSON.stringify(originalSnapshot));
   renderTable();
   notify('Đã hoàn tác mọi thay đổi chưa lưu.');
 }
 
-// 5. Xuất file JSON sao lưu về máy
 function exportBackupJson() {
   const exportObj = {prayers: {}};
   records.filter(r => r.status !== 'deleted').forEach(r => {
@@ -698,6 +719,7 @@ function exportBackupJson() {
 }
 
 $('btn-load').onclick = loadFromDatabase;
+$('btn-clear-sessions').onclick = clearAllLiveSessions;
 $('btn-add').onclick = addNewRecord;
 $('add-text').addEventListener('keydown', e => { if (e.key === 'Enter') addNewRecord(); });
 $('search-input').addEventListener('input', renderTable);
@@ -706,6 +728,7 @@ $('btn-discard').onclick = discardChanges;
 $('btn-export').onclick = exportBackupJson;
 
 loadFromDatabase();
+setInterval(refreshLiveSessionsCount, 10000);
 </script>
 </body>
 </html>
