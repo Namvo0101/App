@@ -45,13 +45,18 @@ input{width:150px}
 #joy-knob{width:46px;height:46px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#ffe89e,#d98a2b);border:1.5px solid rgba(255,248,220,.85);box-shadow:0 3px 10px rgba(0,0,0,.5);pointer-events:none;transform:translate3d(0,0,0);transition:transform .08s ease-out}
 #joy-zone.active #joy-knob{transition:none}
 /* Huy hiệu số người đang hiện diện & Thông báo xếp hàng đợi thắp nhang */
-#live-badge{position:fixed;z-index:11;left:calc(env(safe-area-inset-left,0px) + 12px);top:calc(env(safe-area-inset-top,0px) + 10px);background:rgba(36,16,10,.82);border:1px solid #f2b84b66;border-radius:999px;padding:6px 13px;font-size:12.5px;color:#ffe9b0;display:flex;align-items:center;gap:7px;backdrop-filter:blur(6px);pointer-events:none;box-shadow:0 4px 14px rgba(0,0,0,.4)}
-#live-dot{width:8px;height:8px;border-radius:50%;background:#4caf50;box-shadow:0 0 8px #4caf50;animation:pulseDot 1.8s infinite}
+#live-badge{position:fixed;z-index:11;left:calc(env(safe-area-inset-left,0px) + 12px);top:calc(env(safe-area-inset-top,0px) + 10px);background:rgba(36,16,10,.86);border:1px solid #f2b84b66;border-radius:14px;padding:7px 13px;font-size:12.5px;color:#ffe9b0;display:flex;flex-direction:column;gap:4px;backdrop-filter:blur(6px);pointer-events:none;box-shadow:0 4px 14px rgba(0,0,0,.45);max-width:270px}
+.live-row{display:flex;align-items:center;gap:7px}
+#live-list{font-size:11.5px;color:#ffd56b;opacity:.92;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#live-dot{width:8px;height:8px;border-radius:50%;background:#4caf50;box-shadow:0 0 8px #4caf50;animation:pulseDot 1.8s infinite;flex-shrink:0}
 @keyframes pulseDot{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.35);opacity:.65}}
 #queue-banner{position:fixed;z-index:12;left:50%;top:calc(env(safe-area-inset-top,0px) + 14px);transform:translateX(-50%);background:linear-gradient(135deg,rgba(56,24,14,.94),rgba(36,14,8,.94));border:1.5px solid #f2b84baa;border-radius:16px;padding:10px 18px;font-size:14px;color:#fff3d1;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.6);backdrop-filter:blur(8px);max-width:min(92vw,520px);line-height:1.45;pointer-events:none}
 #queue-banner strong{color:#ffd56b}
 </style></head><body>
-<div id="live-badge" title="Số người đang có mặt trong chánh điện"><span id="live-dot"></span><span id="live-count">Đang kết nối chánh điện...</span></div>
+<div id="live-badge" title="Số người đang có mặt trong chánh điện">
+ <div class="live-row"><span id="live-dot"></span><span id="live-count">Đang kết nối chánh điện...</span></div>
+ <div id="live-list" hidden></div>
+</div>
 <div id="queue-banner" hidden></div>
 <div id="ui"><div class="panel">
 <h1>🪔 Thắp Nhang Cầu Nguyện 🪔</h1>
@@ -942,14 +947,15 @@ const moveKeys={w:false,a:false,s:false,d:false};
 const joyState={active:false,id:null,dx:0,dy:0};
 const raycaster=new THREE.Raycaster(),pointerNDC=new THREE.Vector2();
 
-// --- CẤU HÌNH MULTIPLAYER REAL-TIME ---
+// --- CẤU HÌNH MULTIPLAYER REAL-TIME (HYBRID REST + WEBSOCKET/SSE CHỐNG LỆCH ĐỒNG HỒ) ---
 const MY_SESSION_ID='sess_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,7);
-const remoteSessions=new Map(); // sessionId -> { id, data, actors, leaderIdx, walkWeight, walkPhase, lastSpokenIdx, offerIdx }
+const remoteSessions=new Map(); // sessionId -> { id, data, actors, leaderIdx, walkWeight, walkPhase, lastSpokenIdx, offerIdx, localSeenAt, lastSeq }
 let fbDb=null,sessionsRef=null,mySessionRef=null;
-let mySessionActive=false,myJoinedAt=0,myQueueRank=-1;
+let mySessionActive=false,myJoinedAt=0,myQueueRank=-1,myHeartbeatSeq=1;
+let mySessionDataCache=null;
 let lastPosSyncTime=0,lastSyncedX=999,lastSyncedZ=999,lastSyncedRot=999;
 const MAX_VISIBLE_REMOTE_SESSIONS=15;
-const SESSION_TTL_MS=75000; // Quét rác các phiên mất kết nối quá 75 giây
+const LOCAL_STALE_TIMEOUT_MS=42000; // Nếu sau 42s đồng hồ nội bộ không thấy gói tin/seq mới thì tự dọn
 
 function assignFollowersOffsets(actorList,leadIdx){
  let slot=0;
@@ -992,147 +998,247 @@ function setLeader(index){
  }
 }
 
-// Khởi tạo kết nối Firebase Realtime Database qua WebSocket
-function initMultiplayerFirebase(){
+// Đồng bộ trạng thái của toàn bộ các đoàn qua HTTP REST chuẩn (đảm bảo 100% hoạt động giống nhánh /prayers)
+let isFetchingSessions=false;
+async function pollAllLiveSessions(){
+ if(!FIREBASE_DB_URL||isFetchingSessions)return;
+ isFetchingSessions=true;
  try{
-  if(!window.firebase)return;
-  if(!firebase.apps.length){
-   firebase.initializeApp({databaseURL:FIREBASE_DB_URL});
-  }
-  fbDb=firebase.database();
-  sessionsRef=fbDb.ref('live_sessions');
-
-  sessionsRef.on('child_added',snap=>handleRemoteSessionSnapshot(snap.key,snap.val()));
-  sessionsRef.on('child_changed',snap=>handleRemoteSessionSnapshot(snap.key,snap.val()));
-  sessionsRef.on('child_removed',snap=>removeRemoteSession(snap.key));
-
-  // Cập nhật nhịp tim (Heartbeat) mỗi 15s & tự động dọn các phiên mồ côi quá hạn
-  setInterval(()=>{
-   const now=Date.now();
-   if(mySessionActive&&mySessionRef){
-    mySessionRef.update({lastActive:firebase.database.ServerValue.TIMESTAMP}).catch(()=>{});
+  const res=await fetch(`${FIREBASE_DB_URL}/live_sessions.json?cb=${Date.now()}`,{cache:'no-store'});
+  if(!res.ok){
+   if(res.status===401||res.status===403){
+    const el=$('live-count');
+    if(el)el.textContent='⚠️ Cần mở quyền Rules cho /live_sessions';
    }
-   remoteSessions.forEach((sess,sid)=>{
-    if(sess.data&&sess.data.lastActive&&(now-Number(sess.data.lastActive)>SESSION_TTL_MS)){
-     // Dọn dẹp phiên mồ côi bị kẹt mạng quá 75s
-     sessionsRef.child(sid).remove().catch(()=>{});
-     removeRemoteSession(sid);
+   return;
+  }
+  const allData=await res.json();
+  const activeKeys=new Set();
+  if(allData&&typeof allData==='object'){
+   Object.entries(allData).forEach(([sid,sData])=>{
+    if(sid&&sData&&typeof sData==='object'){
+     activeKeys.add(sid);
+     if(sid!==MY_SESSION_ID){
+      handleRemoteSessionSnapshot(sid,sData);
+     }
     }
    });
-   evaluateAltarQueue();
-   updateLiveCounterUI();
-  },12000);
-
+  }
+  // Xóa những đoàn đã rời khỏi chánh điện trên server
+  for(const existingSid of [...remoteSessions.keys()]){
+   if(!activeKeys.has(existingSid)){
+    removeRemoteSession(existingSid);
+   }
+  }
+  // Kiểm tra các phiên bị treo bằng đồng hồ nội bộ của chính máy này (không phụ thuộc đồng hồ máy khác)
+  const localNow=performance.now();
+  remoteSessions.forEach((sess,sid)=>{
+   if(localNow-sess.localSeenAt>LOCAL_STALE_TIMEOUT_MS){
+    fetch(`${FIREBASE_DB_URL}/live_sessions/${encodeURIComponent(sid)}.json`,{method:'DELETE'}).catch(()=>{});
+    removeRemoteSession(sid);
+   }
+  });
+  evaluateAltarQueue();
   updateLiveCounterUI();
  }catch(e){
-  console.warn('Không thể khởi tạo Multiplayer Firebase:',e);
+  // Bỏ qua lỗi mạng tạm thời
+ }finally{
+  isFetchingSessions=false;
  }
+}
+
+// Khởi tạo kết nối Cộng Đồng (Kết hợp cả REST Polling tốc độ cao + Firebase SDK nếu khả dụng)
+function initMultiplayerFirebase(){
+ // 1. Khởi chạy ngay bộ đồng bộ REST (dùng chung đường truyền với /prayers nên luôn nhận diện được mọi đoàn)
+ pollAllLiveSessions();
+ setInterval(pollAllLiveSessions,1100);
+
+ // 2. Khởi tạo thêm kênh WebSocket của Firebase SDK để hỗ trợ onDisconnect() và đẩy sự kiện tức thì
+ try{
+  if(window.firebase){
+   if(!firebase.apps.length){
+    firebase.initializeApp({databaseURL:FIREBASE_DB_URL,projectId:'thapnhang-default-rtdb'});
+   }
+   fbDb=firebase.database();
+   sessionsRef=fbDb.ref('live_sessions');
+   sessionsRef.on('child_added',snap=>handleRemoteSessionSnapshot(snap.key,snap.val()));
+   sessionsRef.on('child_changed',snap=>handleRemoteSessionSnapshot(snap.key,snap.val()));
+   sessionsRef.on('child_removed',snap=>removeRemoteSession(snap.key));
+  }
+ }catch(e){
+  console.warn('Sử dụng chế độ REST đồng bộ trực tiếp:',e);
+ }
+
+ // 3. Nhịp tim (Heartbeat) mỗi 6 giây tăng chỉ số seq để các máy khác biết phiên vẫn đang sống (bất kể lệch giờ hệ thống)
+ setInterval(()=>{
+  if(mySessionActive){
+   myHeartbeatSeq++;
+   syncMySessionState({seq:myHeartbeatSeq,lastActive:Date.now()});
+  }
+ },6000);
+
+ updateLiveCounterUI();
 }
 
 function updateLiveCounterUI(){
  let totalPeople=mySessionActive?people.length:0;
  let sessionCount=mySessionActive?1:0;
+ const groupSummaries=[];
+ if(mySessionActive){
+  const myLead=people[0]?.name||'Bạn';
+  const mySt=phase==='queue'?'đang xếp hàng':(phase==='approach'||phase==='offer'||phase==='group')?'đang hành lễ':'đang dạo';
+  groupSummaries.push(`🟢 ${myLead}${people.length>1?` (+${people.length-1})`:''}: ${mySt}`);
+ }
  remoteSessions.forEach(sess=>{
   const mLen=(sess.data?.members?.length)||1;
   totalPeople+=mLen;
   sessionCount++;
+  const rLead=sess.data?.members?.[0]?.name||'Khách';
+  const rSt=sess.data?.state==='queuing'?'đang xếp hàng':(['approaching','offering','praying'].includes(sess.data?.state))?'đang hành lễ':'đang dạo';
+  groupSummaries.push(`🪔 ${rLead}${mLen>1?` (+${mLen-1})`:''}: ${rSt}`);
  });
  const el=$('live-count');
+ const listEl=$('live-list');
  if(!el)return;
  if(totalPeople===0){
-  el.textContent='Chánh điện thanh tịnh (Chưa có đoàn hành lễ)';
+  el.textContent='Chánh điện thanh tịnh (0 đoàn)';
+  if(listEl)listEl.hidden=true;
  }else{
   el.textContent=`${totalPeople} người đang ở chánh điện (${sessionCount} đoàn)`;
+  if(listEl){
+   listEl.hidden=false;
+   listEl.textContent=groupSummaries.slice(0,3).join(' • ');
+  }
  }
 }
 
 function syncMySessionState(patch){
- if(!mySessionActive||!mySessionRef)return;
- const payload={...patch,lastActive:firebase.database.ServerValue.TIMESTAMP};
- mySessionRef.update(payload).catch(()=>{});
+ if(!mySessionActive||!mySessionDataCache)return;
+ Object.assign(mySessionDataCache,patch,{lastActive:Date.now(),seq:++myHeartbeatSeq});
+ // Ghi trực tiếp bằng REST PATCH để đảm bảo 100% cập nhật lên Firebase
+ fetch(`${FIREBASE_DB_URL}/live_sessions/${MY_SESSION_ID}.json`,{
+  method:'PATCH',
+  headers:{'Content-Type':'application/json'},
+  body:JSON.stringify(patch),
+  keepalive:true
+ }).catch(()=>{});
+ if(mySessionRef){
+  try{mySessionRef.update(patch)}catch(e){}
+ }
 }
 
-function startMyLiveSession(){
- if(!sessionsRef)return;
+async function startMyLiveSession(){
  mySessionActive=true;
  myJoinedAt=Date.now();
- mySessionRef=sessionsRef.child(MY_SESSION_ID);
- // Tự động xóa sạch phiên trên Server ngay khi người dùng tắt tab, rớt mạng hoặc đóng trình duyệt
- mySessionRef.onDisconnect().remove();
+ myHeartbeatSeq=1;
  const cleanMembers=people.map(p=>({
   name:(p.name||'Khách').slice(0,24),
   gender:p.gender==='f'?'f':'m',
   prayer:(p.prayer||DEFAULT_PRAYER).slice(0,300)
  }));
- mySessionRef.set({
+ mySessionDataCache={
   joinedAt:myJoinedAt,
-  lastActive:firebase.database.ServerValue.TIMESTAMP,
+  lastActive:Date.now(),
+  seq:myHeartbeatSeq,
   state:'queuing',
   activeSpeakerIdx:-1,
   offerIdx:0,
   leaderIdx:0,
   pos:{x:0,z:15.5,rot:Math.PI},
   members:cleanMembers
- }).then(()=>{
-  evaluateAltarQueue();
-  updateLiveCounterUI();
- }).catch(e=>console.warn('Lỗi đăng ký phiên:',e));
+ };
+ // Đăng ký onDisconnect qua WebSocket nếu có
+ if(sessionsRef){
+  try{
+   mySessionRef=sessionsRef.child(MY_SESSION_ID);
+   mySessionRef.onDisconnect().remove();
+  }catch(e){}
+ }
+ // Ghi ngay lập tức phiên lên Firebase bằng HTTP PUT và tải danh sách đoàn hiện có
+ try{
+  await fetch(`${FIREBASE_DB_URL}/live_sessions/${MY_SESSION_ID}.json`,{
+   method:'PUT',
+   headers:{'Content-Type':'application/json'},
+   body:JSON.stringify(mySessionDataCache),
+   keepalive:true
+  });
+ }catch(e){
+  console.warn('Không thể ghi phiên lên live_sessions:',e);
+ }
+ await pollAllLiveSessions();
+ evaluateAltarQueue();
+ updateLiveCounterUI();
 }
 
 function stopMyLiveSession(){
  mySessionActive=false;
+ mySessionDataCache=null;
  myQueueRank=-1;
  $('queue-banner').hidden=true;
+ // Xóa ngay lập tức bằng HTTP DELETE (có keepalive để chạy cả khi đóng tab)
+ fetch(`${FIREBASE_DB_URL}/live_sessions/${MY_SESSION_ID}.json`,{
+  method:'DELETE',
+  keepalive:true
+ }).catch(()=>{});
  if(mySessionRef){
   try{mySessionRef.onDisconnect().cancel()}catch(e){}
-  mySessionRef.remove().catch(()=>{});
+  try{mySessionRef.remove()}catch(e){}
   mySessionRef=null;
  }
  updateLiveCounterUI();
 }
 
-window.addEventListener('beforeunload',()=>{
- if(mySessionRef)mySessionRef.remove();
-});
+window.addEventListener('pagehide',()=>{if(mySessionActive)stopMyLiveSession()});
+window.addEventListener('beforeunload',()=>{if(mySessionActive)stopMyLiveSession()});
 
 // Quản lý việc tạo, cập nhật và xóa các đoàn người chơi khác (Remote Sessions)
 function handleRemoteSessionSnapshot(sid,data){
- if(!sid||sid===MY_SESSION_ID||!data||!Array.isArray(data.members)||!data.members.length)return;
- // Bỏ qua nếu phiên đã quá hạn TTL
- if(data.lastActive&&(Date.now()-Number(data.lastActive)>SESSION_TTL_MS)){
-  if(sessionsRef)sessionsRef.child(sid).remove().catch(()=>{});
-  removeRemoteSession(sid);
-  return;
- }
+ if(!sid||sid===MY_SESSION_ID||!data||typeof data!=='object')return;
+ // Firebase có thể trả về mảng hoặc object cho members
+ const rawMembers=Array.isArray(data.members)?data.members:(data.members&&typeof data.members==='object'?Object.values(data.members):[]);
+ if(!rawMembers.length)return;
+ data.members=rawMembers;
+
+ const nowPerf=performance.now();
+ const incomingSeq=Number(data.seq)||0;
+ const incomingPosKey=`${data.pos?.x||0}_${data.pos?.z||0}_${data.state||''}_${data.activeSpeakerIdx??-1}_${data.offerIdx??0}`;
 
  let sess=remoteSessions.get(sid);
  if(!sess){
-  // Kiểm tra giới hạn AOI (tối đa MAX_VISIBLE_REMOTE_SESSIONS đoàn cùng lúc để bảo vệ FPS)
   if(remoteSessions.size>=MAX_VISIBLE_REMOTE_SESSIONS&&data.state==='roaming')return;
-  const builtActors=data.members.map((m,idx)=>{
+  const builtActors=rawMembers.map((m,idx)=>{
    const a=build({name:m.name||`Khách ${idx+1}`,gender:m.gender||'m'},false,true);
-   a.laneX=(idx-(data.members.length-1)/2)*1.45;
-   const startX=(data.pos?.x||0)+a.laneX;
-   const startZ=data.pos?.z??15.5;
+   a.laneX=(idx-(rawMembers.length-1)/2)*1.45;
+   const startX=(Number(data.pos?.x)||0)+a.laneX;
+   const startZ=data.pos?.z!==undefined?Number(data.pos.z):15.5;
    a.root.position.set(startX,0,startZ);
-   a.faceAngle=data.pos?.rot??Math.PI;
+   a.faceAngle=data.pos?.rot!==undefined?Number(data.pos.rot):Math.PI;
    a.root.rotation.y=a.faceAngle;
    return a;
   });
-  assignFollowersOffsets(builtActors,data.leaderIdx||0);
+  assignFollowersOffsets(builtActors,Number(data.leaderIdx)||0);
   sess={
    id:sid,
    data,
    actors:builtActors,
-   leaderIdx:data.leaderIdx||0,
+   leaderIdx:Number(data.leaderIdx)||0,
    walkWeight:0,
    walkPhase:Math.random()*6.28,
    lastSpokenIdx:-1,
    stateTimer:0,
-   lastState:data.state||'queuing'
+   lastState:data.state||'queuing',
+   localSeenAt:nowPerf,
+   lastSeq:incomingSeq,
+   lastPosKey:incomingPosKey
   };
   remoteSessions.set(sid,sess);
  }else{
+  // Chỉ làm mới bộ đếm thời gian sống nội bộ khi thấy seq hoặc trạng thái/vị trí của đoàn đó có cập nhật
+  if(incomingSeq!==sess.lastSeq||incomingPosKey!==sess.lastPosKey){
+   sess.localSeenAt=nowPerf;
+   sess.lastSeq=incomingSeq;
+   sess.lastPosKey=incomingPosKey;
+  }
   const prevState=sess.data.state;
   sess.data=data;
   if(prevState!==data.state){
@@ -1476,18 +1582,18 @@ $('exit-role').onclick=()=>{
  makeParticipants([{name:'Người 1',gender:'m',prayer:''}]);
  $('ui').classList.remove('hide');
 };
-$('go').onclick=()=>{
+$('go').onclick=async()=>{
  if(running||!actors.length)return;people=readPeopleForm();
  $('exit-role').hidden=true;
  resetRoamControls();
+ $('go').disabled=true;$('count-back').disabled=true;$('people-fields').querySelectorAll('input,button').forEach(el=>el.disabled=true);$('ui').classList.add('hide');
  // 1. Lưu vĩnh viễn lời chúc vào nhánh /prayers
  people.forEach(p=>savePrayerToCloud(p));
  makeParticipants(people);
  startMusic(true);unlockSpeechFromGesture();running=true;activeIndex=0;
- // 2. Đăng ký phiên trực tuyến vào /live_sessions và kiểm tra hàng đợi
- startMyLiveSession();
+ // 2. Đăng ký phiên trực tuyến vào /live_sessions và đợi tải xong danh sách các đoàn đang có mặt rồi mới quyết định xếp hàng hay tiến vào
+ await startMyLiveSession();
  beginQueueOrApproach();
- $('go').disabled=true;$('count-back').disabled=true;$('people-fields').querySelectorAll('input,button').forEach(el=>el.disabled=true);$('ui').classList.add('hide');
 };
 
 /* ---------- Điều khiển xoay Camera, Chọn Leader & Di chuyển nhân vật ---------- */
