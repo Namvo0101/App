@@ -7,11 +7,11 @@
     "startDate": "2026-10-19",
     "endDate": "2026-11-13",
     "isFinalized": false,
-    "avgPrice": 206.31947368421055,
+    "avgPrice": 205.53000000000003,
     "firstPrice": 228.05,
-    "latestPrice": 199.78,
-    "totalChangePct": -12.396404297303226,
-    "activeCount": 19,
+    "latestPrice": 190.53,
+    "totalChangePct": -16.45253233939926,
+    "activeCount": 20,
     "sessions": [
       {
         "sessionNumber": 1,
@@ -130,11 +130,11 @@
       {
         "sessionNumber": 20,
         "dateIso": "2026-11-13",
-        "price": null,
-        "locked": false
+        "price": 190.53,
+        "locked": true
       }
     ],
-    "updatedAt": "2026-11-13T01:11:58.989Z"
+    "updatedAt": "2026-11-14T01:19:36.422Z"
   },
   "history": [
     {
