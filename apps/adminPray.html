@@ -302,6 +302,29 @@ tr.row-deleted td {
     </div>
   </section>
 
+  <!-- Bảng theo dõi các đoàn đang trực tuyến thời gian thực (/live_sessions) -->
+  <section class="box">
+    <div class="toolbar">
+      <div class="box-title" style="margin:0">🟢 Các Đoàn Đang Trực Tuyến Trong Chánh Điện (`/live_sessions`)</div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:52px">#</th>
+            <th style="width:220px">Mã Phiên / Trưởng Đoàn</th>
+            <th>Thành Viên Trong Đoàn</th>
+            <th style="width:160px">Trạng Thái</th>
+            <th style="width:120px;text-align:right">Tác Vụ</th>
+          </tr>
+        </thead>
+        <tbody id="live-sessions-tbody">
+          <tr><td colspan="5" class="empty-state">Hiện chưa có đoàn nào đang trực tuyến trong chánh điện.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
   <!-- Bảng danh sách xem / sửa / xóa -->
   <section class="box">
     <div class="toolbar">
@@ -542,7 +565,7 @@ function renderTable() {
   updateStats();
 }
 
-// Kiểm tra số lượng phiên đang trực tuyến trong /live_sessions
+// Kiểm tra số lượng và danh sách chi tiết các phiên đang trực tuyến trong /live_sessions
 async function refreshLiveSessionsCount() {
   const baseUrl = getBaseUrl();
   if (!baseUrl) return;
@@ -552,15 +575,48 @@ async function refreshLiveSessionsCount() {
     const data = await res.json();
     let groupCount = 0;
     let personCount = 0;
+    const liveTbody = $('live-sessions-tbody');
+    const rows = [];
     if (data && typeof data === 'object') {
-      Object.values(data).forEach(sess => {
+      Object.entries(data).forEach(([sid, sess], idx) => {
         if (sess && typeof sess === 'object') {
           groupCount++;
-          personCount += Array.isArray(sess.members) ? sess.members.length : 1;
+          const members = Array.isArray(sess.members) ? sess.members : (sess.members ? Object.values(sess.members) : []);
+          personCount += members.length || 1;
+          const leaderName = members[0]?.name || 'Khách';
+          const memberNames = members.map(m => `${m.name || 'Khách'} (${m.gender === 'f' ? 'Nữ' : 'Nam'})`).join(', ');
+          const stateMap = {
+            queuing: '⏳ Đang xếp hàng',
+            approaching: '🚶 Đang tiến vào',
+            offering: '🪔 Đang thắp nhang',
+            praying: '🙏 Đang khấn nguyện',
+            roaming: '🌸 Đang dạo chánh điện'
+          };
+          const stLabel = stateMap[sess.state] || sess.state || 'Đang hoạt động';
+          rows.push(`<tr>
+            <td>${idx + 1}</td>
+            <td><strong>${leaderName}</strong><br><span class="time-col">${sid}</span></td>
+            <td>${memberNames || '—'}</td>
+            <td><span class="badge online">${stLabel}</span></td>
+            <td style="text-align:right"><button class="btn-danger" style="padding:6px 10px;font-size:12px" onclick="kickLiveSession('${sid}')">Xóa phiên</button></td>
+          </tr>`);
         }
       });
     }
     $('live-sessions-badge').textContent = `🟢 Đang online: ${groupCount} đoàn (${personCount} người)`;
+    if (liveTbody) {
+      liveTbody.innerHTML = rows.length ? rows.join('') : `<tr><td colspan="5" class="empty-state">Hiện chưa có đoàn nào đang trực tuyến trong chánh điện.</td></tr>`;
+    }
+  } catch (e) {}
+}
+
+async function kickLiveSession(sid) {
+  const baseUrl = getBaseUrl();
+  if (!baseUrl || !sid) return;
+  try {
+    await fetch(`${baseUrl}/live_sessions/${encodeURIComponent(sid)}.json${buildAuthQuery()}`, { method: 'DELETE' });
+    await refreshLiveSessionsCount();
+    notify(`Đã xóa phiên ${sid} khỏi chánh điện.`);
   } catch (e) {}
 }
 
@@ -728,7 +784,7 @@ $('btn-discard').onclick = discardChanges;
 $('btn-export').onclick = exportBackupJson;
 
 loadFromDatabase();
-setInterval(refreshLiveSessionsCount, 10000);
+setInterval(refreshLiveSessionsCount, 3000);
 </script>
 </body>
 </html>
