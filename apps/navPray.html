@@ -35,9 +35,11 @@ input{width:150px}
 .person-gender{display:flex;justify-content:stretch}
 .person-gender button{flex:1}
 #count-confirm,#count-back{background:#604026;color:var(--fg);border:1px solid #f2b84b88;border-radius:12px;padding:9px 12px;font-size:14px;cursor:pointer}
-#snd{position:fixed;z-index:11;right:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 74px);background:var(--bg);border:1px solid #f2b84b66;color:var(--fg);border-radius:50%;width:42px;height:42px;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(6px)}
-#camera-motion{position:fixed;z-index:11;right:max(12px,env(safe-area-inset-right,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 128px);width:44px;height:44px;border-radius:50%;border:1px solid #f2b84b66;background:var(--bg);color:var(--fg);font-size:24px;cursor:pointer;backdrop-filter:blur(6px)}
-#camera-motion[aria-pressed="true"]{background:#f2b84b;color:#3a1a0a}
+#scene-controls{position:fixed;z-index:11;right:max(12px,env(safe-area-inset-right,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 74px);display:flex;flex-direction:column;gap:10px}
+.scene-control{width:44px;height:44px;padding:0;flex-shrink:0;border-radius:50%;border:1px solid #f2b84b66;background:var(--bg);color:var(--fg);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(6px)}
+#camera-motion{font-size:24px}
+#camera-motion[aria-pressed="true"],#prayer-cards-toggle[aria-pressed="true"]{background:#f2b84b;color:#3a1a0a}
+#prayer-cards-toggle[aria-pressed="true"] .cards-off-mark{display:none}
 @media (prefers-reduced-motion:reduce){#live-dot{animation:none}}
 #exit-role{position:fixed;z-index:12;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 24px);transform:translateX(-50%);background:linear-gradient(135deg,#f2b84b,#d97706);color:#2b1206;border:1px solid #fff3c4aa;border-radius:999px;padding:11px 26px;font-size:16px;font-weight:700;cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,.65);backdrop-filter:blur(6px);transition:transform .2s,opacity .3s}
 #exit-role:active{transform:translateX(-50%) scale(.96)}
@@ -69,8 +71,17 @@ input{width:150px}
 </div></div>
 <div id="joy-zone" aria-label="Cần gạt di chuyển nhân vật" hidden><div id="joy-knob"></div></div>
 <button id="exit-role" type="button" hidden>Xả Vai</button>
-<button id="snd" type="button" title="Bật/Tắt nhạc nền" aria-label="Tắt nhạc nền" aria-pressed="true">🔊</button>
-<button id="camera-motion" type="button" title="Tắt tự xoay góc nhìn" aria-label="Tắt tự xoay góc nhìn" aria-pressed="true" hidden>↻</button>
+<div id="scene-controls" role="group" aria-label="Điều khiển hiển thị và âm thanh">
+ <button id="prayer-cards-toggle" class="scene-control" type="button" title="Ẩn thẻ cầu nguyện" aria-label="Ẩn thẻ cầu nguyện" aria-pressed="true">
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+   <rect x="5" y="3" width="14" height="18" rx="2"/>
+   <path d="M8 8h8M8 12h8M8 16h5"/>
+   <path class="cards-off-mark" d="M3 21 21 3"/>
+  </svg>
+ </button>
+ <button id="camera-motion" class="scene-control" type="button" title="Tắt tự xoay góc nhìn" aria-label="Tắt tự xoay góc nhìn" aria-pressed="true" hidden>↻</button>
+ <button id="snd" class="scene-control" type="button" title="Bật/Tắt nhạc nền" aria-label="Tắt nhạc nền" aria-pressed="true">🔊</button>
+</div>
 <div id="copyright">© Nam Võ</div>
 <div id="error" role="alert" hidden>Không thể khởi tạo cảnh 3D. Hãy kiểm tra kết nối mạng, bật WebGL trong trình duyệt hoặc thử trình duyệt khác rồi tải lại trang.</div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -124,8 +135,7 @@ const linearColor=hex=>new THREE.Color(hex).convertSRGBToLinear();
 const reducedMotionQuery=matchMedia('(prefers-reduced-motion: reduce)');
 const compactGraphics=matchMedia('(max-width: 700px)').matches;
 let reducedMotion=reducedMotionQuery.matches;
-let autoOrbit=!reducedMotion,orbitPreferenceSet=false;
-try{const saved=localStorage.getItem('navPray_auto_orbit');if(saved!==null){autoOrbit=saved==='true';orbitPreferenceSet=true}}catch(e){}
+let autoOrbit=true;
 const scene=new THREE.Scene();scene.background=linearColor(0x211b1b);scene.fog=new THREE.Fog(linearColor(0x211b1b),25,65);
 const cam=new THREE.PerspectiveCamera(50,1,.1,120);
 const R=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});R.setPixelRatio(Math.min(devicePixelRatio,innerWidth<700?1.5:2));R.shadowMap.enabled=true;R.shadowMap.type=THREE.PCFSoftShadowMap;document.body.appendChild(R.domElement);R.domElement.setAttribute('role','img');R.domElement.setAttribute('aria-label','Mô hình 3D chánh điện. Dùng phím mũi tên hoặc kéo để xoay góc nhìn.');R.domElement.tabIndex=0;
@@ -815,10 +825,13 @@ function clearFloatingPrayers(){
  prayingActorIndex=-1;
  while(floatingPrayers.length){
   const fp=floatingPrayers.pop();
-  scene.remove(fp.sprite);
-  fp.sprite.material.map.dispose();
-  fp.sprite.material.dispose();
+  disposeFloatingPrayer(fp);
  }
+}
+function disposeFloatingPrayer(item){
+ scene.remove(item.sprite);
+ item.sprite.material.map.dispose();item.sprite.material.dispose();
+ if(item.glow){scene.remove(item.glow);item.glow.material.dispose()}
 }
 /* Nhân vật cuối của đoàn khấn xong: chữ còn lại tan thành bụi, thẻ lời chúc hoạt động lại */
 function releasePrayerFocus(){
@@ -843,23 +856,28 @@ function wrapPrayerLines(text,maxLen=24){
 }
 function spawnPrayerLine(actor,line){
  if(!actor||!line)return;
- const c=document.createElement('canvas');c.width=768;c.height=128;
+ const c=document.createElement('canvas');c.width=768;c.height=160;
  const x=c.getContext('2d');
- x.font='600 42px system-ui,-apple-system,sans-serif';
+ x.font='600 48px system-ui,-apple-system,sans-serif';
  x.textAlign='center';x.textBaseline='middle';
- x.shadowColor='rgba(30,18,12,.85)';x.shadowBlur=7;
- x.fillStyle='#fff3c4';
- x.fillText(line,384,64,720);
+ // Hai lớp sáng: quầng vàng lan nhẹ và lõi chữ trắng ngà rõ nét.
+ x.shadowColor='rgba(255,181,65,.95)';x.shadowBlur=28;
+ x.fillStyle='#ffe8a8';x.fillText(line,384,80,704);
+ x.shadowColor='rgba(255,224,151,.95)';x.shadowBlur=10;
+ x.fillStyle='#fffdf0';x.fillText(line,384,80,704);
  const tex=new THREE.CanvasTexture(c);
  tex.encoding=THREE.sRGBEncoding;
  const mat=new THREE.SpriteMaterial({map:tex,transparent:true,depthWrite:false,depthTest:false,toneMapped:false,opacity:0});
  const sprite=new THREE.Sprite(mat);
- sprite.scale.set(2.35,.39,1);
+ sprite.scale.set(2.8,2.8*160/768,1);
  sprite.renderOrder=12;
+ const glow=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,color:0xffd481,transparent:true,depthWrite:false,depthTest:false,toneMapped:false,blending:THREE.AdditiveBlending,opacity:0}));
+ glow.renderOrder=11;
  actor.head.getWorldPosition(_v);
  sprite.position.set(_v.x,2.52,_v.z-.05);
- scene.add(sprite);
- floatingPrayers.push({sprite,age:0,life:6.2,dissolveDur:2.4,dis:null,vy:.22,drift:(Math.random()-.5)*.06,phase:Math.random()*6.28});
+ glow.position.copy(sprite.position);glow.scale.copy(sprite.scale);
+ scene.add(glow,sprite);
+ floatingPrayers.push({sprite,glow,age:0,life:6.2,dissolveDur:2.4,dis:null,vy:.2,drift:(Math.random()-.5)*.06,phase:Math.random()*6.28,sparkleAccumulator:0});
 }
 function launchPrayer(actor,person,index=-1,isRemoteSpeaker=false){
  if(!isRemoteSpeaker){
@@ -890,6 +908,22 @@ const FIREBASE_DB_URL='https://thapnhang-default-rtdb.asia-southeast1.firebaseda
 let communityPrayersPool=[];
 const activeSkyPrayers=[];
 let skySpawnAccumulator=0,skyPoolCursor=0;
+let prayerCardsVisible=true;
+function updatePrayerCardsButton(){
+ const button=$('prayer-cards-toggle');
+ const label=prayerCardsVisible?'Ẩn thẻ cầu nguyện':'Hiện thẻ cầu nguyện';
+ button.setAttribute('aria-pressed',String(prayerCardsVisible));
+ button.setAttribute('aria-label',label);button.title=label;
+}
+$('prayer-cards-toggle').onclick=()=>{
+ prayerCardsVisible=!prayerCardsVisible;
+ skySpawnAccumulator=0;
+ if(!prayerCardsVisible){
+  activeSkyPrayers.forEach(item=>{item.sprite.visible=false;item.sprite.material.opacity=0;item.vis=0});
+ }
+ updatePrayerCardsButton();
+};
+updatePrayerCardsButton();
 
 async function savePrayerToCloud(person){
  if(!FIREBASE_DB_URL)return;
@@ -1035,6 +1069,7 @@ function createSkyPrayerSprite(item){
 }
 
 function spawnRandomSkyPrayer(){
+ if(!prayerCardsVisible)return;
  const maxConcurrent=Math.min(15,communityPrayersPool.length);
  if(!maxConcurrent||activeSkyPrayers.length>=maxConcurrent)return;
 
@@ -1767,14 +1802,11 @@ function updateCameraMotionButton(){
  button.setAttribute('aria-label',label);button.title=label;
 }
 $('camera-motion').onclick=()=>{
- autoOrbit=!autoOrbit;orbitPreferenceSet=true;lastUserCamInput=performance.now();
- try{localStorage.setItem('navPray_auto_orbit',String(autoOrbit))}catch(e){}
+ autoOrbit=!autoOrbit;lastUserCamInput=performance.now();
  updateCameraMotionButton();
 };
 function updateMotionPreference(event){
  reducedMotion=event.matches;
- if(!orbitPreferenceSet)autoOrbit=!reducedMotion;
- updateCameraMotionButton();
 }
 if(reducedMotionQuery.addEventListener)reducedMotionQuery.addEventListener('change',updateMotionPreference);
 else reducedMotionQuery.addListener(updateMotionPreference);
@@ -2307,7 +2339,7 @@ function loop(){
  for(let i=floatingPrayers.length-1;i>=0;i--){
   const fp=floatingPrayers[i];fp.age+=dt;
   if(fp.age>=fp.life){
-   scene.remove(fp.sprite);fp.sprite.material.map.dispose();fp.sprite.material.dispose();
+   disposeFloatingPrayer(fp);
    floatingPrayers.splice(i,1);continue;
   }
   const disStart=fp.life-fp.dissolveDur;
@@ -2321,13 +2353,27 @@ function loop(){
   fp.sprite.position.y+=fp.vy*dt*(1+d*.9);
   fp.sprite.position.x+=Math.sin(fp.phase+tt*1.1)*fp.drift*dt;
   const grow=1+(fp.age/fp.life)*.1;
-  fp.sprite.scale.set(2.35*grow,.39*grow,1);
-  fp.sprite.material.opacity=fadeIn*tail*.96;
+  fp.sprite.scale.set(2.8*grow,2.8*160/768*grow,1);
+  fp.sprite.material.opacity=fadeIn*tail;
+  fp.glow.position.copy(fp.sprite.position);
+  fp.glow.scale.copy(fp.sprite.scale);
+  const shimmer=reducedMotion?1:.92+Math.sin(fp.age*2+fp.phase)*.08;
+  fp.glow.material.opacity=fadeIn*tail*(1-d)*.48*shimmer;
+  // Hạt sáng bay chậm quanh nét chữ, dùng chung bộ đệm bụi hiện có.
+  fp.sparkleAccumulator+=dt;
+  const sparkleInterval=reducedMotion?.3:compactGraphics?.16:.1;
+  if(fp.age<disStart&&fp.sparkleAccumulator>=sparkleInterval){
+   fp.sparkleAccumulator=0;
+   camR.setFromMatrixColumn(cam.matrixWorld,0);camU.setFromMatrixColumn(cam.matrixWorld,1);
+   const ox=(Math.random()-.5)*fp.sprite.scale.x*.85,oy=(Math.random()-.5)*fp.sprite.scale.y*.35;
+   spawnDust(fp.sprite.position.x+camR.x*ox+camU.x*oy,fp.sprite.position.y+camR.y*ox+camU.y*oy,fp.sprite.position.z+camR.z*ox+camU.z*oy,
+    1,.88+Math.random()*.1,.55+Math.random()*.25,.025+Math.random()*.02,1.4+Math.random()*1.2,(Math.random()-.5)*.1,.08+Math.random()*.12,(Math.random()-.5)*.08,.4+Math.random()*.2);
+  }
  }
 
  // 6. Thẻ lời chúc cộng đồng: đóng băng + ẩn khi có người khấn, hết đời thì tan thành bụi
  const focusOn=isPrayerFocusActive();
- if(!focusOn&&communityPrayersPool.length>0&&((running&&ch&&ch.root.position.z<12)||activeSkyPrayers.length>0||!running)){
+ if(prayerCardsVisible&&!focusOn&&communityPrayersPool.length>0&&((running&&ch&&ch.root.position.z<12)||activeSkyPrayers.length>0||!running)){
   skySpawnAccumulator+=dt;
   if(skySpawnAccumulator>0.55){
    skySpawnAccumulator=0;
@@ -2336,6 +2382,7 @@ function loop(){
  }
  for(let i=activeSkyPrayers.length-1;i>=0;i--){
   const it=activeSkyPrayers[i];
+  if(!prayerCardsVisible){it.sprite.visible=false;continue}
   it.vis=Math.max(0,Math.min(1,it.vis+(focusOn?-dt/.55:dt/.9)));
   if(!focusOn)it.age+=dt;
   if(it.age>=it.life){
