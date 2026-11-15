@@ -94,13 +94,63 @@ header h1 {
   font-weight: 700;
 }
 .config-summary {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 20px;
+  align-items: center;
+  gap: 12px;
   min-height: 44px;
+  list-style: none;
   cursor: pointer;
-  color: var(--gold);
+  color: var(--fg);
   font-weight: 700;
   line-height: 1.5;
 }
-.config-summary small { color: var(--muted); font-weight: 400; }
+.config-summary::-webkit-details-marker { display: none; }
+#connection-settings {
+  --connection-color: #ffd478;
+  --connection-tint: rgba(242, 184, 75, 0.13);
+  border-color: var(--connection-color);
+  background: linear-gradient(115deg, var(--connection-tint), transparent 85%), var(--panel);
+}
+#connection-settings[data-state="success"] {
+  --connection-color: #9cf3b2;
+  --connection-tint: rgba(76, 175, 80, 0.18);
+}
+#connection-settings[data-state="error"] {
+  --connection-color: #ffaaa5;
+  --connection-tint: rgba(217, 83, 79, 0.22);
+}
+.connection-icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--connection-color);
+  border-radius: 50%;
+  background: var(--connection-tint);
+  color: var(--connection-color);
+  font-size: 25px;
+  font-weight: 800;
+}
+.connection-copy { min-width: 0; overflow-wrap: anywhere; }
+#connection-status { display: block; color: var(--connection-color); font-size: 17px; }
+#connection-description { display: block; margin-top: 3px; color: var(--fg); font-size: 13px; font-weight: 400; }
+.connection-chevron { color: var(--connection-color); font-size: 20px; text-align: center; }
+details[open] .connection-chevron { transform: rotate(180deg); }
+#connection-settings[data-state="loading"] .connection-icon::after {
+  content: '';
+  width: 22px;
+  height: 22px;
+  border: 3px solid var(--connection-tint);
+  border-top-color: var(--connection-color);
+  border-right-color: var(--connection-color);
+  border-radius: 50%;
+  animation: connection-spin 0.9s linear infinite;
+}
+@keyframes connection-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  #connection-settings[data-state="loading"] .connection-icon::after { animation: none; }
+}
 details[open] > .config-summary { margin-bottom: 12px; }
 .field { display: grid; gap: 6px; min-width: 0; }
 .field label { font-size: 14px; color: var(--muted); }
@@ -114,9 +164,17 @@ details[open] > .config-summary { margin-bottom: 12px; }
 }
 .grid-add {
   display: grid;
-  grid-template-columns: minmax(160px, 220px) minmax(0, 1fr) auto;
-  gap: 10px;
+  grid-template-columns: minmax(160px, 220px) minmax(0, 1fr);
+  gap: 16px;
   align-items: start;
+}
+.add-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 4px;
 }
 @media (max-width: 720px) {
   .grid-config, .grid-add {
@@ -137,7 +195,6 @@ input, textarea {
   outline: none;
 }
 textarea { resize: vertical; line-height: 1.5; }
-.grid-add > button { align-self: center; }
 input:focus, textarea:focus {
   border-color: var(--gold);
   box-shadow: 0 0 0 2px rgba(242, 184, 75, 0.25);
@@ -303,7 +360,8 @@ tr.row-deleted td {
   .badge { max-width: 100%; overflow-wrap: anywhere; }
   .toolbar { align-items: stretch; }
   .search-wrap { flex-basis: 100%; }
-  .grid-add > button, .config-actions button { width: 100%; }
+  .add-footer .char-count { width: 100%; }
+  .add-footer button, .config-actions button { width: 100%; }
   .table-wrap { border: 0; overflow: visible; }
   .mobile-cards, .mobile-cards tbody { display: block; width: 100%; }
   .mobile-cards thead {
@@ -359,8 +417,15 @@ tr.row-deleted td {
   </header>
 
   <!-- Cấu hình kết nối Firebase -->
-  <details class="box" id="connection-settings" open>
-    <summary class="config-summary">🔗 Kết nối dữ liệu <small id="connection-status">— Chưa kết nối</small></summary>
+  <details class="box" id="connection-settings" data-state="idle" open>
+    <summary class="config-summary">
+      <span class="connection-icon" id="connection-icon" aria-hidden="true">!</span>
+      <span class="connection-copy" role="status" aria-live="polite" aria-atomic="true">
+        <span id="connection-status">Chưa kết nối dữ liệu</span>
+        <span id="connection-description">Mở cấu hình và nhấn “Tải dữ liệu” để kết nối.</span>
+      </span>
+      <span class="connection-chevron" aria-hidden="true">⌄</span>
+    </summary>
     <div class="grid-config">
       <div class="field">
         <label for="db-url">Firebase Database URL</label>
@@ -389,9 +454,11 @@ tr.row-deleted td {
       <div class="field">
         <label for="add-text">Nội dung lời cầu nguyện</label>
         <textarea id="add-text" rows="3" maxlength="300" placeholder="Nhập lời chúc / cầu nguyện..." aria-describedby="add-text-count"></textarea>
-        <span class="char-count" id="add-text-count">0/300 ký tự</span>
+        <div class="add-footer">
+          <span class="char-count" id="add-text-count">0/300 ký tự</span>
+          <button id="btn-add" class="btn-gold" type="button">➕ Thêm vào danh sách</button>
+        </div>
       </div>
-      <button id="btn-add" class="btn-gold" type="button">➕ Thêm Vào Danh Sách</button>
     </div>
   </section>
 
@@ -783,13 +850,30 @@ async function clearAllLiveSessions() {
   }
 }
 
+function setConnectionState(state, description) {
+  const states = {
+    loading: { icon: '', title: 'Đang kết nối dữ liệu…' },
+    success: { icon: '✓', title: 'Đã kết nối dữ liệu' },
+    error: { icon: '!', title: 'Kết nối dữ liệu thất bại' }
+  };
+  const status = states[state];
+  $('connection-settings').dataset.state = state;
+  $('connection-icon').textContent = status.icon;
+  $('connection-status').textContent = status.title;
+  $('connection-description').textContent = description;
+}
+
 async function loadFromDatabase() {
   const baseUrl = getBaseUrl();
   if (!baseUrl) {
+    setConnectionState('error', 'Chưa có đường dẫn database. Mở cấu hình để nhập URL và thử lại.');
+    $('connection-settings').open = true;
     notify('Vui lòng nhập đường dẫn Firebase Realtime Database URL!', true);
     return;
   }
   $('btn-load').disabled = true;
+  $('btn-load').textContent = 'Đang kết nối…';
+  setConnectionState('loading', 'Đang tải lời cầu nguyện từ database. Vui lòng chờ trong giây lát.');
   notify('Đang tải dữ liệu từ Firebase...');
   try {
     const res = await fetch(`${baseUrl}/prayers.json${buildAuthQuery()}`);
@@ -813,17 +897,18 @@ async function loadFromDatabase() {
     }
     originalSnapshot = JSON.parse(JSON.stringify(records));
     renderTable();
-    $('connection-status').textContent = '— Đã kết nối';
+    setConnectionState('success', `Đã tải ${records.length} lời cầu nguyện. Chạm để xem cấu hình kết nối.`);
     $('connection-settings').open = false;
     await refreshLiveSessionsCount();
     notify(`Đã tải thành công ${records.length} lời chúc từ Database.`);
   } catch (err) {
     console.error(err);
-    $('connection-status').textContent = '— Kết nối thất bại';
+    setConnectionState('error', 'Không tải được dữ liệu. Kiểm tra mạng, URL và quyền truy cập trong cấu hình bên dưới, rồi thử lại.');
     $('connection-settings').open = true;
     notify(`Lỗi tải dữ liệu: ${err.message}. Hãy kiểm tra lại URL hoặc Rules.`, true);
   } finally {
     $('btn-load').disabled = false;
+    $('btn-load').textContent = '🔄 Tải Dữ Liệu';
   }
 }
 
