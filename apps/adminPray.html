@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Quản Trị Lời Cầu Nguyện - Admin</title>
 <style>
 :root {
@@ -16,15 +16,19 @@
   --red: #d9534f;
   --green: #4caf50;
   --blue: #3b82f6;
+  --footer-height: 160px;
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
+:focus-visible { outline: 3px solid var(--gold); outline-offset: 3px; }
+html { scroll-padding-bottom: calc(var(--footer-height) + 16px); }
 body {
   margin: 0;
   min-height: 100vh;
   background: radial-gradient(circle at top, #2e160f 0%, #140906 100%);
   color: var(--fg);
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  padding: 20px 14px 90px;
+  padding: calc(20px + env(safe-area-inset-top, 0px)) max(14px, env(safe-area-inset-right, 0px)) calc(var(--footer-height) + 20px) max(14px, env(safe-area-inset-left, 0px));
 }
 .container {
   max-width: 1060px;
@@ -89,17 +93,30 @@ header h1 {
   color: var(--gold);
   font-weight: 700;
 }
+.config-summary {
+  min-height: 44px;
+  cursor: pointer;
+  color: var(--gold);
+  font-weight: 700;
+  line-height: 1.5;
+}
+.config-summary small { color: var(--muted); font-weight: 400; }
+details[open] > .config-summary { margin-bottom: 12px; }
+.field { display: grid; gap: 6px; min-width: 0; }
+.field label { font-size: 14px; color: var(--muted); }
+.char-count { color: var(--muted); font-size: 12px; text-align: right; }
+.config-actions { display: flex; flex-wrap: wrap; gap: 8px; grid-column: 1 / -1; }
 .grid-config {
   display: grid;
-  grid-template-columns: 1fr 220px auto;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 1fr);
   gap: 10px;
-  align-items: center;
+  align-items: start;
 }
 .grid-add {
   display: grid;
-  grid-template-columns: 220px 1fr auto;
+  grid-template-columns: minmax(160px, 220px) minmax(0, 1fr) auto;
   gap: 10px;
-  align-items: center;
+  align-items: start;
 }
 @media (max-width: 720px) {
   .grid-config, .grid-add {
@@ -108,19 +125,25 @@ header h1 {
 }
 input, textarea {
   width: 100%;
+  min-width: 0;
+  min-height: 44px;
   background: #1a0c08;
   border: 1px solid #f2b84b66;
   color: var(--fg);
   padding: 10px 12px;
   border-radius: 10px;
-  font-size: 14px;
+  font: inherit;
+  font-size: 16px;
   outline: none;
 }
+textarea { resize: vertical; line-height: 1.5; }
+.grid-add > button { align-self: center; }
 input:focus, textarea:focus {
   border-color: var(--gold);
   box-shadow: 0 0 0 2px rgba(242, 184, 75, 0.25);
 }
 button {
+  min-height: 44px;
   border: 0;
   border-radius: 10px;
   padding: 10px 15px;
@@ -169,8 +192,9 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 }
 .search-wrap {
   flex: 1;
-  min-width: 240px;
+  min-width: min(240px, 100%);
 }
+.search-wrap label { display: block; margin-bottom: 6px; color: var(--muted); font-size: 14px; }
 .table-wrap {
   overflow-x: auto;
   border: 1px solid #f2b84b33;
@@ -186,7 +210,9 @@ th, td {
   text-align: left;
   border-bottom: 1px solid #f2b84b22;
   vertical-align: middle;
+  overflow-wrap: anywhere;
 }
+.prayer-text { white-space: pre-wrap; }
 th {
   background: #1f0e09;
   color: var(--gold);
@@ -211,18 +237,20 @@ tr.row-deleted td {
 }
 .actions {
   display: flex;
-  gap: 6px;
+  flex-wrap: wrap;
+  gap: 10px;
   justify-content: flex-end;
 }
 .actions button {
-  padding: 7px 11px;
-  font-size: 13px;
+  padding: 10px 12px;
+  font-size: 14px;
 }
 .time-col {
   color: var(--muted);
   font-size: 12px;
   white-space: nowrap;
 }
+.session-id { white-space: normal; }
 .status-tag {
   display: inline-block;
   font-size: 11px;
@@ -243,7 +271,7 @@ tr.row-deleted td {
   background: rgba(24, 12, 8, 0.94);
   border-top: 1px solid var(--border);
   backdrop-filter: blur(8px);
-  padding: 12px 20px;
+  padding: 12px max(14px, env(safe-area-inset-right, 0px)) calc(12px + env(safe-area-inset-bottom, 0px)) max(14px, env(safe-area-inset-left, 0px));
   z-index: 20;
 }
 .footer-inner {
@@ -256,14 +284,66 @@ tr.row-deleted td {
   gap: 12px;
 }
 #toast {
+  flex: 1 1 240px;
+  min-width: 0;
+  overflow-wrap: anywhere;
   font-size: 14px;
   color: var(--gold);
   font-weight: 500;
 }
+.footer-actions { display: flex; flex-wrap: wrap; gap: 10px; }
 .empty-state {
   text-align: center;
   padding: 36px 20px;
   color: var(--muted);
+}
+@media (max-width: 720px) {
+  header, .box { padding: 14px 12px; }
+  header h1 { font-size: 18px; }
+  .badge { max-width: 100%; overflow-wrap: anywhere; }
+  .toolbar { align-items: stretch; }
+  .search-wrap { flex-basis: 100%; }
+  .grid-add > button, .config-actions button { width: 100%; }
+  .table-wrap { border: 0; overflow: visible; }
+  .mobile-cards, .mobile-cards tbody { display: block; width: 100%; }
+  .mobile-cards thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .mobile-cards tbody tr {
+    display: block;
+    margin-bottom: 12px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--card);
+    overflow: hidden;
+  }
+  .mobile-cards tbody tr:last-child { margin-bottom: 0; }
+  .mobile-cards td { display: block; padding: 10px 12px; }
+  .mobile-cards td:last-child { border-bottom: 0; }
+  .mobile-cards td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 5px;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 600;
+    white-space: normal;
+  }
+  .mobile-cards .time-col { white-space: normal; }
+  .mobile-cards .actions { justify-content: stretch; }
+  .mobile-cards .actions button { flex: 1; }
+  .mobile-cards td[data-label="Tác vụ"] { text-align: left; }
+  .mobile-cards td[data-label="Tác vụ"] button { width: 100%; }
+  .mobile-cards .empty-state { padding: 24px 12px; }
+  .footer-inner { gap: 8px; }
+  #toast { flex-basis: 100%; font-size: 13px; }
+  .footer-actions { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); width: 100%; gap: 8px; }
+  .footer-actions button { padding: 10px 8px; font-size: 14px; white-space: normal; }
 }
 </style>
 </head>
@@ -279,43 +359,83 @@ tr.row-deleted td {
   </header>
 
   <!-- Cấu hình kết nối Firebase -->
-  <section class="box">
-    <div class="box-title">🔗 Kết Nối Firebase Realtime Database</div>
+  <details class="box" id="connection-settings" open>
+    <summary class="config-summary">🔗 Kết nối dữ liệu <small id="connection-status">— Chưa kết nối</small></summary>
     <div class="grid-config">
-      <input id="db-url" type="url" placeholder="https://ten-project-default-rtdb.asia-southeast1.firebasedatabase.app">
-      <input id="db-secret" type="password" placeholder="Database Secret (Tùy chọn)">
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <div class="field">
+        <label for="db-url">Firebase Database URL</label>
+        <input id="db-url" type="url" placeholder="https://ten-project.firebasedatabase.app" autocapitalize="none" spellcheck="false">
+      </div>
+      <div class="field">
+        <label for="db-secret">Database Secret (tùy chọn)</label>
+        <input id="db-secret" type="password" placeholder="Nhập mã kết nối nếu cần">
+      </div>
+      <div class="config-actions">
         <button id="btn-load" class="btn-gold" type="button">🔄 Tải Dữ Liệu</button>
         <button id="btn-clear-sessions" class="btn-danger" type="button" title="Dọn sạch các phiên trực tuyến bị treo trong /live_sessions">🧹 Dọn Phiên Treo</button>
         <button id="btn-export" class="btn-outline" type="button" title="Tải file JSON sao lưu về máy">📥 Xuất File Backup</button>
       </div>
     </div>
-  </section>
+  </details>
 
   <!-- Công cụ thêm lời chúc mới -->
   <section class="box">
     <div class="box-title">➕ Thêm Lời Chúc Mới</div>
     <div class="grid-add">
-      <input id="add-name" type="text" maxlength="40" placeholder="Tên người cầu nguyện">
-      <input id="add-text" type="text" maxlength="300" placeholder="Nhập nội dung lời chúc / cầu nguyện (tối đa 300 ký tự)...">
+      <div class="field">
+        <label for="add-name">Tên người cầu nguyện</label>
+        <input id="add-name" type="text" maxlength="40" placeholder="Khách thập phương" autocomplete="name">
+      </div>
+      <div class="field">
+        <label for="add-text">Nội dung lời cầu nguyện</label>
+        <textarea id="add-text" rows="3" maxlength="300" placeholder="Nhập lời chúc / cầu nguyện..." aria-describedby="add-text-count"></textarea>
+        <span class="char-count" id="add-text-count">0/300 ký tự</span>
+      </div>
       <button id="btn-add" class="btn-gold" type="button">➕ Thêm Vào Danh Sách</button>
     </div>
   </section>
 
+  <!-- Bảng danh sách xem / sửa / xóa -->
+  <section class="box">
+    <div class="toolbar">
+      <div class="box-title" style="margin:0">📜 Danh Sách Lời Cầu Nguyện</div>
+      <div class="search-wrap">
+        <label for="search-input">Tìm lời cầu nguyện</label>
+        <input id="search-input" type="search" placeholder="Tên hoặc nội dung lời chúc...">
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table class="mobile-cards" role="table" aria-label="Danh sách lời cầu nguyện">
+        <thead>
+          <tr>
+            <th scope="col" style="width:52px">#</th>
+            <th scope="col" style="width:210px">Tên Người Chúc</th>
+            <th scope="col">Nội Dung Lời Cầu Nguyện</th>
+            <th scope="col" style="width:145px">Thời Gian</th>
+            <th scope="col" style="width:175px;text-align:right">Công Cụ</th>
+          </tr>
+        </thead>
+        <tbody id="prayer-tbody">
+          <tr><td colspan="5" class="empty-state">Hãy nhập Firebase Database URL và nhấn "🔄 Tải Dữ Liệu" (hoặc thêm lời chúc mới).</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
   <!-- Bảng theo dõi các đoàn đang trực tuyến thời gian thực (/live_sessions) -->
   <section class="box">
     <div class="toolbar">
-      <div class="box-title" style="margin:0">🟢 Các Đoàn Đang Trực Tuyến Trong Chánh Điện (`/live_sessions`)</div>
+      <div class="box-title" style="margin:0">🟢 Các Đoàn Đang Trực Tuyến</div>
     </div>
     <div class="table-wrap">
-      <table>
+      <table class="mobile-cards" role="table" aria-label="Các đoàn đang trực tuyến">
         <thead>
           <tr>
-            <th style="width:52px">#</th>
-            <th style="width:220px">Mã Phiên / Trưởng Đoàn</th>
-            <th>Thành Viên Trong Đoàn</th>
-            <th style="width:160px">Trạng Thái</th>
-            <th style="width:120px;text-align:right">Tác Vụ</th>
+            <th scope="col" style="width:52px">#</th>
+            <th scope="col" style="width:220px">Mã Phiên / Trưởng Đoàn</th>
+            <th scope="col">Thành Viên Trong Đoàn</th>
+            <th scope="col" style="width:160px">Trạng Thái</th>
+            <th scope="col" style="width:120px;text-align:right">Tác Vụ</th>
           </tr>
         </thead>
         <tbody id="live-sessions-tbody">
@@ -325,47 +445,38 @@ tr.row-deleted td {
     </div>
   </section>
 
-  <!-- Bảng danh sách xem / sửa / xóa -->
-  <section class="box">
-    <div class="toolbar">
-      <div class="box-title" style="margin:0">📜 Danh Sách Lời Cầu Nguyện (`/prayers`)</div>
-      <div class="search-wrap">
-        <input id="search-input" type="search" placeholder="🔍 Tìm theo tên hoặc nội dung lời chúc...">
-      </div>
-    </div>
-
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th style="width:52px">#</th>
-            <th style="width:210px">Tên Người Chúc</th>
-            <th>Nội Dung Lời Cầu Nguyện</th>
-            <th style="width:145px">Thời Gian</th>
-            <th style="width:175px;text-align:right">Công Cụ</th>
-          </tr>
-        </thead>
-        <tbody id="prayer-tbody">
-          <tr><td colspan="5" class="empty-state">Hãy nhập Firebase Database URL và nhấn "🔄 Tải Dữ Liệu" (hoặc thêm lời chúc mới).</td></tr>
-        </tbody>
-      </table>
-    </div>
-  </section>
 </div>
 
 <!-- Thanh công cụ cố định phía dưới để Lưu trữ Database -->
 <div class="sticky-footer">
   <div class="footer-inner">
-    <div id="toast">Sẵn sàng quản lý dữ liệu.</div>
-    <div style="display:flex;gap:10px">
-      <button id="btn-discard" class="btn-outline" type="button" disabled>↩️ Hoàn Tác Thay Đổi</button>
-      <button id="btn-commit" class="btn-save-db" type="button" disabled>💾 Lưu Thay Đổi Vào Database</button>
+    <div id="toast" role="status" aria-live="polite">Sẵn sàng quản lý dữ liệu.</div>
+    <div class="footer-actions">
+      <button id="btn-discard" class="btn-outline" type="button" disabled>↩️ Hoàn tác</button>
+      <button id="btn-commit" class="btn-save-db" type="button" disabled>💾 Lưu thay đổi</button>
     </div>
   </div>
 </div>
 
 <script>
 const $ = id => document.getElementById(id);
+
+// Chừa đúng chiều cao thanh lưu, kể cả khi thông báo xuống nhiều dòng.
+function syncFooterHeight() {
+  const height = Math.ceil(document.querySelector('.sticky-footer').getBoundingClientRect().height);
+  document.documentElement.style.setProperty('--footer-height', `${height}px`);
+}
+if ('ResizeObserver' in window) {
+  const footerObserver = new ResizeObserver(syncFooterHeight);
+  footerObserver.observe(document.querySelector('.sticky-footer'));
+}
+window.addEventListener('resize', syncFooterHeight);
+syncFooterHeight();
+
+function updateCharacterCount(input, counter) {
+  counter.textContent = `${input.value.length}/${input.maxLength} ký tự`;
+}
+$('add-text').addEventListener('input', () => updateCharacterCount($('add-text'), $('add-text-count')));
 
 const DEFAULT_DB_URL = 'https://thapnhang-default-rtdb.asia-southeast1.firebasedatabase.app';
 const savedUrl = localStorage.getItem('navPray_admin_db_url') || DEFAULT_DB_URL;
@@ -391,6 +502,7 @@ function notify(msg, isError = false) {
   if (!el) return;
   el.textContent = msg;
   el.style.color = isError ? '#ff8a85' : '#f2b84b';
+  syncFooterHeight();
 }
 
 function getBaseUrl() {
@@ -454,16 +566,19 @@ function renderTable() {
     else if (rec.status === 'deleted') tr.className = 'row-deleted';
 
     const tdIndex = document.createElement('td');
+    tdIndex.dataset.label = 'STT';
     tdIndex.textContent = idx + 1;
     tr.appendChild(tdIndex);
 
     const tdName = document.createElement('td');
+    tdName.dataset.label = 'Tên người chúc';
     if (rec.editing) {
       const inpName = document.createElement('input');
       inpName.type = 'text';
       inpName.maxLength = 40;
       inpName.value = rec.name;
       inpName.dataset.role = 'edit-name';
+      inpName.setAttribute('aria-label', 'Tên người cầu nguyện');
       tdName.appendChild(inpName);
     } else {
       const strong = document.createElement('strong');
@@ -476,24 +591,35 @@ function renderTable() {
     tr.appendChild(tdName);
 
     const tdText = document.createElement('td');
+    tdText.dataset.label = 'Nội dung lời cầu nguyện';
+    tdText.className = 'prayer-text';
     if (rec.editing) {
-      const inpText = document.createElement('input');
-      inpText.type = 'text';
+      const inpText = document.createElement('textarea');
+      inpText.rows = 4;
       inpText.maxLength = 300;
       inpText.value = rec.text;
       inpText.dataset.role = 'edit-text';
-      tdText.appendChild(inpText);
+      inpText.setAttribute('aria-label', 'Nội dung lời cầu nguyện');
+      const counter = document.createElement('div');
+      counter.className = 'char-count';
+      counter.id = `edit-text-count-${idx}`;
+      inpText.setAttribute('aria-describedby', counter.id);
+      inpText.addEventListener('input', () => updateCharacterCount(inpText, counter));
+      updateCharacterCount(inpText, counter);
+      tdText.append(inpText, counter);
     } else {
       tdText.textContent = rec.text;
     }
     tr.appendChild(tdText);
 
     const tdTime = document.createElement('td');
+    tdTime.dataset.label = 'Thời gian';
     tdTime.className = 'time-col';
     tdTime.textContent = formatDate(rec.ts);
     tr.appendChild(tdTime);
 
     const tdActions = document.createElement('td');
+    tdActions.dataset.label = 'Công cụ';
     const actWrap = document.createElement('div');
     actWrap.className = 'actions';
 
@@ -522,7 +648,7 @@ function renderTable() {
         rec.editing = false;
         if (rec.status === 'clean') rec.status = 'modified';
         renderTable();
-        notify('Đã cập nhật trên bảng tạm. Nhấn "Lưu Thay Đổi Vào Database" để lưu vĩnh viễn.');
+        notify('Đã cập nhật bản tạm. Nhấn "Lưu thay đổi" để lưu vào dữ liệu.');
       };
 
       const btnCancel = document.createElement('button');
@@ -552,7 +678,7 @@ function renderTable() {
           rec.status = 'deleted';
         }
         renderTable();
-        notify('Đã đánh dấu xóa. Nhấn "Lưu Thay Đổi Vào Database" để áp dụng.');
+        notify('Đã đánh dấu xóa. Nhấn "Lưu thay đổi" để áp dụng.');
       };
       actWrap.append(btnEdit, btnDel);
     }
@@ -593,19 +719,40 @@ async function refreshLiveSessionsCount() {
             roaming: '🌸 Đang dạo chánh điện'
           };
           const stLabel = stateMap[sess.state] || sess.state || 'Đang hoạt động';
-          rows.push(`<tr>
-            <td>${idx + 1}</td>
-            <td><strong>${leaderName}</strong><br><span class="time-col">${sid}</span></td>
-            <td>${memberNames || '—'}</td>
-            <td><span class="badge online">${stLabel}</span></td>
-            <td style="text-align:right"><button class="btn-danger" style="padding:6px 10px;font-size:12px" onclick="kickLiveSession('${sid}')">Xóa phiên</button></td>
-          </tr>`);
+          const tr = document.createElement('tr');
+          const labels = ['STT', 'Mã phiên / Trưởng đoàn', 'Thành viên trong đoàn', 'Trạng thái', 'Tác vụ'];
+          const cells = labels.map(label => {
+            const td = document.createElement('td');
+            td.dataset.label = label;
+            tr.appendChild(td);
+            return td;
+          });
+          cells[0].textContent = idx + 1;
+          const leader = document.createElement('strong');
+          leader.textContent = leaderName;
+          const sessionId = document.createElement('span');
+          sessionId.className = 'time-col session-id';
+          sessionId.textContent = sid;
+          cells[1].append(leader, document.createElement('br'), sessionId);
+          cells[2].textContent = memberNames || '—';
+          const state = document.createElement('span');
+          state.className = 'badge online';
+          state.textContent = stLabel;
+          cells[3].appendChild(state);
+          const kickButton = document.createElement('button');
+          kickButton.type = 'button';
+          kickButton.className = 'btn-danger';
+          kickButton.textContent = 'Xóa phiên';
+          kickButton.onclick = () => kickLiveSession(sid);
+          cells[4].appendChild(kickButton);
+          rows.push(tr);
         }
       });
     }
     $('live-sessions-badge').textContent = `🟢 Đang online: ${groupCount} đoàn (${personCount} người)`;
     if (liveTbody) {
-      liveTbody.innerHTML = rows.length ? rows.join('') : `<tr><td colspan="5" class="empty-state">Hiện chưa có đoàn nào đang trực tuyến trong chánh điện.</td></tr>`;
+      if (rows.length) liveTbody.replaceChildren(...rows);
+      else liveTbody.innerHTML = `<tr><td colspan="5" class="empty-state">Hiện chưa có đoàn nào đang trực tuyến trong chánh điện.</td></tr>`;
     }
   } catch (e) {}
 }
@@ -666,10 +813,14 @@ async function loadFromDatabase() {
     }
     originalSnapshot = JSON.parse(JSON.stringify(records));
     renderTable();
+    $('connection-status').textContent = '— Đã kết nối';
+    $('connection-settings').open = false;
     await refreshLiveSessionsCount();
     notify(`Đã tải thành công ${records.length} lời chúc từ Database.`);
   } catch (err) {
     console.error(err);
+    $('connection-status').textContent = '— Kết nối thất bại';
+    $('connection-settings').open = true;
     notify(`Lỗi tải dữ liệu: ${err.message}. Hãy kiểm tra lại URL hoặc Rules.`, true);
   } finally {
     $('btn-load').disabled = false;
@@ -695,8 +846,9 @@ function addNewRecord() {
   });
   $('add-name').value = '';
   $('add-text').value = '';
+  updateCharacterCount($('add-text'), $('add-text-count'));
   renderTable();
-  notify('Đã thêm lời chúc mới vào danh sách. Nhấn "Lưu Thay Đổi Vào Database" để lưu lên Cloud.');
+  notify('Đã thêm lời chúc vào bản tạm. Nhấn "Lưu thay đổi" để lưu vào dữ liệu.');
 }
 
 async function commitChangesToDatabase() {
@@ -777,7 +929,12 @@ function exportBackupJson() {
 $('btn-load').onclick = loadFromDatabase;
 $('btn-clear-sessions').onclick = clearAllLiveSessions;
 $('btn-add').onclick = addNewRecord;
-$('add-text').addEventListener('keydown', e => { if (e.key === 'Enter') addNewRecord(); });
+$('add-text').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !e.isComposing) {
+    e.preventDefault();
+    addNewRecord();
+  }
+});
 $('search-input').addEventListener('input', renderTable);
 $('btn-commit').onclick = commitChangesToDatabase;
 $('btn-discard').onclick = discardChanges;
