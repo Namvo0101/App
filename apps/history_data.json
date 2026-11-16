@@ -6,155 +6,155 @@
     "year": 2026,
     "startDate": "2026-10-19",
     "endDate": "2026-11-13",
-    "isFinalized": true,
-    "avgPrice": 205.53000000000003,
-    "firstPrice": 228.05,
-    "latestPrice": 190.53,
-    "totalChangePct": -16.45253233939926,
-    "activeCount": 20,
+    "isFinalized": false,
+    "avgPrice": null,
+    "firstPrice": null,
+    "latestPrice": null,
+    "totalChangePct": null,
+    "activeCount": 0,
     "sessions": [
       {
         "sessionNumber": 1,
         "dateIso": "2026-10-19",
-        "price": 228.05,
-        "manualOverride": false,
-        "locked": true
+        "price": null,
+        "manualOverride": true,
+        "locked": false
       },
       {
         "sessionNumber": 2,
         "dateIso": "2026-10-20",
-        "price": 221.06,
-        "manualOverride": false,
-        "locked": true
+        "price": null,
+        "manualOverride": true,
+        "locked": false
       },
       {
         "sessionNumber": 3,
         "dateIso": "2026-10-21",
-        "price": 226.59,
-        "manualOverride": false,
-        "locked": true
+        "price": null,
+        "manualOverride": true,
+        "locked": false
       },
       {
         "sessionNumber": 4,
         "dateIso": "2026-10-22",
-        "price": 210.1,
-        "manualOverride": false,
-        "locked": true
+        "price": null,
+        "manualOverride": true,
+        "locked": false
       },
       {
         "sessionNumber": 5,
         "dateIso": "2026-10-23",
-        "price": 210.33,
-        "manualOverride": false,
-        "locked": true
+        "price": null,
+        "manualOverride": true,
+        "locked": false
       },
       {
         "sessionNumber": 6,
         "dateIso": "2026-10-26",
-        "price": 223.35,
-        "manualOverride": false,
-        "locked": true
+        "price": null,
+        "manualOverride": true,
+        "locked": false
       },
       {
         "sessionNumber": 7,
         "dateIso": "2026-10-27",
-        "price": 226.6,
-        "manualOverride": false,
-        "locked": true
+        "price": null,
+        "manualOverride": true,
+        "locked": false
       },
       {
         "sessionNumber": 8,
         "dateIso": "2026-10-28",
-        "price": 235.9,
-        "manualOverride": false,
-        "locked": true
+        "price": null,
+        "manualOverride": true,
+        "locked": false
       },
       {
         "sessionNumber": 9,
         "dateIso": "2026-10-29",
-        "price": 228.77,
-        "manualOverride": false,
-        "locked": true
+        "price": null,
+        "manualOverride": true,
+        "locked": false
       },
       {
         "sessionNumber": 10,
         "dateIso": "2026-10-30",
-        "price": 205.97,
-        "manualOverride": false,
-        "locked": true
+        "price": null,
+        "manualOverride": true,
+        "locked": false
       },
       {
         "sessionNumber": 11,
         "dateIso": "2026-11-02",
-        "price": 196.79,
-        "manualOverride": false,
-        "locked": true
+        "price": null,
+        "manualOverride": true,
+        "locked": false
       },
       {
         "sessionNumber": 12,
         "dateIso": "2026-11-03",
-        "price": 202.49,
-        "manualOverride": false,
-        "locked": true
+        "price": null,
+        "manualOverride": true,
+        "locked": false
       },
       {
         "sessionNumber": 13,
         "dateIso": "2026-11-04",
-        "price": 191.8,
-        "manualOverride": false,
-        "locked": true
+        "price": null,
+        "manualOverride": true,
+        "locked": false
       },
       {
         "sessionNumber": 14,
         "dateIso": "2026-11-05",
-        "price": 166.72,
-        "manualOverride": false,
-        "locked": true
+        "price": null,
+        "manualOverride": true,
+        "locked": false
       },
       {
         "sessionNumber": 15,
         "dateIso": "2026-11-06",
-        "price": 174.62,
-        "manualOverride": false,
-        "locked": true
+        "price": null,
+        "manualOverride": true,
+        "locked": false
       },
       {
         "sessionNumber": 16,
         "dateIso": "2026-11-09",
-        "price": 186.3,
-        "manualOverride": false,
-        "locked": true
+        "price": null,
+        "manualOverride": true,
+        "locked": false
       },
       {
         "sessionNumber": 17,
         "dateIso": "2026-11-10",
-        "price": 181.49,
-        "manualOverride": false,
-        "locked": true
+        "price": null,
+        "manualOverride": true,
+        "locked": false
       },
       {
         "sessionNumber": 18,
         "dateIso": "2026-11-11",
-        "price": 203.36,
-        "manualOverride": false,
-        "locked": true
+        "price": null,
+        "manualOverride": true,
+        "locked": false
       },
       {
         "sessionNumber": 19,
         "dateIso": "2026-11-12",
-        "price": 199.78,
-        "manualOverride": false,
-        "locked": true
+        "price": null,
+        "manualOverride": true,
+        "locked": false
       },
       {
         "sessionNumber": 20,
         "dateIso": "2026-11-13",
-        "price": 190.53,
-        "manualOverride": false,
-        "locked": true
+        "price": null,
+        "manualOverride": true,
+        "locked": false
       }
     ],
-    "updatedAt": "2026-11-16T17:38:31.650Z"
+    "updatedAt": "2026-11-16T17:45:46.327Z"
   },
   "history": [
     {
