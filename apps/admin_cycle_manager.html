@@ -128,6 +128,11 @@
 
   <!-- Main Content Container -->
   <main class="max-w-5xl mx-auto px-3 sm:px-4 mt-3 sm:mt-6 space-y-4 sm:space-y-6">
+    <div class="bg-white rounded-xl border border-slate-200 px-3 py-2 flex items-center justify-between gap-3 text-xs text-slate-600">
+      <span id="market-price-status" role="status" aria-live="polite">Loading closing prices...</span>
+      <button id="btn-reset-market-prices" type="button" class="shrink-0 text-indigo-600 font-semibold" title="Restore automatic prices in unlocked rows">API ↺</button>
+      <button id="btn-refresh-market-prices" type="button" class="shrink-0 text-indigo-600 font-semibold" aria-label="Refresh closing prices">↻</button>
+    </div>
 
     <!-- TASK 1 PANEL -->
     <div class="bg-white rounded-2xl border border-slate-200 shadow-2xs p-3.5 sm:p-6 transition-all duration-300">
@@ -478,7 +483,7 @@
         </div>
         <div>
           <label class="block font-semibold text-slate-700 mb-1">File Path in Repo</label>
-          <input type="text" id="git-input-path" value="App/apps/history_data.json" placeholder="App/apps/history_data.json" class="w-full px-3 py-2 border border-slate-300 rounded-xl focus:outline-none focus:border-indigo-500 font-mono text-xs" />
+          <input type="text" id="git-input-path" value="apps/history_data.json" placeholder="apps/history_data.json" class="w-full px-3 py-2 border border-slate-300 rounded-xl focus:outline-none focus:border-indigo-500 font-mono text-xs" />
         </div>
         <div>
           <label class="block font-semibold text-slate-700 mb-1">GitHub Personal Access Token (PAT)</label>
@@ -534,6 +539,7 @@
     </div>
   </div>
 
+  <script src="./stock-price-sync.js"></script>
   <script>
     // State
     let currentLang = 'en';
@@ -543,6 +549,11 @@
     let isTask1Collapsed = true;
     let isTask2Finalized = false;
     let activeCycleMeta = null;
+    let publishedAdminCycle = null;
+    let marketPriceFeed = null;
+    let marketFeedUnavailable = false;
+    let marketRefreshInProgress = false;
+    let marketRefreshPromise = null;
     let editingRecordId = null;
     let adminHistory = [];
     let backupSnapshots = [];
@@ -552,7 +563,7 @@
     let gitConfig = {
       repo: '',
       branch: 'main',
-      path: 'App/apps/history_data.json',
+      path: 'apps/history_data.json',
       token: ''
     };
 
@@ -1207,6 +1218,7 @@
             sessionNumber: s.sessionNumber,
             dateIso: formatDateKey(s.date),
             price: (s.price !== null && !isNaN(s.price)) ? Number(s.price) : null,
+            manualOverride: !!s.manualOverride,
             locked: !!s.locked
           })),
           updatedAt: new Date().toISOString()
@@ -1234,6 +1246,7 @@
       btnPushGit.classList.add('opacity-70');
 
       try {
+        await refreshAdminMarketPrices();
         const packageData = buildFullJsonPackage();
         const jsonContentStr = JSON.stringify(packageData, null, 2);
         const encodedContent = btoa(unescape(encodeURIComponent(jsonContentStr)));
@@ -1280,6 +1293,7 @@
         });
 
         if (putRes.ok) {
+          publishedAdminCycle = packageData.activeCycle;
           const putData = await putRes.json();
           const shortSha = putData.commit ? putData.commit.sha.substring(0, 7) : 'OK';
           const msg = translations[currentLang].msgGitPushSuccess.replace('{sha}', shortSha);
@@ -1306,14 +1320,16 @@
     // Auto Load history_data.json on startup & Reload
     async function autoLoadHistoryDataJson(silent = false) {
       try {
-        adminHistory = [];
-        task2Sessions = [];
-        editingRecordId = null;
-        isTask2Finalized = false;
-
-        const res = await fetch('./history_data.json', { cache: 'no-cache' });
+        const res = await fetch(`./history_data.json?v=${Date.now()}`, { cache: 'no-store' });
         if (res.ok) {
           const payload = await res.json();
+          adminHistory = [];
+          task2Sessions = [];
+          editingRecordId = null;
+          isTask2Finalized = false;
+          activeCycleMeta = null;
+          publishedAdminCycle = null;
+          task2Panel.classList.add('hidden');
           let loadedQuarters = 0;
 
           if (Array.isArray(payload)) {
@@ -1331,6 +1347,7 @@
 
           sortAdminHistory();
           renderHistoryList();
+          await refreshAdminMarketPrices();
 
           if (adminJsonStatusBadge) {
             adminJsonStatusBadge.classList.remove('hidden');
@@ -1353,6 +1370,7 @@
 
     function loadActiveCycleFromPackage(cycle) {
       if (!cycle || !Array.isArray(cycle.sessions)) return;
+      publishedAdminCycle = cycle;
 
       const startDate = parseISODate(cycle.startDate);
       const endDate = parseISODate(cycle.endDate);
@@ -1379,6 +1397,7 @@
         sessionNumber: s.sessionNumber,
         date: parseISODate(s.dateIso),
         price: (s.price !== null && !isNaN(s.price)) ? Number(s.price) : null,
+        manualOverride: !!s.manualOverride,
         locked: !!s.locked
       }));
 
@@ -1398,7 +1417,54 @@
       renderTask2Table();
     }
 
+    function getAdminPriceCycle() {
+      if (!activeCycleMeta || !task2Sessions.length || editingRecordId) return null;
+      return {
+        ...activeCycleMeta,
+        ticker: currentTicker,
+        updatedAt: publishedAdminCycle?.id === activeCycleMeta.id ? publishedAdminCycle.updatedAt : null,
+        isFinalized: isTask2Finalized,
+        sessions: task2Sessions.map(s => ({ ...s, dateIso: formatDateKey(s.date) }))
+      };
+    }
+
+    function updateMarketPriceStatus() {
+      StockPriceSync.renderStatus(document.getElementById('market-price-status'), getAdminPriceCycle(),
+        task2Sessions, marketPriceFeed, currentLang, marketFeedUnavailable);
+    }
+
+    function refreshAdminMarketPrices(background = false) {
+      if (marketRefreshInProgress) return marketRefreshPromise;
+      if (background && document.activeElement?.matches?.('input, textarea, select')) return;
+      marketRefreshInProgress = true;
+      marketRefreshPromise = (async () => {
+      try {
+        marketPriceFeed = await StockPriceSync.fetchFeed();
+        marketFeedUnavailable = false;
+        const cycle = getAdminPriceCycle();
+        if (cycle && !isTask2Finalized && StockPriceSync.matches(cycle, marketPriceFeed)) {
+          const before = JSON.stringify(task2Sessions);
+          task2Sessions = cycle.sessions.map(slot => {
+            const merged = StockPriceSync.mergeSession(cycle, slot, slot, marketPriceFeed);
+            return { ...merged, date: parseISODate(slot.dateIso) };
+          });
+          if (JSON.stringify(task2Sessions) !== before) {
+            calculateTask2Stats();
+            renderTask2Table();
+          }
+        }
+      } catch {
+        marketFeedUnavailable = true;
+      } finally {
+        marketRefreshInProgress = false;
+        updateMarketPriceStatus();
+      }
+      })();
+      return marketRefreshPromise;
+    }
+
     function updateFinalizedUI() {
+      updateMarketPriceStatus();
       if (!finalizedBadge || !txtFinalizeBtn) return;
       if (isTask2Finalized) {
         finalizedBadge.classList.remove('hidden');
@@ -1435,6 +1501,7 @@
             const parsed = parseFloat(cleanStr);
             if (!isNaN(parsed) && !task2Sessions[targetIdx].locked && !isTask2Finalized) {
               task2Sessions[targetIdx].price = parsed;
+              task2Sessions[targetIdx].manualOverride = true;
               const inputEl = document.getElementById(`input-price-${targetIdx}`);
               if (inputEl) inputEl.value = parsed.toFixed(2);
             }
@@ -1530,10 +1597,13 @@
         const inputEl = tr.querySelector(`#input-price-${idx}`);
         if (inputEl) {
           inputEl.addEventListener('input', (e) => {
+            if (s.locked || isTask2Finalized) return;
             const raw = e.target.value;
             s.price = (raw !== '' && !isNaN(raw)) ? parseFloat(raw) : null;
+            s.manualOverride = true;
             calculateTask2Stats();
             updateRowPercentageChangesAndValidation();
+            updateMarketPriceStatus();
           });
 
           inputEl.addEventListener('blur', (e) => {
@@ -1558,6 +1628,7 @@
         const lockBtn = tr.querySelector(`#btn-lock-row-${idx}`);
         if (lockBtn && !isTask2Finalized) {
           lockBtn.addEventListener('click', () => {
+            if (isTask2Finalized) return;
             s.locked = !s.locked;
             if (inputEl) {
               if (s.locked) {
@@ -1947,9 +2018,10 @@
         const savedGit = localStorage.getItem('NAV_ADMIN_GIT_CONFIG');
         if (savedGit) {
           gitConfig = { ...gitConfig, ...JSON.parse(savedGit) };
+          if (gitConfig.path === 'App/apps/history_data.json') gitConfig.path = 'apps/history_data.json';
           if (gitInputRepo) gitInputRepo.value = gitConfig.repo || '';
           if (gitInputBranch) gitInputBranch.value = gitConfig.branch || 'main';
-          if (gitInputPath) gitInputPath.value = gitConfig.path || 'App/apps/history_data.json';
+          if (gitInputPath) gitInputPath.value = gitConfig.path || 'apps/history_data.json';
           if (gitInputToken) gitInputToken.value = gitConfig.token || '';
         }
       } catch (err) {}
@@ -2014,6 +2086,7 @@
         sessionNumber: index + 1,
         date: d,
         price: null,
+        manualOverride: false,
         locked: false
       }));
 
@@ -2045,8 +2118,9 @@
       showToast(msg);
     });
 
-    btnFinalizeCycle.addEventListener('click', () => {
+    btnFinalizeCycle.addEventListener('click', async () => {
       if (!task2Sessions || task2Sessions.length === 0) return;
+      if (!isTask2Finalized) await refreshAdminMarketPrices();
       isTask2Finalized = !isTask2Finalized;
       updateFinalizedUI();
       renderTask2Table();
@@ -2062,6 +2136,7 @@
         task2Sessions.forEach((s, idx) => {
           if (!s.locked) {
             s.price = null;
+            s.manualOverride = true;
             clearedCount++;
             const inputEl = document.getElementById(`input-price-${idx}`);
             if (inputEl) {
@@ -2076,6 +2151,7 @@
 
         calculateTask2Stats();
         updateRowPercentageChangesAndValidation();
+        updateMarketPriceStatus();
 
         if (clearedCount === 0 && lockedCount > 0) {
           showToast(currentLang === 'vi' ? 'Tất cả các dòng đều đã bị khóa, không có nội dung nào bị xóa!' : 'All rows are locked, no content was cleared!');
@@ -2087,8 +2163,9 @@
       });
     }
 
-    btnSaveHistory.addEventListener('click', () => {
+    btnSaveHistory.addEventListener('click', async () => {
       if (!task1Result || !task2Sessions || task2Sessions.length === 0) return;
+      await refreshAdminMarketPrices();
 
       createBackupSnapshot(editingRecordId ? "Before updating record" : "Before adding new quarter");
 
@@ -2136,7 +2213,9 @@
       }
 
       editingRecordId = null;
+      isTask2Finalized = true;
       updateFinalizedUI();
+      renderTask2Table();
       renderHistoryList();
 
       const historyEl = document.getElementById('history-container');
@@ -2172,7 +2251,7 @@
     btnSaveGitConfig.addEventListener('click', () => {
       gitConfig.repo = gitInputRepo.value.trim();
       gitConfig.branch = gitInputBranch.value.trim() || 'main';
-      gitConfig.path = gitInputPath.value.trim() || 'App/apps/history_data.json';
+      gitConfig.path = gitInputPath.value.trim() || 'apps/history_data.json';
       gitConfig.token = gitInputToken.value.trim();
 
       localStorage.setItem('NAV_ADMIN_GIT_CONFIG', JSON.stringify(gitConfig));
@@ -2223,7 +2302,8 @@
       }, 200);
     }
 
-    btnExportJson.addEventListener('click', () => {
+    btnExportJson.addEventListener('click', async () => {
+      await refreshAdminMarketPrices();
       const packageData = buildFullJsonPackage();
       const jsonStr = JSON.stringify(packageData, null, 2);
       downloadFile('history_data.json', jsonStr, 'application/json');
@@ -2289,6 +2369,16 @@
 
       // Fetch history_data.json
       await autoLoadHistoryDataJson(false);
+      document.getElementById('btn-refresh-market-prices').addEventListener('click', () => refreshAdminMarketPrices());
+      document.getElementById('btn-reset-market-prices').addEventListener('click', async () => {
+        if (isTask2Finalized || editingRecordId) return;
+        task2Sessions.forEach(s => { if (!s.locked) s.manualOverride = false; });
+        await refreshAdminMarketPrices();
+      });
+      setInterval(() => refreshAdminMarketPrices(true), 60_000);
+      document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) refreshAdminMarketPrices(true);
+      });
     });
   </script>
 </body>

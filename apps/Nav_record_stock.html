@@ -87,6 +87,11 @@
 
   <!-- Main Content Container -->
   <main class="max-w-5xl mx-auto px-3 sm:px-4 mt-3 sm:mt-6 space-y-4 sm:space-y-6">
+    <div class="bg-white rounded-xl border border-slate-200 px-3 py-2 flex items-center justify-between gap-3 text-xs text-slate-600">
+      <span id="market-price-status" role="status" aria-live="polite">Loading closing prices...</span>
+      <button id="btn-reset-market-prices" type="button" class="shrink-0 text-indigo-600 font-semibold" title="Restore automatic prices in unlocked rows">API ↺</button>
+      <button id="btn-refresh-market-prices" type="button" class="shrink-0 text-indigo-600 font-semibold" aria-label="Refresh closing prices">↻</button>
+    </div>
 
     <!-- TASK 1 PANEL -->
     <div class="bg-white rounded-2xl border border-slate-200 shadow-2xs p-3.5 sm:p-6 transition-all duration-300">
@@ -546,6 +551,7 @@
     </div>
   </div>
 
+  <script src="./stock-price-sync.js"></script>
   <script>
     // -------------------------------------------------------------
     // Global Static Seed (Fallback if history_data.json is not served via http)
@@ -561,6 +567,11 @@
     let isTask2Finalized = false;
     let activeCycleMeta = null;
     let masterJsonActiveCycle = null;
+    let marketPriceFeed = null;
+    let marketFeedUnavailable = false;
+    let marketRefreshInProgress = false;
+    let ignoredMasterCycleId = null;
+    let userFinalized = false;
     let userLocalHistory = [];
     let staticJsonHistory = [];
     let mergedHistory = [];
@@ -1188,6 +1199,8 @@
     }
 
     function updateFinalizedUI() {
+      btnFinalizeCycle.disabled = !!(masterJsonActiveCycle?.id === activeCycleMeta?.id && masterJsonActiveCycle?.isFinalized);
+      updateMarketPriceStatus();
       if (!finalizedBadge || !txtFinalizeBtn) return;
       if (isTask2Finalized) {
         finalizedBadge.classList.remove('hidden');
@@ -1214,6 +1227,7 @@
             const parsed = parseFloat(cleanStr);
             if (!isNaN(parsed) && !task2Sessions[targetIdx].locked && !isTask2Finalized) {
               task2Sessions[targetIdx].price = parsed;
+              task2Sessions[targetIdx].manualOverride = true;
               const inputEl = document.getElementById(`input-price-${targetIdx}`);
               if (inputEl) inputEl.value = parsed.toFixed(2);
             }
@@ -1329,6 +1343,7 @@
             if (s.locked || isTask2Finalized) return;
             const raw = e.target.value;
             s.price = (raw !== '' && !isNaN(raw)) ? parseFloat(raw) : null;
+            s.manualOverride = true;
             calculateTask2Stats();
             updateRowPercentageChanges();
             triggerAutosaveIndicator();
@@ -1360,8 +1375,10 @@
 
         if (lockBtn && !isTask2Finalized && !s.masterLocked) {
           lockBtn.addEventListener('click', () => {
+            if (s.masterLocked || isTask2Finalized) return;
             // User toggles their own lock state
             s.locked = !s.locked;
+            if (s.locked) s.manualOverride = true;
             if (inputEl) {
               if (s.locked) {
                 inputEl.setAttribute('readonly', 'true');
@@ -1649,12 +1666,51 @@
       lucide.createIcons();
     }
 
-    // Fetch External Static JSON (history_data.json) & Master Active Cycle
-    async function loadStaticJsonHistory() {
+    function updateMarketPriceStatus() {
+      const cycle = activeCycleMeta?.id === masterJsonActiveCycle?.id ? masterJsonActiveCycle : null;
+      StockPriceSync.renderStatus(document.getElementById('market-price-status'), cycle,
+        task2Sessions, marketPriceFeed, currentLang, marketFeedUnavailable);
+    }
+
+    function syncPublishedPrices() {
+      const cycle = masterJsonActiveCycle;
+      if (!cycle || activeCycleMeta?.id !== cycle.id || currentTicker !== cycle.ticker
+        || task2Sessions.length !== cycle.sessions.length) return;
+      if (task2Sessions.some((s, i) => formatDateKey(s.date) !== cycle.sessions[i].dateIso)) return;
+      const before = JSON.stringify([task2Sessions, isTask2Finalized]);
+      task2Sessions = cycle.sessions.map((slot, i) => {
+        const local = { ...task2Sessions[i], dateIso: formatDateKey(task2Sessions[i].date) };
+        const merged = StockPriceSync.mergeSession({ ...cycle, userFinalized }, slot, local, marketPriceFeed);
+        return { ...merged, date: parseISODate(merged.dateIso) };
+      });
+      isTask2Finalized = !!cycle.isFinalized || userFinalized;
+      if (JSON.stringify([task2Sessions, isTask2Finalized]) !== before) {
+        updateFinalizedUI();
+        calculateTask2Stats();
+        renderTask2Table();
+        saveStateToLocalStorage();
+      }
+      updateMarketPriceStatus();
+    }
+
+    // Refresh published Admin state and the separate API price feed together.
+    async function loadStaticJsonHistory(background = false) {
+      if (marketRefreshInProgress || (background && document.activeElement?.matches?.('input, textarea, select'))) return;
+      marketRefreshInProgress = true;
       try {
-        const response = await fetch('./history_data.json', { cache: 'no-cache' });
-        if (response.ok) {
-          const payload = await response.json();
+        const [adminResult, feedResult] = await Promise.allSettled([
+          fetch(`./history_data.json?v=${Date.now()}`, { cache: 'no-store' }).then(response => {
+            if (!response.ok) throw new Error('Admin JSON unavailable');
+            return response.json();
+          }),
+          StockPriceSync.fetchFeed()
+        ]);
+        marketFeedUnavailable = adminResult.status === 'rejected' || feedResult.status === 'rejected';
+        if (feedResult.status === 'fulfilled') marketPriceFeed = feedResult.value;
+        if (adminResult.status === 'fulfilled') {
+          const payload = adminResult.value;
+          const previousCycle = masterJsonActiveCycle;
+          masterJsonActiveCycle = null;
           if (Array.isArray(payload)) {
             staticJsonHistory = payload;
           } else if (payload && typeof payload === 'object') {
@@ -1663,19 +1719,33 @@
             }
             if (payload.activeCycle && Array.isArray(payload.activeCycle.sessions)) {
               masterJsonActiveCycle = payload.activeCycle;
-              applyMasterActiveCycleToClient(masterJsonActiveCycle);
             }
+          }
+          if (masterJsonActiveCycle) {
+            if (activeCycleMeta?.id === masterJsonActiveCycle.id && !task2Panel.classList.contains('hidden')) syncPublishedPrices();
+            else if (ignoredMasterCycleId !== masterJsonActiveCycle.id) applyMasterActiveCycleToClient(masterJsonActiveCycle);
+          } else if (previousCycle && activeCycleMeta?.id === previousCycle.id) {
+            task2Panel.classList.add('hidden');
+            task2Sessions = [];
+            activeCycleMeta = null;
+            isTask2Finalized = false;
+            userFinalized = false;
+            saveStateToLocalStorage();
           }
         }
       } catch (err) {
+        marketFeedUnavailable = true;
         if (window.STATIC_EMBEDDED_HISTORY && window.STATIC_EMBEDDED_HISTORY.length > 0) {
           staticJsonHistory = window.STATIC_EMBEDDED_HISTORY;
         }
+      } finally {
+        marketRefreshInProgress = false;
+        updateMarketPriceStatus();
+        renderHistoryList();
       }
-      renderHistoryList();
     }
 
-    // Apply JSON Active Cycle with Master Locked Precedence & Quarter Divergence Check
+    // Admin locks/finalization take precedence over API data and local drafts.
     function applyMasterActiveCycleToClient(masterCycle) {
       if (!masterCycle || !Array.isArray(masterCycle.sessions)) return;
 
@@ -1720,11 +1790,13 @@
       lucide.createIcons();
 
       btnConflictKeepUser.onclick = () => {
+        ignoredMasterCycleId = masterCycle.id;
         conflictModal.classList.add('hidden');
         showToast(currentLang === 'vi' ? 'Tiếp tục chu kỳ của bạn!' : 'Kept your local cycle!');
       };
 
       btnConflictAcceptMaster.onclick = () => {
+        ignoredMasterCycleId = null;
         conflictModal.classList.add('hidden');
         // Archive user current draft into History first
         archiveCurrentActiveCycleToHistory();
@@ -1735,12 +1807,16 @@
     }
 
     function forceApplyMasterCycle(masterCycle) {
+      masterJsonActiveCycle = masterCycle;
+      let userCachedState = null;
       let userCachedSessions = [];
       try {
         const saved = localStorage.getItem('NAV_RECORD_STOCK_STATE');
         if (saved) {
           const parsed = JSON.parse(saved);
-          if (parsed && parsed.activeCycleId === masterCycle.id && Array.isArray(parsed.sessions)) {
+          if (parsed && parsed.activeCycleId === masterCycle.id
+            && (!parsed.currentTicker || parsed.currentTicker === masterCycle.ticker) && Array.isArray(parsed.sessions)) {
+            userCachedState = parsed;
             userCachedSessions = parsed.sessions;
           }
         }
@@ -1767,37 +1843,17 @@
       targetDateInput.value = formatDateKey(endDate);
       renderTask1UI();
 
-      // Merge master sessions with user local inputs
+      // Merge by date; keep locked values and prefer API prices for open/empty rows.
+      userFinalized = !!userCachedState?.userFinalized;
       task2Sessions = masterCycle.sessions.map((mSession) => {
-        const uSession = userCachedSessions.find(u => u.sessionNumber === mSession.sessionNumber);
-        const isMasterLocked = !!mSession.locked;
-        
-        let price = null;
-        let locked = isMasterLocked;
-
-        if (isMasterLocked) {
-          price = (mSession.price !== null && !isNaN(mSession.price)) ? Number(mSession.price) : null;
-          locked = true;
-        } else {
-          if (uSession && uSession.price !== null && !isNaN(uSession.price)) {
-            price = Number(uSession.price);
-            locked = !!uSession.locked;
-          } else if (mSession.price !== null && !isNaN(mSession.price)) {
-            price = Number(mSession.price);
-            locked = false;
-          }
-        }
-
-        return {
-          sessionNumber: mSession.sessionNumber,
-          date: parseISODate(mSession.dateIso),
-          price: price,
-          locked: locked,
-          masterLocked: isMasterLocked
-        };
+        const uSession = userCachedSessions.find(u =>
+          u.sessionNumber === mSession.sessionNumber && u.dateIso === mSession.dateIso
+        );
+        const merged = StockPriceSync.mergeSession({ ...masterCycle, userFinalized }, mSession, uSession, marketPriceFeed);
+        return { ...merged, date: parseISODate(mSession.dateIso) };
       });
 
-      isTask2Finalized = !!masterCycle.isFinalized;
+      isTask2Finalized = !!masterCycle.isFinalized || userFinalized;
       activeCycleMeta = {
         id: masterCycle.id,
         year: masterCycle.year,
@@ -1816,8 +1872,13 @@
 
     // Local Storage State Persistence
     function saveStateToLocalStorage() {
+      updateMarketPriceStatus();
       try {
         const state = {
+          editableActiveCycle: true,
+          userFinalized,
+          publishedCycle: masterJsonActiveCycle,
+          marketPriceFeed,
           currentLang,
           currentTicker,
           isTask1Collapsed,
@@ -1831,6 +1892,7 @@
             dateIso: formatDateKey(s.date),
             price: s.price,
             locked: s.locked,
+            manualOverride: s.manualOverride,
             masterLocked: !!s.masterLocked
           }))
         };
@@ -1866,16 +1928,25 @@
         }
         updateToggleTask1ButtonUI();
 
+        if (state.publishedCycle && state.activeCycleId === state.publishedCycle.id && Array.isArray(state.publishedCycle.sessions)) {
+          masterJsonActiveCycle = state.publishedCycle;
+          marketPriceFeed = state.marketPriceFeed || null;
+          forceApplyMasterCycle(masterJsonActiveCycle);
+        }
+
         // If no master cycle has loaded yet, restore local session
         if (!masterJsonActiveCycle && state.task2Active && Array.isArray(state.sessions) && state.sessions.length > 0 && task1Result) {
+          if (state.targetDate) handleDateChange(state.targetDate, false);
           task2Sessions = state.sessions.map(s => ({
             sessionNumber: s.sessionNumber,
             date: parseISODate(s.dateIso),
             price: s.price,
             locked: !!s.locked,
-            masterLocked: !!s.masterLocked
+            masterLocked: !!s.masterLocked,
+            manualOverride: s.manualOverride
           }));
-          isTask2Finalized = !!state.isTask2Finalized;
+          userFinalized = !!(state.userFinalized ?? state.isTask2Finalized);
+          isTask2Finalized = userFinalized;
           updateFinalizedUI();
           updateTask2Title(task1Result.quarter, formatDateKey(task1Result.startDate), formatDateKey(task1Result.endDate));
           task2Panel.classList.remove('hidden');
@@ -1962,6 +2033,7 @@
 
       const pdfChartSvg = generateVectorSparklineSvg(validPdfPoints, stats.avg, 740, 80);
 
+      // Escape closing tags in this string so Live Server injects reload code into the main page.
       return `<!DOCTYPE html>
 <html>
 <head>
@@ -2004,7 +2076,7 @@
       body { padding: 0; }
     }
   </style>
-</head>
+<\/head>
 <body>
   <div class="container">
     <div class="no-print-bar">
@@ -2092,8 +2164,8 @@
       setTimeout(function() { window.print(); }, 300);
     };
   <\/script>
-</body>
-</html>`;
+<\/body>
+<\/html>`;
     }
 
     function triggerDocumentPrintExport(fullHtml) {
@@ -2250,9 +2322,11 @@
         date: d,
         price: null,
         locked: false,
-        masterLocked: false
+        masterLocked: false,
+        manualOverride: false
       }));
 
+      userFinalized = false;
       isTask2Finalized = false;
       updateFinalizedUI();
 
@@ -2442,7 +2516,10 @@
 
     btnFinalizeCycle.addEventListener('click', () => {
       if (!task2Sessions || task2Sessions.length === 0) return;
+      if (masterJsonActiveCycle?.id === activeCycleMeta?.id && masterJsonActiveCycle.isFinalized) return;
       isTask2Finalized = !isTask2Finalized;
+      userFinalized = isTask2Finalized;
+      if (userFinalized) task2Sessions.forEach(s => { s.manualOverride = true; });
       updateFinalizedUI();
       renderTask2Table();
       saveStateToLocalStorage();
@@ -2516,6 +2593,7 @@
         task2Sessions.forEach((s, idx) => {
           if (!s.locked) {
             s.price = null;
+            s.manualOverride = true;
             clearedCount++;
             const inputEl = document.getElementById(`input-price-${idx}`);
             if (inputEl) {
@@ -2606,6 +2684,17 @@
       }
 
       await loadStaticJsonHistory();
+      document.getElementById('btn-refresh-market-prices').addEventListener('click', () => loadStaticJsonHistory());
+      document.getElementById('btn-reset-market-prices').addEventListener('click', () => {
+        if (isTask2Finalized) return;
+        task2Sessions.forEach(s => { if (!s.locked) s.manualOverride = false; });
+        syncPublishedPrices();
+        saveStateToLocalStorage();
+      });
+      setInterval(() => loadStaticJsonHistory(true), 60_000);
+      document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) loadStaticJsonHistory(true);
+      });
     });
   </script>
 </body>
