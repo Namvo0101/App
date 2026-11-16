@@ -117,6 +117,7 @@ export function buildReport(cycle, prices) {
 }
 
 async function main() {
+  if (!process.env.STOCK_API_KEY?.trim()) throw new Error('Missing STOCK_API_KEY. Add it as a repository Actions secret.');
   const payload = JSON.parse(await readFile(new URL('../history_data.json', import.meta.url), 'utf8'));
   const cycle = readActiveCycle(payload);
   const prices = await fetchDailyPrices(process.env.STOCK_API_KEY, cycle.ticker);

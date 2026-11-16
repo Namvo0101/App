@@ -4,9 +4,10 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import { buildReport, fetchDailyPrices, readActiveCycle, redact } from './test-stock-api.mjs';
+import { makeCycle } from './stock-test-support.mjs';
 
 const historyUrl = new URL('../history_data.json', import.meta.url);
-const history = await readFile(historyUrl, 'utf8');
+const history = JSON.stringify({ activeCycle: makeCycle(), history: [] });
 const cycle = readActiveCycle(JSON.parse(history));
 const key = 'sample-key-for-offline-tests';
 const data = {
@@ -88,11 +89,12 @@ test('Rejects duplicate slots and invalid calendar dates in Admin JSON', () => {
 });
 
 test('Reading and reporting preserves Admin locks, finalization and history', async () => {
+  const fileBefore = await readFile(historyUrl, 'utf8');
   const payload = JSON.parse(history);
   const original = JSON.stringify(payload);
   const finalizedCycle = { ...readActiveCycle(payload), isFinalized: true };
   const report = buildReport(finalizedCycle, await fetchDailyPrices(key, cycle.ticker, response(data)));
   assert(report.summary.includes('Admin finalized: **Yes**'));
   assert.equal(JSON.stringify(payload), original);
-  assert.equal(await readFile(historyUrl, 'utf8'), history);
+  assert.equal(await readFile(historyUrl, 'utf8'), fileBefore);
 });
