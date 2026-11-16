@@ -120,6 +120,11 @@ test('No active cycle, finalized cycles and locked cycles make no API requests',
       const result = await updatePrices({ directory, apiKey: key, now, fetchImpl: () => { called = true; } });
       assert.equal(result.changed, false);
       assert.equal(called, false);
+      if (activeCycle) {
+        assert(result.status.includes(`Finalized: ${activeCycle.isFinalized ? 'Yes' : 'No'}`));
+        assert(result.status.includes('No API request was made'));
+        if (activeCycle.sessions.every(s => s.locked)) assert(result.status.includes('Locked with a price: 20/20'));
+      }
       assert.equal(await readFile(new URL('market_prices.json', directory), 'utf8'), old);
     }
   });

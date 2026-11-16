@@ -54,7 +54,15 @@ export async function updatePrices({
     return { status: 'This cycle is already archived. Kept the price file unchanged.', changed: false };
   }
   const eligible = eligibleSessions(cycle, now);
-  if (!eligible.length) return { status: 'No eligible sessions: finalized, locked with a price or not yet closed.', changed: false };
+  if (!eligible.length) {
+    const cutoff = completedThrough(now);
+    const locked = cycle.sessions.filter(s => s.locked && sync.price(s.price) !== null).length;
+    const future = cycle.sessions.filter(s => s.dateIso > cutoff).length;
+    return {
+      status: `Skipped ${cycle.ticker}: no eligible sessions. Finalized: ${cycle.isFinalized ? 'Yes' : 'No'}. Locked with a price: ${locked}/${cycle.sessions.length}. Not yet closed: ${future}/${cycle.sessions.length}. No API request was made.`,
+      changed: false
+    };
+  }
 
   let previous = null;
   try {
