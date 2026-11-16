@@ -1,0 +1,34 @@
+name: Test Stock API
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test-api:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: apps
+    steps:
+      - name: Read project files
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          package-manager-cache: false
+
+      - name: Check price handling with sample responses
+        run: node --test scripts/test-stock-api.test.mjs
+
+      - name: Test Alpha Vantage with the Admin active cycle
+        env:
+          STOCK_API_KEY: ${{ secrets.STOCK_API_KEY }}
+        run: node scripts/test-stock-api.mjs
