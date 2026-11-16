@@ -18,7 +18,7 @@ concurrency:
 jobs:
   update:
     if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
       contents: write
@@ -60,13 +60,13 @@ jobs:
           test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" || { echo "Main changed during this run. The next run will use the latest Admin cycle."; exit 1; }
 
       - name: Package the repository for GitHub Pages
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v5
         with:
           path: '.'
 
   deploy:
     needs: update
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
       pages: write
@@ -76,7 +76,7 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Configure GitHub Pages
-        uses: actions/configure-pages@v5
+        uses: actions/configure-pages@v6
       - name: Publish updated website and JSON
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
