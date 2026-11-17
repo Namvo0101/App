@@ -4,8 +4,7 @@ on:
   workflow_dispatch:
   schedule:
     # 00:00 UTC = 07:00 Vietnam time, Tuesday through Saturday.
-    #- cron: '13 0,1 * * 2-6'
-    - cron: '40,45 1 17 11 *'
+    - cron: '0 0 * * 2-6'
   push:
     branches: [main]
 
