@@ -18,6 +18,49 @@
       && signature(cycle) === feed.scheduleKey && Array.isArray(feed.sessions));
   }
 
+  function completedThrough(now = new Date()) {
+    const parts = Object.fromEntries(new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', hourCycle: 'h23'
+    }).formatToParts(now).map(p => [p.type, p.value]));
+    const date = `${parts.year}-${parts.month}-${parts.day}`;
+    return Number(parts.hour) >= 16 ? date : new Date(Date.parse(date) - 86400000).toISOString().slice(0, 10);
+  }
+
+  function dailyPricesFor(ticker, feed, now = new Date()) {
+    if (feed?.schemaVersion !== 1 || typeof ticker !== 'string' || typeof feed.ticker !== 'string'
+      || ticker.trim().toUpperCase() !== feed.ticker.trim().toUpperCase()) return [];
+    const rows = Array.isArray(feed.dailyPrices) ? feed.dailyPrices : feed.sessions;
+    if (!Array.isArray(rows)) return [];
+    const cutoff = completedThrough(now);
+    const prices = new Map();
+    for (const row of rows) {
+      const date = row?.dateIso;
+      const value = price(row?.price);
+      if (typeof date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !Number.isFinite(Date.parse(date))
+        || new Date(date).toISOString().slice(0, 10) !== date || date > cutoff || value === null) continue;
+      prices.set(date, value);
+    }
+    return [...prices].sort(([a], [b]) => a.localeCompare(b)).slice(-100)
+      .map(([dateIso, value]) => ({ dateIso, price: value }));
+  }
+
+  // Admin-only projection: closing prices belong to ticker/date, independently of a draft's ID.
+  // Published user cycles continue to use matches() and the original feed unchanged.
+  function previewFeed(cycle, source, now = new Date()) {
+    if (!cycle?.id || !Array.isArray(cycle.sessions) || source?.schemaVersion !== 1
+      || typeof source.ticker !== 'string' || String(cycle.ticker).trim().toUpperCase() !== source.ticker.trim().toUpperCase()) return null;
+    const prices = new Map(dailyPricesFor(cycle.ticker, source, now).map(row => [row.dateIso, row.price]));
+    return {
+      schemaVersion: 1, provider: source.provider || 'Alpha Vantage',
+      cycleId: cycle.id, ticker: String(cycle.ticker).trim().toUpperCase(),
+      cycleRevision: cycle.updatedAt || null, scheduleKey: signature(cycle),
+      updatedAt: source.updatedAt || null, preview: true,
+      sessions: cycle.sessions.flatMap(slot => prices.has(slot.dateIso)
+        ? [{ sessionNumber: slot.sessionNumber, dateIso: slot.dateIso, price: prices.get(slot.dateIso) }] : [])
+    };
+  }
+
   function apiPriceFor(cycle, session, feed) {
     if (!matches(cycle, feed)) return null;
     const dateIso = session.dateIso || session.date?.toISOString?.().slice(0, 10);
@@ -134,12 +177,13 @@
         : (vi ? ' · Đang chờ giá tự động cho kỳ này' : ' · Waiting for automatic prices for this cycle');
     }
     if (unavailable) text += vi ? ' · Chưa tải được dữ liệu mới; giữ dữ liệu hiện có' : ' · Update unavailable; keeping current data';
+    if (feed?.preview && matches(cycle, feed)) text += vi ? ' · Xem trước bản nháp, chưa công bố' : ' · Preview of unpublished draft';
     element.textContent = text;
     const reset = root.document?.getElementById('btn-reset-market-prices');
     if (reset) reset.title = vi ? 'Điền giá API vào các ô đang mở hoặc còn trống' : 'Apply API prices to open or empty cells';
   }
 
-  const api = { price, signature, matches, apiPriceFor, priceState, priceBadgeHtml, renderPriceBadges, mergeSession, fetchFeed, renderStatus };
+  const api = { price, signature, matches, completedThrough, dailyPricesFor, previewFeed, apiPriceFor, priceState, priceBadgeHtml, renderPriceBadges, mergeSession, fetchFeed, renderStatus };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.StockPriceSync = api;
 })(globalThis);

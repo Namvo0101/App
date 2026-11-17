@@ -539,7 +539,7 @@
     </div>
   </div>
 
-  <script src="./stock-price-sync.js?v=20261117-admin-cycle-fix-1"></script>
+  <script src="./stock-price-sync.js?v=20261117-admin-preview-1"></script>
   <script>
     // State
     let currentLang = 'en';
@@ -1457,6 +1457,32 @@
       }
     }
 
+    function getAdminMarketPriceFeed(cycle = getAdminPriceCycle()) {
+      const sync = globalThis.StockPriceSync;
+      if (!cycle || !sync) return marketPriceFeed;
+      const unpublished = !publishedAdminCycle || cycle.id !== publishedAdminCycle.id
+        || cycle.ticker !== publishedAdminCycle.ticker || sync.signature(cycle) !== sync.signature(publishedAdminCycle);
+      return unpublished ? sync.previewFeed?.(cycle, marketPriceFeed) || marketPriceFeed : marketPriceFeed;
+    }
+
+    function applyAdminMarketPrices() {
+      const sync = globalThis.StockPriceSync;
+      const cycle = getAdminPriceCycle();
+      const feed = getAdminMarketPriceFeed(cycle);
+      if (!cycle || isTask2Finalized || !sync?.matches(cycle, feed)) return;
+      const before = JSON.stringify(task2Sessions);
+      const nextSessions = cycle.sessions.map(slot => {
+        const merged = sync.mergeSession(cycle, slot, slot, feed);
+        return { ...merged, date: parseISODate(slot.dateIso) };
+      });
+      // Keep input handlers attached to the active rows when a refresh changes nothing.
+      if (JSON.stringify(nextSessions) !== before) {
+        task2Sessions = nextSessions;
+        calculateTask2Stats();
+        renderTask2Table();
+      }
+    }
+
     function readAdminPriceDraft(publishedCycle) {
       try {
         const draft = JSON.parse(localStorage.getItem('NAV_ADMIN_PRICE_DRAFT'));
@@ -1476,34 +1502,21 @@
           ? 'Chưa tải được công cụ đồng bộ giá. Hãy tải lại trang.' : 'Price sync could not load. Please reload the page.';
         return;
       }
-      sync.renderStatus?.(status, getAdminPriceCycle(),
-        task2Sessions, marketPriceFeed, currentLang, marketFeedUnavailable);
-      sync.renderPriceBadges?.(getAdminPriceCycle(), task2Sessions, marketPriceFeed, currentLang, marketFeedUnavailable);
+      const cycle = getAdminPriceCycle();
+      const feed = getAdminMarketPriceFeed(cycle);
+      sync.renderStatus?.(status, cycle,
+        task2Sessions, feed, currentLang, marketFeedUnavailable);
+      sync.renderPriceBadges?.(cycle, task2Sessions, feed, currentLang, marketFeedUnavailable);
     }
 
-    function refreshAdminMarketPrices() {
-      if (marketRefreshInProgress) return marketRefreshPromise;
+    function refreshAdminMarketPrices(draftAtRequest = JSON.stringify(task2Sessions)) {
+      if (marketRefreshInProgress) return marketRefreshPromise.then(() => refreshAdminMarketPrices(draftAtRequest));
       marketRefreshInProgress = true;
-      const draftAtRequest = JSON.stringify(task2Sessions);
       marketRefreshPromise = (async () => {
       try {
         marketPriceFeed = await StockPriceSync.fetchFeed();
         marketFeedUnavailable = false;
-        const cycle = getAdminPriceCycle();
-        if (cycle && !isTask2Finalized && StockPriceSync.matches(cycle, marketPriceFeed)
-          && JSON.stringify(task2Sessions) === draftAtRequest) {
-          const before = JSON.stringify(task2Sessions);
-          const nextSessions = cycle.sessions.map(slot => {
-            const merged = StockPriceSync.mergeSession(cycle, slot, slot, marketPriceFeed);
-            return { ...merged, date: parseISODate(slot.dateIso) };
-          });
-          // Do not detach input/lock handlers from the active rows on an identical refresh.
-          if (JSON.stringify(nextSessions) !== before) {
-            task2Sessions = nextSessions;
-            calculateTask2Stats();
-            renderTask2Table();
-          }
-        }
+        if (JSON.stringify(task2Sessions) === draftAtRequest) applyAdminMarketPrices();
       } catch {
         marketFeedUnavailable = true;
       } finally {
@@ -2140,7 +2153,7 @@
       });
     }
 
-    btnApplyCycle.addEventListener('click', () => {
+    btnApplyCycle.addEventListener('click', async () => {
       if (!task1Result) return;
       cycleSelectionVersion++;
       editingRecordId = null;
@@ -2161,6 +2174,7 @@
         startDate: formatDateKey(task1Result.startDate),
         endDate: formatDateKey(task1Result.endDate)
       };
+      applyAdminMarketPrices();
       updateFinalizedUI();
 
       updateTask2Title(
@@ -2179,6 +2193,7 @@
         .replace('{quarter}', task1Result.quarter)
         .replace('{year}', task1Result.year);
       showToast(msg);
+      await refreshAdminMarketPrices();
     });
 
     btnFinalizeCycle.addEventListener('click', async () => {
