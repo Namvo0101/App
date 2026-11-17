@@ -539,7 +539,7 @@
     </div>
   </div>
 
-  <script src="./stock-price-sync.js?v=20261117-admin-preview-1"></script>
+  <script src="./stock-price-sync.js?v=20261117-master-source-1"></script>
   <script>
     // State
     let currentLang = 'en';
@@ -550,6 +550,8 @@
     let isTask2Finalized = false;
     let activeCycleMeta = null;
     let publishedAdminCycle = null;
+    let confirmedAdminPackage = null;
+    let masterDataUnavailable = false;
     let marketPriceFeed = null;
     let marketFeedUnavailable = false;
     let marketRefreshInProgress = false;
@@ -1196,19 +1198,32 @@
     // -------------------------------------------------------------
     // Full JSON Payload Packaging: activeCycle + history
     // -------------------------------------------------------------
+    function getAdminWorkingCycleMeta() {
+      if (!task2Sessions.length) return null;
+      const startDate = formatDateKey(task2Sessions[0].date);
+      const lastDate = task2Sessions.at(-1).date;
+      const endDate = formatDateKey(lastDate);
+      const current = activeCycleMeta?.startDate === startDate && activeCycleMeta?.endDate === endDate ? activeCycleMeta : null;
+      const year = current?.year ?? lastDate.getUTCFullYear();
+      const quarter = current?.quarter ?? getQuarterFromDate(lastDate);
+      return { id: editingRecordId || current?.id || `${year}-Q${quarter}-${startDate}-${endDate}`,
+        year, quarter, startDate, endDate };
+    }
+
     function buildFullJsonPackage() {
       sortAdminHistory();
 
       let activeCycleObj = null;
-      if (task2Sessions && task2Sessions.length > 0 && task1Result) {
+      if (task2Sessions && task2Sessions.length > 0) {
         const stats = calculateTask2Stats();
+        const meta = getAdminWorkingCycleMeta();
         activeCycleObj = {
-          id: activeCycleMeta ? activeCycleMeta.id : `${task1Result.year}-Q${task1Result.quarter}-${formatDateKey(task1Result.startDate)}-${formatDateKey(task1Result.endDate)}`,
+          id: meta.id,
           ticker: currentTicker || 'ARM',
-          quarter: task1Result.quarter,
-          year: task1Result.year,
-          startDate: formatDateKey(task1Result.startDate),
-          endDate: formatDateKey(task1Result.endDate),
+          quarter: meta.quarter,
+          year: meta.year,
+          startDate: meta.startDate,
+          endDate: meta.endDate,
           isFinalized: isTask2Finalized,
           avgPrice: stats.avg,
           firstPrice: stats.first,
@@ -1294,7 +1309,7 @@
 
         if (putRes.ok) {
           publishedAdminCycle = packageData.activeCycle;
-          saveAdminPriceDraft();
+          saveAdminMasterSnapshot(packageData);
           const putData = await putRes.json();
           const shortSha = putData.commit ? putData.commit.sha.substring(0, 7) : 'OK';
           const msg = translations[currentLang].msgGitPushSuccess.replace('{sha}', shortSha);
@@ -1319,12 +1334,14 @@
     }
 
     // Auto Load history_data.json on startup & Reload
-    async function autoLoadHistoryDataJson(silent = false, restoreDraft = false) {
+    async function autoLoadHistoryDataJson(silent = false) {
       const selectionAtRequest = cycleSelectionVersion;
       try {
         const res = await fetch(`./history_data.json?v=${Date.now()}`, { cache: 'no-store' });
         if (res.ok) {
           const payload = await res.json();
+          masterDataUnavailable = false;
+          saveAdminMasterSnapshot(payload);
           const preserveEditor = cycleSelectionVersion !== selectionAtRequest;
           adminHistory = [];
           if (!preserveEditor) {
@@ -1355,13 +1372,11 @@
           if (preserveEditor) {
             // Keep a selection/Apply made while loading; only update the published baseline.
             publishedAdminCycle = publishedCycle;
-            saveAdminPriceDraft();
             updateMarketPriceStatus();
           } else {
-            const draft = restoreDraft ? readAdminPriceDraft(publishedCycle) : null;
-            if (draft) marketPriceFeed = draft.marketPriceFeed || null;
-            if (draft || publishedCycle) loadActiveCycleFromPackage(draft?.cycle || publishedCycle, publishedCycle);
-            await refreshAdminMarketPrices();
+            if (publishedCycle) loadActiveCycleFromPackage(publishedCycle);
+            // Reload restores exactly the committed prices/locks. Fetch API data for labels only.
+            await refreshAdminMarketPrices(undefined, false);
           }
 
           if (adminJsonStatusBadge) {
@@ -1382,6 +1397,7 @@
       } catch (err) {
         if (!silent) console.debug("history_data.json fetch skipped:", err);
       }
+      masterDataUnavailable = true;
       return false;
     }
 
@@ -1445,15 +1461,15 @@
       };
     }
 
-    function saveAdminPriceDraft() {
-      const cycle = getAdminPriceCycle();
-      if (!cycle) return;
+    function saveAdminMasterSnapshot(payload) {
+      if (payload !== undefined) confirmedAdminPackage = JSON.parse(JSON.stringify(payload));
+      if (!confirmedAdminPackage) return;
       try {
-        localStorage.setItem('NAV_ADMIN_PRICE_DRAFT', JSON.stringify({
-          schemaVersion: 1, publishedCycle: publishedAdminCycle, cycle, marketPriceFeed
+        localStorage.setItem('NAV_ADMIN_MASTER_SNAPSHOT', JSON.stringify({
+          schemaVersion: 1, payload: confirmedAdminPackage, marketPriceFeed
         }));
       } catch (err) {
-        console.warn('Admin price draft could not be saved:', err);
+        console.warn('Confirmed Admin JSON could not be cached:', err);
       }
     }
 
@@ -1483,13 +1499,12 @@
       }
     }
 
-    function readAdminPriceDraft(publishedCycle) {
+    function readAdminMasterSnapshot() {
       try {
-        const draft = JSON.parse(localStorage.getItem('NAV_ADMIN_PRICE_DRAFT'));
-        if (draft?.schemaVersion !== 1 || !draft.cycle?.id || !Array.isArray(draft.cycle.sessions)) return null;
-        // A newly published Admin package takes precedence over drafts based on an older package.
-        if (publishedCycle !== undefined && JSON.stringify(draft.publishedCycle) !== JSON.stringify(publishedCycle)) return null;
-        return draft;
+        const saved = JSON.parse(localStorage.getItem('NAV_ADMIN_MASTER_SNAPSHOT'));
+        if (saved?.schemaVersion !== 1 || !saved.payload) return null;
+        if (!Array.isArray(saved.payload) && !Array.isArray(saved.payload.history)) return null;
+        return saved;
       } catch {}
       return null;
     }
@@ -1507,21 +1522,24 @@
       sync.renderStatus?.(status, cycle,
         task2Sessions, feed, currentLang, marketFeedUnavailable);
       sync.renderPriceBadges?.(cycle, task2Sessions, feed, currentLang, marketFeedUnavailable);
+      if (masterDataUnavailable && status) status.textContent += currentLang === 'vi'
+        ? ' · Chưa tải được dữ liệu gốc mới; chỉ dùng JSON đã xác nhận gần nhất'
+        : ' · Master update unavailable; using the last confirmed JSON only';
     }
 
-    function refreshAdminMarketPrices(draftAtRequest = JSON.stringify(task2Sessions)) {
-      if (marketRefreshInProgress) return marketRefreshPromise.then(() => refreshAdminMarketPrices(draftAtRequest));
+    function refreshAdminMarketPrices(draftAtRequest = JSON.stringify(task2Sessions), applyPrices = true) {
+      if (marketRefreshInProgress) return marketRefreshPromise.then(() => refreshAdminMarketPrices(draftAtRequest, applyPrices));
       marketRefreshInProgress = true;
       marketRefreshPromise = (async () => {
       try {
         marketPriceFeed = await StockPriceSync.fetchFeed();
         marketFeedUnavailable = false;
-        if (JSON.stringify(task2Sessions) === draftAtRequest) applyAdminMarketPrices();
+        if (applyPrices && JSON.stringify(task2Sessions) === draftAtRequest) applyAdminMarketPrices();
       } catch {
         marketFeedUnavailable = true;
       } finally {
         marketRefreshInProgress = false;
-        saveAdminPriceDraft();
+        saveAdminMasterSnapshot();
         updateMarketPriceStatus();
       }
       })();
@@ -1576,7 +1594,6 @@
         calculateTask2Stats();
         updateRowPercentageChangesAndValidation();
         updateMarketPriceStatus();
-        saveAdminPriceDraft();
         showToast(currentLang === 'vi' ? `Đã dán dữ liệu cho ${lines.length} phiên!` : `Pasted ${lines.length} prices from clipboard!`);
       }
     }
@@ -1673,7 +1690,6 @@
             calculateTask2Stats();
             updateRowPercentageChangesAndValidation();
             updateMarketPriceStatus();
-            saveAdminPriceDraft();
           });
 
           inputEl.addEventListener('blur', (e) => {
@@ -1714,7 +1730,6 @@
               }
               globalThis.lucide?.createIcons?.();
             }
-            saveAdminPriceDraft();
           });
         }
       });
@@ -1835,6 +1850,7 @@
       createBackupSnapshot(`Before edit Q${rec.quarter}-${rec.year}`);
 
       editingRecordId = rec.id;
+      activeCycleMeta = { id: rec.id, year: rec.year, quarter: rec.quarter, startDate: rec.startDate, endDate: rec.endDate };
       currentTicker = rec.ticker || 'ARM';
       if (inputStockTicker) inputStockTicker.value = currentTicker;
 
@@ -2149,7 +2165,6 @@
             formatDateKey(task1Result.endDate)
           );
         }
-        saveAdminPriceDraft();
       });
     }
 
@@ -2187,7 +2202,6 @@
       calculateTask2Stats();
       renderTask2Table();
       task2Panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      saveAdminPriceDraft();
 
       const msg = translations[currentLang].msgLoadedSessions
         .replace('{quarter}', task1Result.quarter)
@@ -2201,7 +2215,6 @@
       isTask2Finalized = !isTask2Finalized;
       updateFinalizedUI();
       renderTask2Table();
-      saveAdminPriceDraft();
       showToast(isTask2Finalized ? translations[currentLang].badgeFinalized : translations[currentLang].btnUnfinalizeCycle);
     });
 
@@ -2230,7 +2243,6 @@
         calculateTask2Stats();
         updateRowPercentageChangesAndValidation();
         updateMarketPriceStatus();
-        saveAdminPriceDraft();
 
         if (clearedCount === 0 && lockedCount > 0) {
           showToast(currentLang === 'vi' ? 'Tất cả các dòng đều đã bị khóa, không có nội dung nào bị xóa!' : 'All rows are locked, no content was cleared!');
@@ -2247,9 +2259,10 @@
       createBackupSnapshot(editingRecordId ? "Before updating record" : "Before adding new quarter");
 
       const stats = calculateTask2Stats();
-      const startKey = formatDateKey(task1Result.startDate);
-      const endKey = formatDateKey(task1Result.endDate);
-      const recordKey = editingRecordId || `${task1Result.year}-Q${task1Result.quarter}-${startKey}-${endKey}`;
+      const meta = getAdminWorkingCycleMeta();
+      const startKey = meta.startDate;
+      const endKey = meta.endDate;
+      const recordKey = meta.id;
 
       const serializedSessions = task2Sessions.map(s => ({
         sessionNumber: s.sessionNumber,
@@ -2261,8 +2274,8 @@
       const record = {
         id: recordKey,
         ticker: currentTicker || 'ARM',
-        quarter: task1Result.quarter,
-        year: task1Result.year,
+        quarter: meta.quarter,
+        year: meta.year,
         startDate: startKey,
         endDate: endKey,
         avgPrice: stats.avg,
@@ -2291,7 +2304,6 @@
 
       editingRecordId = null;
       isTask2Finalized = true;
-      saveAdminPriceDraft();
       updateFinalizedUI();
       renderTask2Table();
       renderHistoryList();
@@ -2446,12 +2458,16 @@
 
       // Fetch history_data.json
       const selectionAtLoad = cycleSelectionVersion;
-      const loaded = await autoLoadHistoryDataJson(false, true);
+      const loaded = await autoLoadHistoryDataJson(false);
       if (!loaded) {
-        const draft = cycleSelectionVersion === selectionAtLoad ? readAdminPriceDraft() : null;
-        if (draft) {
-          marketPriceFeed = draft.marketPriceFeed || null;
-          loadActiveCycleFromPackage(draft.cycle, draft.publishedCycle);
+        const saved = cycleSelectionVersion === selectionAtLoad ? readAdminMasterSnapshot() : null;
+        if (saved) {
+          marketPriceFeed = saved.marketPriceFeed || null;
+          saveAdminMasterSnapshot(saved.payload);
+          adminHistory = Array.isArray(saved.payload) ? saved.payload : saved.payload.history;
+          sortAdminHistory();
+          renderHistoryList();
+          if (saved.payload.activeCycle) loadActiveCycleFromPackage(saved.payload.activeCycle);
         }
         marketFeedUnavailable = true;
         updateMarketPriceStatus();

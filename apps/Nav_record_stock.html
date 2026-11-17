@@ -555,7 +555,7 @@
     </div>
   </div>
 
-  <script src="./stock-price-sync.js?v=20261117-history-fix-1"></script>
+  <script src="./stock-price-sync.js?v=20261117-master-source-1"></script>
   <script>
     // -------------------------------------------------------------
     // Global Static Seed (Fallback if history_data.json is not served via http)
@@ -571,6 +571,9 @@
     let isTask2Finalized = false;
     let activeCycleMeta = null;
     let masterJsonActiveCycle = null;
+    let cachedPublishedPackage = null;
+    let hasConfirmedMaster = false;
+    let usingCachedMaster = false;
     let marketPriceFeed = null;
     let marketFeedUnavailable = false;
     let marketRefreshInProgress = false;
@@ -1417,12 +1420,13 @@
     function updateMergedHistory() {
       const map = new Map();
 
-      staticJsonHistory.forEach(r => {
-        map.set(r.id, { ...r, isStatic: true });
-      });
-
       userLocalHistory.forEach(r => {
         map.set(r.id, { ...r, isStatic: false });
+      });
+
+      // A committed record always wins over a local copy with the same ID.
+      staticJsonHistory.forEach(r => {
+        map.set(r.id, { ...r, isStatic: true });
       });
 
       mergedHistory = Array.from(map.values());
@@ -1686,6 +1690,9 @@
       sync.renderStatus?.(status, cycle,
         task2Sessions, marketPriceFeed, currentLang, marketFeedUnavailable);
       sync.renderPriceBadges?.(cycle, task2Sessions, marketPriceFeed, currentLang, marketFeedUnavailable);
+      if (usingCachedMaster && status) status.textContent += currentLang === 'vi'
+        ? ' · Dữ liệu gốc: JSON đã xác nhận gần nhất'
+        : ' · Master data: last confirmed JSON';
     }
 
     function syncPublishedPrices(applyApi = true) {
@@ -1713,7 +1720,7 @@
     }
 
     // Refresh published Admin state and the separate API price feed together.
-    async function loadStaticJsonHistory() {
+    async function loadStaticJsonHistory(initialLoad = false) {
       if (marketRefreshInProgress) return;
       marketRefreshInProgress = true;
       const draftAtRequest = JSON.stringify(task2Sessions);
@@ -1728,10 +1735,12 @@
         ]);
         marketFeedUnavailable = adminResult.status === 'rejected' || feedResult.status === 'rejected';
         if (feedResult.status === 'fulfilled') marketPriceFeed = feedResult.value;
-        if (adminResult.status === 'fulfilled') {
-          const payload = adminResult.value;
-          const previousCycle = masterJsonActiveCycle;
+        const payload = adminResult.status === 'fulfilled' ? adminResult.value : initialLoad ? cachedPublishedPackage : null;
+        if (payload) {
+          hasConfirmedMaster = true;
+          usingCachedMaster = adminResult.status !== 'fulfilled';
           masterJsonActiveCycle = null;
+          staticJsonHistory = [];
           if (Array.isArray(payload)) {
             staticJsonHistory = payload;
           } else if (payload && typeof payload === 'object') {
@@ -1744,10 +1753,16 @@
           }
           if (masterJsonActiveCycle) {
             // Edits made while the request was in flight belong to the user.
-            const applyApi = feedResult.status === 'fulfilled' && JSON.stringify(task2Sessions) === draftAtRequest;
-            if (activeCycleMeta?.id === masterJsonActiveCycle.id && !task2Panel.classList.contains('hidden')) syncPublishedPrices(applyApi);
+            const unchanged = JSON.stringify(task2Sessions) === draftAtRequest;
+            const applyApi = !usingCachedMaster && feedResult.status === 'fulfilled' && unchanged;
+            const followsMaster = activeCycleMeta?.id === masterJsonActiveCycle.id && currentTicker === masterJsonActiveCycle.ticker
+              && task2Sessions.length === masterJsonActiveCycle.sessions.length
+              && task2Sessions.every((s, i) => formatDateKey(s.date) === masterJsonActiveCycle.sessions[i].dateIso);
+            // Startup always selects the committed cycle; conflict choices remain available in the open tab.
+            if (initialLoad && unchanged) forceApplyMasterCycle(masterJsonActiveCycle, applyApi);
+            else if (followsMaster && !task2Panel.classList.contains('hidden')) syncPublishedPrices(applyApi);
             else if (ignoredMasterCycleId !== masterJsonActiveCycle.id) applyMasterActiveCycleToClient(masterJsonActiveCycle, applyApi);
-          } else if (previousCycle && activeCycleMeta?.id === previousCycle.id) {
+          } else {
             task2Panel.classList.add('hidden');
             task2Sessions = [];
             activeCycleMeta = null;
@@ -1766,6 +1781,10 @@
         marketRefreshInProgress = false;
         renderHistoryList();
         updateMarketPriceStatus();
+        if (hasConfirmedMaster) {
+          cachedPublishedPackage = JSON.parse(JSON.stringify({ activeCycle: masterJsonActiveCycle, history: staticJsonHistory }));
+          saveStateToLocalStorage();
+        }
       }
     }
 
@@ -1849,7 +1868,9 @@
         if (saved) {
           const parsed = JSON.parse(saved);
           if (parsed && parsed.activeCycleId === masterCycle.id
-            && (!parsed.currentTicker || parsed.currentTicker === masterCycle.ticker) && Array.isArray(parsed.sessions)) {
+            && (!parsed.currentTicker || parsed.currentTicker === masterCycle.ticker) && Array.isArray(parsed.sessions)
+            && parsed.sessions.length === masterCycle.sessions.length
+            && parsed.sessions.every((s, i) => s.sessionNumber === masterCycle.sessions[i].sessionNumber && s.dateIso === masterCycle.sessions[i].dateIso)) {
             userCachedState = parsed;
             userCachedSessions = parsed.sessions;
           }
@@ -1912,6 +1933,8 @@
           editableActiveCycle: true,
           userFinalized,
           publishedCycle: masterJsonActiveCycle,
+          publishedHistory: staticJsonHistory,
+          masterConfirmed: hasConfirmedMaster,
           marketPriceFeed,
           currentLang,
           currentTicker,
@@ -1962,34 +1985,14 @@
         }
         updateToggleTask1ButtonUI();
 
-        if (state.publishedCycle && state.activeCycleId === state.publishedCycle.id && Array.isArray(state.publishedCycle.sessions)) {
-          masterJsonActiveCycle = state.publishedCycle;
-          marketPriceFeed = state.marketPriceFeed || null;
-          // Restore the draft first; only a successful load or explicit update applies API data.
-          forceApplyMasterCycle(masterJsonActiveCycle, false);
+        marketPriceFeed = state.marketPriceFeed || null;
+        if (state.masterConfirmed || (state.publishedCycle?.id && Array.isArray(state.publishedCycle.sessions))) {
+          cachedPublishedPackage = {
+            activeCycle: state.publishedCycle || null,
+            history: Array.isArray(state.publishedHistory) ? state.publishedHistory : []
+          };
         }
-
-        // If no master cycle has loaded yet, restore local session
-        if (!masterJsonActiveCycle && state.task2Active && Array.isArray(state.sessions) && state.sessions.length > 0 && task1Result) {
-          if (state.targetDate) handleDateChange(state.targetDate, false);
-          task2Sessions = state.sessions.map(s => ({
-            sessionNumber: s.sessionNumber,
-            date: parseISODate(s.dateIso),
-            price: s.price,
-            locked: !!s.locked,
-            masterLocked: !!s.masterLocked,
-            manualOverride: s.manualOverride
-          }));
-          userFinalized = !!(state.userFinalized ?? state.isTask2Finalized);
-          isTask2Finalized = userFinalized;
-          updateFinalizedUI();
-          updateTask2Title(task1Result.quarter, formatDateKey(task1Result.startDate), formatDateKey(task1Result.endDate));
-          task2Panel.classList.remove('hidden');
-          calculateTask2Stats();
-          renderTask2Table();
-        }
-
-        renderHistoryList();
+        // Active cycle/dates come from the JSON request, never from a standalone local draft.
         return true;
       } catch (err) {
         console.warn("Storage load error:", err);
@@ -2718,7 +2721,7 @@
         updateToggleTask1ButtonUI();
       }
 
-      await loadStaticJsonHistory();
+      await loadStaticJsonHistory(true);
       document.getElementById('btn-refresh-market-prices').addEventListener('click', () => loadStaticJsonHistory());
       document.getElementById('btn-reset-market-prices').addEventListener('click', () => {
         if (isTask2Finalized) return;
