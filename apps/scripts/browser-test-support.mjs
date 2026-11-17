@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
 
-export async function createPage(filename, history, feed, saved = {}) {
+export async function createPage(filename, history, feed, saved = {}, options = {}) {
   const html = await readFile(new URL(`../${filename}`, import.meta.url), 'utf8');
   const helper = await readFile(new URL('../stock-price-sync.js', import.meta.url), 'utf8');
   const inline = html.match(/  <script>([\s\S]*?)  <\/script>/)?.[1];
@@ -60,11 +60,13 @@ export async function createPage(filename, history, feed, saved = {}) {
     lucide: { createIcons() {} },
     setTimeout: () => 0, clearTimeout() {}, setInterval: (callback, milliseconds) => { intervals.push({ callback, milliseconds }); return 0; }
   });
-  vm.runInContext(helper, context);
+  if (!options.missingHelper) vm.runInContext(helper, context);
+  if (options.legacyHelper) vm.runInContext('delete StockPriceSync.renderPriceBadges;', context);
+  if (options.missingIcons) vm.runInContext('delete globalThis.lucide;', context);
   new vm.Script(inline, { filename });
   vm.runInContext(inline, context);
-  // Table rendering, price inputs, statistics and actual event handlers remain active.
-  vm.runInContext('renderTask1UI = () => {}; renderHistoryList = () => {};', context);
+  // Price tables and history rendering use the application code, including initial load.
+  vm.runInContext('renderTask1UI = () => {};', context);
   const run = code => vm.runInContext(code, context);
   const snapshot = () => JSON.parse(run('JSON.stringify({ sessions: task2Sessions, finalized: isTask2Finalized, meta: activeCycleMeta })'));
   return { html, data: pageData, element, run, snapshot, storage, intervals, callbacks, init: callbacks.DOMContentLoaded };
