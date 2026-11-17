@@ -1,0 +1,16 @@
+{
+  "name": "app-stock-prices-cron",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22.12.0" },
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "check": "node --check src/index.js && node --check src/dispatch.js",
+    "dry-run": "wrangler deploy --dry-run --outdir .wrangler/dry-run",
+    "dev": "wrangler dev --test-scheduled --ip 127.0.0.1 --port 8787",
+    "deploy": "wrangler deploy",
+    "logs": "wrangler tail --format pretty"
+  },
+  "devDependencies": { "wrangler": "4.163.0" }
+}
