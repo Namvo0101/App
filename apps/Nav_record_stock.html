@@ -551,7 +551,7 @@
     </div>
   </div>
 
-  <script src="./stock-price-sync.js"></script>
+  <script src="./stock-price-sync.js?v=20261117-history-fix-1"></script>
   <script>
     // -------------------------------------------------------------
     // Global Static Seed (Fallback if history_data.json is not served via http)
@@ -988,7 +988,7 @@
           skippedContainer.classList.add('hidden');
         }
       }
-      lucide.createIcons();
+      globalThis.lucide?.createIcons?.();
     }
 
     function updateToggleTask1ButtonUI() {
@@ -1000,7 +1000,7 @@
         task1CollapsibleBody.classList.remove('hidden');
         toggleIconContainer.innerHTML = `<i data-lucide="chevron-up" class="w-4 h-4"></i>`;
       }
-      lucide.createIcons();
+      globalThis.lucide?.createIcons?.();
     }
 
     function updateTask2Title(quarter, startStr, endStr) {
@@ -1195,7 +1195,7 @@
           badgeEl.innerHTML = `<span class="text-slate-400 font-mono text-xs">--</span>`;
         }
       });
-      lucide.createIcons();
+      globalThis.lucide?.createIcons?.();
     }
 
     function updateFinalizedUI() {
@@ -1395,7 +1395,7 @@
                 lockBtn.innerHTML = `<i data-lucide="unlock" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i>`;
                 lockBtn.title = translations[currentLang].tooltipUserUnlocked;
               }
-              lucide.createIcons();
+              globalThis.lucide?.createIcons?.();
             }
             saveStateToLocalStorage();
           });
@@ -1403,7 +1403,7 @@
       });
 
       updateMarketPriceStatus();
-      lucide.createIcons();
+      globalThis.lucide?.createIcons?.();
     }
 
     // -------------------------------------------------------------
@@ -1451,7 +1451,7 @@
             <span>${translations[currentLang].historyEmpty}</span>
           </div>
         `;
-        lucide.createIcons();
+        globalThis.lucide?.createIcons?.();
         return;
       }
 
@@ -1666,14 +1666,21 @@
         });
       });
 
-      lucide.createIcons();
+      globalThis.lucide?.createIcons?.();
     }
 
     function updateMarketPriceStatus() {
+      const sync = globalThis.StockPriceSync;
+      const status = document.getElementById('market-price-status');
+      if (!sync) {
+        if (status) status.textContent = currentLang === 'vi'
+          ? 'Chưa tải được công cụ đồng bộ giá. Hãy tải lại trang.' : 'Price sync could not load. Please reload the page.';
+        return;
+      }
       const cycle = activeCycleMeta?.id === masterJsonActiveCycle?.id ? masterJsonActiveCycle : null;
-      StockPriceSync.renderStatus(document.getElementById('market-price-status'), cycle,
+      sync.renderStatus?.(status, cycle,
         task2Sessions, marketPriceFeed, currentLang, marketFeedUnavailable);
-      StockPriceSync.renderPriceBadges(cycle, task2Sessions, marketPriceFeed, currentLang, marketFeedUnavailable);
+      sync.renderPriceBadges?.(cycle, task2Sessions, marketPriceFeed, currentLang, marketFeedUnavailable);
     }
 
     function syncPublishedPrices(applyApi = true) {
@@ -1711,7 +1718,8 @@
             if (!response.ok) throw new Error('Admin JSON unavailable');
             return response.json();
           }),
-          StockPriceSync.fetchFeed()
+          // A missing price script must not prevent the independent Admin JSON request.
+          Promise.resolve().then(() => StockPriceSync.fetchFeed())
         ]);
         marketFeedUnavailable = adminResult.status === 'rejected' || feedResult.status === 'rejected';
         if (feedResult.status === 'fulfilled') marketPriceFeed = feedResult.value;
@@ -1744,14 +1752,15 @@
           }
         }
       } catch (err) {
+        console.warn('Published data could not be fully applied:', err);
         marketFeedUnavailable = true;
         if (window.STATIC_EMBEDDED_HISTORY && window.STATIC_EMBEDDED_HISTORY.length > 0) {
           staticJsonHistory = window.STATIC_EMBEDDED_HISTORY;
         }
       } finally {
         marketRefreshInProgress = false;
-        updateMarketPriceStatus();
         renderHistoryList();
+        updateMarketPriceStatus();
       }
     }
 
@@ -1797,7 +1806,7 @@
       conflictMasterRange.textContent = `${masterCycle.startDate.replace(/-/g, '/')} - ${masterCycle.endDate.replace(/-/g, '/')}`;
 
       conflictModal.classList.remove('hidden');
-      lucide.createIcons();
+      globalThis.lucide?.createIcons?.();
 
       btnConflictKeepUser.onclick = () => {
         ignoredMasterCycleId = masterCycle.id;
@@ -2421,7 +2430,7 @@
       setElText(modalExistingAvg, (existingRecord.avgPrice !== null && !isNaN(existingRecord.avgPrice)) ? `$${Number(existingRecord.avgPrice).toFixed(2)}` : '--');
 
       duplicateModal.classList.remove('hidden');
-      lucide.createIcons();
+      globalThis.lucide?.createIcons?.();
     }
 
     function hideDuplicateModal() {
@@ -2463,7 +2472,7 @@
       setElText(modalCurrentActiveCount, currentLang === 'vi' ? `${activeCount}/20 phiên có giá` : `${activeCount}/20 sessions with price`);
 
       unsavedModal.classList.remove('hidden');
-      lucide.createIcons();
+      globalThis.lucide?.createIcons?.();
     }
 
     function hideUnsavedModal() {
