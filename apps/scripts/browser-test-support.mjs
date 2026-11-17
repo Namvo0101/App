@@ -11,6 +11,10 @@ export async function createPage(filename, history, feed, saved = {}, options = 
   const pageData = { history: structuredClone(history), feed: structuredClone(feed), offline: false, noFeed: false, requests: [] };
   const callbacks = {};
   const intervals = [];
+  const PageDate = options.now ? class extends Date {
+    constructor(...args) { super(...(args.length ? args : [Date.parse(options.now)])); }
+    static now() { return Date.parse(options.now); }
+  } : Date;
   function element(id) {
     if (elements.has(id)) return elements.get(id);
     const classes = new Set(['hidden']);
@@ -35,6 +39,7 @@ export async function createPage(filename, history, feed, saved = {}, options = 
   }
   const context = vm.createContext({
     console,
+    Date: PageDate,
     window: { addEventListener: (name, callback) => { callbacks[name] = callback; } },
     document: {
       getElementById: element, querySelectorAll: () => [], createElement: () => element(Symbol()),

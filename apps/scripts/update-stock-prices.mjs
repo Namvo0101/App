@@ -7,13 +7,7 @@ import { fetchDailyPrices, readActiveCycle, redact } from './test-stock-api.mjs'
 const sync = globalThis.StockPriceSync;
 
 export function completedThrough(now = new Date()) {
-  const parts = Object.fromEntries(new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit',
-    hour: '2-digit', hourCycle: 'h23'
-  }).formatToParts(now).map(p => [p.type, p.value]));
-  const date = `${parts.year}-${parts.month}-${parts.day}`;
-  // Waiting until 16:00 also safely handles sessions that close early.
-  return Number(parts.hour) >= 16 ? date : new Date(Date.parse(date) - 86400000).toISOString().slice(0, 10);
+  return sync.completedThrough(now);
 }
 
 export function eligibleSessions(cycle, now = new Date()) {
@@ -35,13 +29,18 @@ export function makeFeed(cycle, previous, prices, now = new Date()) {
   return {
     schemaVersion: 1, provider: 'Alpha Vantage', cycleId: cycle.id, ticker: cycle.ticker,
     cycleRevision: cycle.updatedAt || null, scheduleKey: sync.signature(cycle),
-    updatedAt: now.toISOString(), sessions
+    updatedAt: now.toISOString(), sessions,
+    dailyPrices: sync.dailyPricesFor(cycle.ticker, {
+      schemaVersion: 1, ticker: cycle.ticker,
+      dailyPrices: [...sync.dailyPricesFor(cycle.ticker, previous, now),
+        ...[...prices].map(([dateIso, price]) => ({ dateIso, price }))]
+    }, now)
   };
 }
 
 export async function updatePrices({
   directory = new URL('../', import.meta.url), apiKey = process.env.STOCK_API_KEY,
-  now = new Date(), fetchImpl = globalThis.fetch
+  now = new Date(), fetchImpl = globalThis.fetch, refreshPreviewCache = false
 } = {}) {
   const historyPath = new URL('history_data.json', directory);
   const outputPath = new URL('market_prices.json', directory);
@@ -50,11 +49,12 @@ export async function updatePrices({
   if (!payload?.activeCycle) return { status: 'No active cycle. Kept the last price file.', changed: false };
   const cycle = readActiveCycle(payload);
   if (!cycle.id) throw new Error('The Admin active cycle needs an id.');
-  if (Array.isArray(payload.history) && payload.history.some(record => record.id === cycle.id)) {
+  const archived = Array.isArray(payload.history) && payload.history.some(record => record.id === cycle.id);
+  if (archived && !refreshPreviewCache) {
     return { status: 'This cycle is already archived. Kept the price file unchanged.', changed: false };
   }
-  const eligible = eligibleSessions(cycle, now);
-  if (!eligible.length) {
+  const eligible = archived ? [] : eligibleSessions(cycle, now);
+  if (!eligible.length && !refreshPreviewCache) {
     const cutoff = completedThrough(now);
     const locked = cycle.sessions.filter(s => s.locked && sync.price(s.price) !== null).length;
     const future = cycle.sessions.filter(s => s.dateIso > cutoff).length;
@@ -71,11 +71,15 @@ export async function updatePrices({
     if (error.code !== 'ENOENT') throw new Error('Cannot read the existing market_prices.json. Kept it unchanged.');
   }
   const prices = await fetchDailyPrices(apiKey, cycle.ticker, fetchImpl);
-  const feed = makeFeed(cycle, previous, prices, now);
+  const feed = makeFeed(archived ? { ...cycle, isFinalized: true } : cycle, previous, prices, now);
+  // Updating the daily cache never revises a frozen published price snapshot.
+  if (!eligible.length && sync.matches(cycle, previous)) feed.sessions = previous.sessions;
   if (await readFile(historyPath, 'utf8') !== original) {
     throw new Error('Admin JSON changed while fetching prices. Run the workflow again.');
   }
-  if (!feed.sessions.length) return { status: 'API has no prices for eligible completed sessions yet. Kept the last price file.', changed: false };
+  if (!feed.sessions.length && (!refreshPreviewCache || !feed.dailyPrices.length)) {
+    return { status: 'API has no prices for eligible completed sessions yet. Kept the last price file.', changed: false };
+  }
   // Replace the file only after the complete response and cycle identity have been validated.
   const temporaryPath = new URL(`market_prices.json.${process.pid}.tmp`, directory);
   try {
@@ -84,10 +88,13 @@ export async function updatePrices({
   } finally {
     await unlink(temporaryPath).catch(() => {});
   }
-  const latest = feed.sessions.map(s => s.dateIso).sort().at(-1);
+  const latest = feed.sessions.map(s => s.dateIso).sort().at(-1) || 'none';
   const missing = eligible.filter(s => !feed.sessions.some(row => row.dateIso === s.dateIso)).length;
+  const cycleStatus = eligible.length
+    ? `${cycle.ticker}: saved ${feed.sessions.length}/${eligible.length} eligible session prices. Latest: ${latest}. Missing: ${missing}.`
+    : `${cycle.ticker}: kept the cycle price snapshot unchanged (no eligible sessions).`;
   return {
-    status: `${cycle.ticker}: saved ${feed.sessions.length}/${eligible.length} eligible session prices. Latest: ${latest}. Missing: ${missing}.`,
+    status: `${cycleStatus} Daily closing prices available for Admin previews: ${feed.dailyPrices.length}.`,
     changed: true, feed
   };
 }
@@ -95,7 +102,7 @@ export async function updatePrices({
 async function main() {
   let status;
   try {
-    const result = await updatePrices();
+    const result = await updatePrices({ refreshPreviewCache: process.env.REFRESH_PREVIEW_CACHE === 'true' });
     status = result.status;
     console.log(status);
   } catch (error) {

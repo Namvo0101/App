@@ -45,6 +45,50 @@ test('Missing API dates retain prior prices for the same cycle and revision', ()
   assert(!sync.matches(movedDate, first));
 });
 
+test('The feed retains completed daily API prices outside the published cycle for Admin previews', () => {
+  const cycle = makeCycle();
+  const feed = makeFeed(cycle, null, new Map([
+    ['2026-10-01', 90], [cycle.sessions[0].dateIso, 100], ['2026-11-16', 150], ['2026-11-17', 999]
+  ]), new Date('2026-11-17T00:00:00Z'));
+  assert.deepEqual(feed.dailyPrices, [
+    { dateIso: '2026-10-01', price: 90 },
+    { dateIso: cycle.sessions[0].dateIso, price: 100 },
+    { dateIso: '2026-11-16', price: 150 }
+  ]);
+  assert.equal(feed.sessions.length, 1);
+});
+
+test('Admin preview feed uses actual dates, ignores cycle metadata, and refuses another ticker', () => {
+  const cycle = makeCycle();
+  const slot = cycle.sessions[0];
+  const source = {
+    schemaVersion: 1, ticker: cycle.ticker, cycleId: 'old-cycle', cycleRevision: 'old-revision', scheduleKey: 'old-schedule',
+    sessions: [], dailyPrices: [{ dateIso: slot.dateIso, price: 100 }, { dateIso: '2026-11-17', price: 999 }]
+  };
+  const preview = sync.previewFeed(cycle, source, new Date('2026-11-17T00:00:00Z'));
+  assert(sync.matches(cycle, preview));
+  assert.equal(preview.preview, true);
+  assert.equal(preview.sessions[0].sessionNumber, slot.sessionNumber);
+  assert.equal(preview.sessions[0].price, 100);
+  assert.equal(sync.previewFeed({ ...cycle, ticker: 'AAPL' }, source), null);
+  assert.equal(sync.matches(cycle, source), false, 'user-page cycle matching remains strict');
+});
+
+test('The daily preview cache retains at most 100 valid completed prices for the same ticker', () => {
+  const rows = Array.from({ length: 150 }, (_, i) => ({
+    dateIso: new Date(Date.UTC(2026, 0, 1 + i)).toISOString().slice(0, 10), price: 100 + i
+  }));
+  const source = { schemaVersion: 1, ticker: 'ARM', sessions: [], dailyPrices: [
+    ...rows, { dateIso: '2026-02-30', price: 10 }, { dateIso: '2026-06-01', price: -1 },
+    { dateIso: '2026-06-02', price: '' }, { dateIso: '2099-01-01', price: 999 }
+  ] };
+  const cached = sync.dailyPricesFor('ARM', source, now);
+  assert.equal(cached.length, 100);
+  assert.deepEqual(cached[0], rows[50]);
+  assert.deepEqual(cached.at(-1), rows.at(-1));
+  assert.deepEqual(sync.dailyPricesFor('AAPL', source, now), []);
+});
+
 test('API wins in open/empty rows; priced locks and finalization protect values', () => {
   const cycle = makeCycle();
   const slot = cycle.sessions[0];
@@ -127,6 +171,39 @@ test('No active cycle, finalized cycles and locked cycles make no API requests',
       }
       assert.equal(await readFile(new URL('market_prices.json', directory), 'utf8'), old);
     }
+  });
+});
+
+test('Preview cache mode fetches daily prices even when the published cycle is locked or finalized', async () => {
+  await withFiles(async ({ directory, payload, cycle }) => {
+    for (const activeCycle of [
+      { ...cycle, isFinalized: true },
+      { ...cycle, sessions: cycle.sessions.map(s => ({ ...s, price: 100, locked: true })) }
+    ]) {
+      const history = JSON.stringify({ ...payload, activeCycle });
+      await writeFile(new URL('history_data.json', directory), history);
+      let calls = 0;
+      const result = await updatePrices({ directory, apiKey: key, now, refreshPreviewCache: true, fetchImpl: async () => {
+        calls++;
+        return { ok: true, json: async () => apiResponse(cycle, [['2026-10-01', 90], [cycle.sessions[0].dateIso, 120]]) };
+      } });
+      assert.equal(calls, 1);
+      assert.equal(result.changed, true);
+      const saved = JSON.parse(await readFile(new URL('market_prices.json', directory), 'utf8'));
+      assert(saved.dailyPrices.some(s => s.dateIso === '2026-10-01' && s.price === 90));
+      assert.equal(await readFile(new URL('history_data.json', directory), 'utf8'), history);
+    }
+  });
+});
+
+test('A preview cache refresh failure preserves the last good feed and all Admin JSON', async () => {
+  await withFiles(async ({ directory, payload, old }) => {
+    const history = JSON.stringify({ ...payload, activeCycle: { ...payload.activeCycle, isFinalized: true } });
+    await writeFile(new URL('history_data.json', directory), history);
+    await assert.rejects(updatePrices({ directory, apiKey: key, now, refreshPreviewCache: true,
+      fetchImpl: async () => ({ ok: true, json: async () => ({ Note: 'Rate limit' }) }) }), /Rate limit/);
+    assert.equal(await readFile(new URL('market_prices.json', directory), 'utf8'), old);
+    assert.equal(await readFile(new URL('history_data.json', directory), 'utf8'), history);
   });
 });
 
