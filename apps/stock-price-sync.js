@@ -18,13 +18,63 @@
       && signature(cycle) === feed.scheduleKey && Array.isArray(feed.sessions));
   }
 
-  function mergeSession(cycle, published, local, feed) {
-    const apiRow = matches(cycle, feed)
-      ? feed.sessions.find(s => s.dateIso === published.dateIso && s.sessionNumber === published.sessionNumber)
-      : null;
+  function apiPriceFor(cycle, session, feed) {
+    if (!matches(cycle, feed)) return null;
+    const dateIso = session.dateIso || session.date?.toISOString?.().slice(0, 10);
+    const row = feed.sessions.find(s => s.dateIso === dateIso && s.sessionNumber === session.sessionNumber);
+    return price(row?.price);
+  }
+
+  function priceState(cycle, session, feed) {
+    const value = price(session.price);
+    const apiPrice = apiPriceFor(cycle, session, feed);
+    const kind = apiPrice === null ? (value === null ? 'empty' : 'estimate')
+      : value === null ? 'available' : value === apiPrice ? 'official' : 'manual';
+    return { kind, apiPrice };
+  }
+
+  function priceBadgeHtml(state, lang, unavailable = false) {
+    const vi = lang === 'vi';
+    const labels = vi
+      ? { official: 'Chính thức', estimate: 'Dự đoán', manual: 'Nhập tay', empty: 'Chưa có giá', available: 'Đã có giá đóng cửa' }
+      : { official: 'Official', estimate: 'Estimate', manual: 'Manual', empty: 'No price', available: 'Closing price available' };
+    const colors = {
+      official: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+      available: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+      estimate: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+      manual: 'bg-amber-50 text-amber-700 border-amber-200',
+      empty: 'bg-slate-50 text-slate-500 border-slate-200'
+    };
+    const formatted = state.apiPrice === null ? null : new Intl.NumberFormat('en-US', {
+      minimumFractionDigits: 2, maximumFractionDigits: 8
+    }).format(state.apiPrice);
+    let title = formatted === null
+      ? (vi ? 'Chưa có giá đóng cửa API cho phiên này trong dữ liệu đã tải.' : 'No API closing price for this session in the loaded data.')
+      : (vi ? `Giá đóng cửa API: $${formatted}.` : `API closing price: $${formatted}.`);
+    if (state.kind === 'manual') title += vi
+      ? ' Giá trong ô do người dùng hoặc Admin giữ khác giá API.' : 'The value kept by the user or Admin differs from the API price.';
+    if (unavailable) title += vi
+      ? ' Chưa tải được dữ liệu mới; trạng thái dựa trên dữ liệu đã có.' : 'Update unavailable; status uses previously loaded data.';
+    const reference = ['manual', 'available'].includes(state.kind)
+      ? `<span class="block mt-0.5 text-[9px] text-slate-500">${vi ? 'Đóng cửa API' : 'API close'}: $${formatted}</span>` : '';
+    return `<span class="inline-flex items-center px-1.5 py-0.5 rounded border text-[9px] font-semibold ${colors[state.kind]}" title="${title}">${labels[state.kind]}</span>${reference}`;
+  }
+
+  function renderPriceBadges(cycle, sessions, feed, lang, unavailable) {
+    sessions.forEach((session, index) => {
+      const element = root.document?.getElementById(`price-kind-${index}`);
+      if (!element) return;
+      const state = priceState(cycle, session, feed);
+      const html = priceBadgeHtml(state, lang, unavailable);
+      if (element.innerHTML !== html) element.innerHTML = html;
+      element.setAttribute('data-price-kind', state.kind);
+    });
+  }
+
+  function mergeSession(cycle, published, local, feed, { applyApi = true } = {}) {
     const adminValue = price(published.price);
     const localValue = price(local?.price);
-    const apiValue = price(apiRow?.price);
+    const apiValue = applyApi ? apiPriceFor(cycle, published, feed) : null;
     // Inherited Admin locks must disappear when Admin unlocks the row.
     const userLocked = !!(local?.locked && !local.masterLocked);
     const locked = !!(published.locked || userLocked);
@@ -89,7 +139,7 @@
     if (reset) reset.title = vi ? 'Điền giá API vào các ô đang mở hoặc còn trống' : 'Apply API prices to open or empty cells';
   }
 
-  const api = { price, signature, matches, mergeSession, fetchFeed, renderStatus };
+  const api = { price, signature, matches, apiPriceFor, priceState, priceBadgeHtml, renderPriceBadges, mergeSession, fetchFeed, renderStatus };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.StockPriceSync = api;
 })(globalThis);

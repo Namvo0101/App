@@ -1246,7 +1246,6 @@
       btnPushGit.classList.add('opacity-70');
 
       try {
-        await refreshAdminMarketPrices();
         const packageData = buildFullJsonPackage();
         const jsonContentStr = JSON.stringify(packageData, null, 2);
         const encodedContent = btoa(unescape(encodeURIComponent(jsonContentStr)));
@@ -1294,6 +1293,7 @@
 
         if (putRes.ok) {
           publishedAdminCycle = packageData.activeCycle;
+          saveAdminPriceDraft();
           const putData = await putRes.json();
           const shortSha = putData.commit ? putData.commit.sha.substring(0, 7) : 'OK';
           const msg = translations[currentLang].msgGitPushSuccess.replace('{sha}', shortSha);
@@ -1318,7 +1318,7 @@
     }
 
     // Auto Load history_data.json on startup & Reload
-    async function autoLoadHistoryDataJson(silent = false) {
+    async function autoLoadHistoryDataJson(silent = false, restoreDraft = false) {
       try {
         const res = await fetch(`./history_data.json?v=${Date.now()}`, { cache: 'no-store' });
         if (res.ok) {
@@ -1340,10 +1340,12 @@
               adminHistory = payload.history;
               loadedQuarters = adminHistory.length;
             }
-            if (payload.activeCycle && Array.isArray(payload.activeCycle.sessions)) {
-              loadActiveCycleFromPackage(payload.activeCycle);
-            }
           }
+
+          const publishedCycle = payload?.activeCycle && Array.isArray(payload.activeCycle.sessions) ? payload.activeCycle : null;
+          const draft = restoreDraft ? readAdminPriceDraft(publishedCycle) : null;
+          if (draft) marketPriceFeed = draft.marketPriceFeed || null;
+          if (draft || publishedCycle) loadActiveCycleFromPackage(draft?.cycle || publishedCycle, publishedCycle);
 
           sortAdminHistory();
           renderHistoryList();
@@ -1368,9 +1370,9 @@
       return false;
     }
 
-    function loadActiveCycleFromPackage(cycle) {
+    function loadActiveCycleFromPackage(cycle, publishedCycle = cycle) {
       if (!cycle || !Array.isArray(cycle.sessions)) return;
-      publishedAdminCycle = cycle;
+      publishedAdminCycle = publishedCycle;
 
       const startDate = parseISODate(cycle.startDate);
       const endDate = parseISODate(cycle.endDate);
@@ -1428,27 +1430,54 @@
       };
     }
 
+    function saveAdminPriceDraft() {
+      const cycle = getAdminPriceCycle();
+      if (!cycle) return;
+      try {
+        localStorage.setItem('NAV_ADMIN_PRICE_DRAFT', JSON.stringify({
+          schemaVersion: 1, publishedCycle: publishedAdminCycle, cycle, marketPriceFeed
+        }));
+      } catch (err) {
+        console.warn('Admin price draft could not be saved:', err);
+      }
+    }
+
+    function readAdminPriceDraft(publishedCycle) {
+      try {
+        const draft = JSON.parse(localStorage.getItem('NAV_ADMIN_PRICE_DRAFT'));
+        if (draft?.schemaVersion !== 1 || !draft.cycle?.id || !Array.isArray(draft.cycle.sessions)) return null;
+        // A newly published Admin package takes precedence over drafts based on an older package.
+        if (publishedCycle !== undefined && JSON.stringify(draft.publishedCycle) !== JSON.stringify(publishedCycle)) return null;
+        return draft;
+      } catch {}
+      return null;
+    }
+
     function updateMarketPriceStatus() {
       StockPriceSync.renderStatus(document.getElementById('market-price-status'), getAdminPriceCycle(),
         task2Sessions, marketPriceFeed, currentLang, marketFeedUnavailable);
+      StockPriceSync.renderPriceBadges(getAdminPriceCycle(), task2Sessions, marketPriceFeed, currentLang, marketFeedUnavailable);
     }
 
-    function refreshAdminMarketPrices(background = false) {
+    function refreshAdminMarketPrices() {
       if (marketRefreshInProgress) return marketRefreshPromise;
-      if (background && document.activeElement?.matches?.('input, textarea, select')) return;
       marketRefreshInProgress = true;
+      const draftAtRequest = JSON.stringify(task2Sessions);
       marketRefreshPromise = (async () => {
       try {
         marketPriceFeed = await StockPriceSync.fetchFeed();
         marketFeedUnavailable = false;
         const cycle = getAdminPriceCycle();
-        if (cycle && !isTask2Finalized && StockPriceSync.matches(cycle, marketPriceFeed)) {
+        if (cycle && !isTask2Finalized && StockPriceSync.matches(cycle, marketPriceFeed)
+          && JSON.stringify(task2Sessions) === draftAtRequest) {
           const before = JSON.stringify(task2Sessions);
-          task2Sessions = cycle.sessions.map(slot => {
+          const nextSessions = cycle.sessions.map(slot => {
             const merged = StockPriceSync.mergeSession(cycle, slot, slot, marketPriceFeed);
             return { ...merged, date: parseISODate(slot.dateIso) };
           });
-          if (JSON.stringify(task2Sessions) !== before) {
+          // Do not detach input/lock handlers from the active rows on an identical refresh.
+          if (JSON.stringify(nextSessions) !== before) {
+            task2Sessions = nextSessions;
             calculateTask2Stats();
             renderTask2Table();
           }
@@ -1457,6 +1486,7 @@
         marketFeedUnavailable = true;
       } finally {
         marketRefreshInProgress = false;
+        saveAdminPriceDraft();
         updateMarketPriceStatus();
       }
       })();
@@ -1510,6 +1540,8 @@
         });
         calculateTask2Stats();
         updateRowPercentageChangesAndValidation();
+        updateMarketPriceStatus();
+        saveAdminPriceDraft();
         showToast(currentLang === 'vi' ? `Đã dán dữ liệu cho ${lines.length} phiên!` : `Pasted ${lines.length} prices from clipboard!`);
       }
     }
@@ -1570,8 +1602,10 @@
                     ? 'bg-slate-100/80 border-slate-200 text-slate-500 cursor-not-allowed select-none' 
                     : 'bg-white border-slate-300 hover:border-indigo-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-100'
                 }"
+                aria-describedby="price-kind-${idx}"
               />
             </div>
+            <div id="price-kind-${idx}" class="mt-1 max-w-[140px] leading-tight" aria-live="polite"></div>
           </td>
           <td class="py-2.5 px-3 sm:px-4" id="badge-change-${idx}">
             ${changeBadgeHtml}
@@ -1599,11 +1633,12 @@
           inputEl.addEventListener('input', (e) => {
             if (s.locked || isTask2Finalized) return;
             const raw = e.target.value;
-            s.price = (raw !== '' && !isNaN(raw)) ? parseFloat(raw) : null;
+            s.price = StockPriceSync.price(raw);
             s.manualOverride = true;
             calculateTask2Stats();
             updateRowPercentageChangesAndValidation();
             updateMarketPriceStatus();
+            saveAdminPriceDraft();
           });
 
           inputEl.addEventListener('blur', (e) => {
@@ -1644,11 +1679,13 @@
               }
               lucide.createIcons();
             }
+            saveAdminPriceDraft();
           });
         }
       });
 
       updateRowPercentageChangesAndValidation();
+      updateMarketPriceStatus();
       lucide.createIcons();
     }
 
@@ -2076,6 +2113,7 @@
             formatDateKey(task1Result.endDate)
           );
         }
+        saveAdminPriceDraft();
       });
     }
 
@@ -2111,6 +2149,7 @@
       calculateTask2Stats();
       renderTask2Table();
       task2Panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      saveAdminPriceDraft();
 
       const msg = translations[currentLang].msgLoadedSessions
         .replace('{quarter}', task1Result.quarter)
@@ -2120,10 +2159,10 @@
 
     btnFinalizeCycle.addEventListener('click', async () => {
       if (!task2Sessions || task2Sessions.length === 0) return;
-      if (!isTask2Finalized) await refreshAdminMarketPrices();
       isTask2Finalized = !isTask2Finalized;
       updateFinalizedUI();
       renderTask2Table();
+      saveAdminPriceDraft();
       showToast(isTask2Finalized ? translations[currentLang].badgeFinalized : translations[currentLang].btnUnfinalizeCycle);
     });
 
@@ -2152,6 +2191,7 @@
         calculateTask2Stats();
         updateRowPercentageChangesAndValidation();
         updateMarketPriceStatus();
+        saveAdminPriceDraft();
 
         if (clearedCount === 0 && lockedCount > 0) {
           showToast(currentLang === 'vi' ? 'Tất cả các dòng đều đã bị khóa, không có nội dung nào bị xóa!' : 'All rows are locked, no content was cleared!');
@@ -2165,8 +2205,6 @@
 
     btnSaveHistory.addEventListener('click', async () => {
       if (!task1Result || !task2Sessions || task2Sessions.length === 0) return;
-      await refreshAdminMarketPrices();
-
       createBackupSnapshot(editingRecordId ? "Before updating record" : "Before adding new quarter");
 
       const stats = calculateTask2Stats();
@@ -2214,6 +2252,7 @@
 
       editingRecordId = null;
       isTask2Finalized = true;
+      saveAdminPriceDraft();
       updateFinalizedUI();
       renderTask2Table();
       renderHistoryList();
@@ -2302,8 +2341,7 @@
       }, 200);
     }
 
-    btnExportJson.addEventListener('click', async () => {
-      await refreshAdminMarketPrices();
+    btnExportJson.addEventListener('click', () => {
       const packageData = buildFullJsonPackage();
       const jsonStr = JSON.stringify(packageData, null, 2);
       downloadFile('history_data.json', jsonStr, 'application/json');
@@ -2368,16 +2406,21 @@
       setLanguage(currentLang);
 
       // Fetch history_data.json
-      await autoLoadHistoryDataJson(false);
+      const loaded = await autoLoadHistoryDataJson(false, true);
+      if (!loaded) {
+        const draft = readAdminPriceDraft();
+        if (draft) {
+          marketPriceFeed = draft.marketPriceFeed || null;
+          loadActiveCycleFromPackage(draft.cycle, draft.publishedCycle);
+        }
+        marketFeedUnavailable = true;
+        updateMarketPriceStatus();
+      }
       document.getElementById('btn-refresh-market-prices').addEventListener('click', () => refreshAdminMarketPrices());
       document.getElementById('btn-reset-market-prices').addEventListener('click', async () => {
         if (isTask2Finalized || editingRecordId) return;
         task2Sessions.forEach(s => { if (!s.locked) s.manualOverride = false; });
         await refreshAdminMarketPrices();
-      });
-      setInterval(() => refreshAdminMarketPrices(true), 60_000);
-      document.addEventListener('visibilitychange', () => {
-        if (!document.hidden) refreshAdminMarketPrices(true);
       });
     });
   </script>
