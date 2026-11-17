@@ -1,4 +1,4 @@
-export const CRON = '13 0 * * 2-6';
+export const CRON = '13 0 * * TUE-SAT';
 export const WORKFLOW_URL = 'https://github.com/Namvo0101/App/actions/workflows/update-stock-prices.yml';
 const DISPATCH_URL = 'https://api.github.com/repos/Namvo0101/App/actions/workflows/update-stock-prices.yml/dispatches';
 const FAILURE_HINTS = {
@@ -43,7 +43,7 @@ export async function dispatchWorkflow(controller, env, {
 
   logger.log(JSON.stringify({ event: 'cron_triggered', ...context }));
   if (controller.cron !== CRON) {
-    fail('UNEXPECTED_CRON', 'This handler only accepts the configured 13 0 * * 2-6 schedule.');
+    fail('UNEXPECTED_CRON', 'This handler only accepts the configured 13 0 * * TUE-SAT schedule.');
   }
   if (typeof env?.GITHUB_TOKEN !== 'string' || !env.GITHUB_TOKEN.trim()) {
     fail('MISSING_SECRET', 'Configure the Cloudflare Worker secret GITHUB_TOKEN before running this handler.');
