@@ -7,6 +7,9 @@ import { createPage } from './browser-test-support.mjs';
 const now = new Date('2026-11-16T00:00:00Z');
 function scenario() {
   const cycle = makeCycle();
+  // The committed master contains these prices; Admin reload now restores it exactly.
+  cycle.sessions[0].price = 100;
+  cycle.sessions[1].price = 110;
   const feed = makeFeed(cycle, null, new Map([[cycle.sessions[0].dateIso, 100], [cycle.sessions[1].dateIso, 110]]), now);
   return { history: { activeCycle: cycle, history: [] }, feed };
 }
@@ -74,8 +77,8 @@ for (const filename of ['Nav_record_stock.html', 'admin_cycle_manager.html']) {
     assert(page.element('price-kind-2').innerHTML.includes('API close: $145.00'));
     const reloaded = await createPage(filename, history, page.data.feed, Object.fromEntries(page.storage));
     await reloaded.init();
-    assert.equal(reloaded.snapshot().sessions[2].price, 150);
-    assert.equal(reloaded.element('price-kind-2')['data-price-kind'], 'manual');
+    assert.equal(reloaded.snapshot().sessions[2].price, filename.startsWith('Nav_') ? 150 : null);
+    assert.equal(reloaded.element('price-kind-2')['data-price-kind'], filename.startsWith('Nav_') ? 'manual' : 'available');
   });
 
   test(`${filename}: unrelated or invalid API rows cannot mark a manual price as official`, async () => {
@@ -137,7 +140,7 @@ for (const filename of ['Nav_record_stock.html', 'admin_cycle_manager.html']) {
     assert.equal((page.html.match(/<\/body>/g) || []).length, 1, 'Live Server must only see the main closing body');
   });
 
-  test(`${filename}: open edits and clears take API prices on refresh and reload`, async () => {
+  test(`${filename}: open edits take API prices on explicit refresh and reload follows the authoritative data source`, async () => {
     const { history, feed } = scenario();
     const page = await createPage(filename, history, feed);
     await page.init();
@@ -150,7 +153,8 @@ for (const filename of ['Nav_record_stock.html', 'admin_cycle_manager.html']) {
     assert.deepEqual(page.snapshot().sessions.slice(0, 3).map(s => s.price), [120, 130, 140]);
     const reloaded = await createPage(filename, history, page.data.feed, Object.fromEntries(page.storage));
     await reloaded.init();
-    assert.deepEqual(reloaded.snapshot().sessions.slice(0, 3).map(s => s.price), [120, 130, 140]);
+    assert.deepEqual(reloaded.snapshot().sessions.slice(0, 3).map(s => s.price), filename.startsWith('Nav_')
+      ? [120, 130, 140] : [100, 110, null]);
   });
 
   test(`${filename}: API failure keeps the last displayed prices`, async () => {
@@ -176,8 +180,10 @@ for (const filename of ['Nav_record_stock.html', 'admin_cycle_manager.html']) {
   test(`${filename}: prices for another ticker, cycle, schedule or Admin revision are ignored`, async () => {
     for (const change of [{ ticker: 'AAPL' }, { cycleId: 'another-cycle' }, { scheduleKey: 'another-schedule' }, { cycleRevision: 'old-revision' }]) {
       const { history, feed } = scenario();
+      history.activeCycle.sessions.forEach(s => { s.price = null; });
       const page = await createPage(filename, history, { ...feed, ...change });
       await page.init();
+      if (filename.startsWith('admin')) await page.run('refreshAdminMarketPrices()');
       assert(page.snapshot().sessions.every(s => s.price === null));
       assert.equal(page.run('calculateTask2Stats().avg'), null);
     }
@@ -195,15 +201,15 @@ for (const filename of ['Nav_record_stock.html', 'admin_cycle_manager.html']) {
     assert.equal(page.snapshot().sessions[0].locked, true);
     const reloaded = await createPage(filename, history, page.data.feed, Object.fromEntries(page.storage));
     await reloaded.init();
-    assert.equal(reloaded.snapshot().sessions[0].price, 999);
-    assert.equal(reloaded.snapshot().sessions[0].locked, true);
-    assert(reloaded.element('task2-table-body').children[0].innerHTML.includes('readonly'));
+    assert.equal(reloaded.snapshot().sessions[0].price, filename.startsWith('Nav_') ? 999 : 100);
+    assert.equal(reloaded.snapshot().sessions[0].locked, filename.startsWith('Nav_'));
+    if (filename.startsWith('Nav_')) assert(reloaded.element('task2-table-body').children[0].innerHTML.includes('readonly'));
     page.element('btn-lock-row-0').handlers.click();
     await page.run(filename.startsWith('Nav_') ? 'loadStaticJsonHistory()' : 'refreshAdminMarketPrices()');
     assert.equal(page.snapshot().sessions[0].price, 120);
   });
 
-  test(`${filename}: an empty locked row is filled once, then stays locked at that price`, async () => {
+  test(`${filename}: an empty locked row is filled once, then stays locked during the current session`, async () => {
     const { history, feed } = scenario();
     const page = await createPage(filename, history, feed);
     await page.init();
@@ -242,7 +248,7 @@ for (const filename of ['Nav_record_stock.html', 'admin_cycle_manager.html']) {
     assert.equal(page.element('statAvgPrice').textContent, '$110.00');
   });
 
-  test(`${filename}: future estimates contribute immediately and survive reload without API data`, async () => {
+  test(`${filename}: future estimates calculate immediately and reload follows the page's committed-data rules`, async () => {
     const { history, feed } = scenario();
     // Put the last slot beyond the real current date, retaining a matching feed schedule.
     history.activeCycle.sessions[19].dateIso = '2099-12-31';
@@ -257,11 +263,11 @@ for (const filename of ['Nav_record_stock.html', 'admin_cycle_manager.html']) {
     assert(page.element('badge-change-19').innerHTML.includes('+36.36%'));
     const reloaded = await createPage(filename, history, feed, Object.fromEntries(page.storage));
     await reloaded.init();
-    assert.equal(reloaded.snapshot().sessions[19].price, 150);
-    assert.equal(reloaded.element('statAvgPrice').textContent, '$120.00');
+    assert.equal(reloaded.snapshot().sessions[19].price, filename.startsWith('Nav_') ? 150 : null);
+    assert.equal(reloaded.element('statAvgPrice').textContent, filename.startsWith('Nav_') ? '$120.00' : '$105.00');
   });
 
-  test(`${filename}: locking after an identical refresh survives a changed API feed on reload`, async () => {
+  test(`${filename}: priced locks work after identical refreshes and reload restores the correct source`, async () => {
     const { history, feed } = scenario();
     const page = await createPage(filename, history, feed);
     await page.init();
@@ -272,8 +278,8 @@ for (const filename of ['Nav_record_stock.html', 'admin_cycle_manager.html']) {
     feed.sessions[0].price = 500;
     const reloaded = await createPage(filename, history, feed, Object.fromEntries(page.storage));
     await reloaded.init();
-    assert.equal(reloaded.snapshot().sessions[0].price, 175);
-    assert.equal(reloaded.snapshot().sessions[0].locked, true);
+    assert.equal(reloaded.snapshot().sessions[0].price, filename.startsWith('Nav_') ? 175 : 100);
+    assert.equal(reloaded.snapshot().sessions[0].locked, filename.startsWith('Nav_'));
   });
 
   test(`${filename}: changing tabs does not refresh or overwrite a manual estimate`, async () => {
@@ -287,7 +293,7 @@ for (const filename of ['Nav_record_stock.html', 'admin_cycle_manager.html']) {
     assert.equal(page.data.requests.length, requestsBefore);
   });
 
-  test(`${filename}: API failure on reload keeps manual values and locks`, async () => {
+  test(`${filename}: API failure on reload preserves the committed master or matching personal draft`, async () => {
     for (const feedOnly of [false, true]) {
       const { history, feed } = scenario();
       const page = await createPage(filename, history, feed);
@@ -298,8 +304,9 @@ for (const filename of ['Nav_record_stock.html', 'admin_cycle_manager.html']) {
       const reloaded = await createPage(filename, history, feed, Object.fromEntries(page.storage));
       reloaded.data[feedOnly ? 'feedOffline' : 'offline'] = true;
       await reloaded.init();
-      assert.deepEqual(reloaded.snapshot().sessions.slice(0, 2).map(s => s.price), [180, 190]);
-      assert.equal(reloaded.snapshot().sessions[1].locked, true);
+      assert.deepEqual(reloaded.snapshot().sessions.slice(0, 2).map(s => s.price), filename.startsWith('Nav_')
+        ? [180, 190] : [100, 110]);
+      assert.equal(reloaded.snapshot().sessions[1].locked, filename.startsWith('Nav_'));
     }
   });
 

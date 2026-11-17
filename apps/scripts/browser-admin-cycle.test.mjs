@@ -65,8 +65,8 @@ test('Admin Apply Cycle: delayed startup data cannot replace the newly applied c
   assert.equal(page.run('adminHistory.length'), history.history.length);
   const reloaded = await createPage(filename, history, feed, Object.fromEntries(page.storage));
   await reloaded.init();
-  assert.equal(reloaded.snapshot().meta.id, newId);
-  assert.equal(reloaded.snapshot().sessions[0].price, 150);
+  assert.equal(reloaded.snapshot().meta.id, history.activeCycle.id);
+  assert.equal(reloaded.snapshot().sessions[0].price, 100);
   assert.equal(reloaded.snapshot().sessions[0].locked, true);
 });
 

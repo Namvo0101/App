@@ -40,7 +40,7 @@ test('Admin preview: Apply fills a new unpublished cycle by ticker and date with
   assert(page.data.requests.every(url => url.startsWith('./')));
 });
 
-test('Admin preview: reload retains the new draft, locked prices and estimates before any Git commit', async () => {
+test('Admin preview: reload returns to committed JSON and drops the uncommitted cycle, locks and estimates', async () => {
   const { page, history, feed } = await scenario();
   await apply(page, '2026-11-18');
   page.element('input-price-0').handlers.input({ target: { value: '999' } });
@@ -49,13 +49,12 @@ test('Admin preview: reload retains the new draft, locked prices and estimates b
   const id = page.snapshot().meta.id;
   const reloaded = await createPage(filename, history, feed, Object.fromEntries(page.storage), { now });
   await reloaded.init();
-  assert.equal(reloaded.snapshot().meta.id, id);
-  assert.equal(reloaded.snapshot().sessions[0].price, 999);
-  assert.equal(reloaded.snapshot().sessions[0].locked, true);
-  assert.equal(reloaded.snapshot().sessions[18].price, 150);
-  assert.equal(reloaded.snapshot().sessions[19].price, 250);
-  assert.equal(reloaded.element('price-kind-18')['data-price-kind'], 'official');
-  assert.equal(reloaded.element('price-kind-19')['data-price-kind'], 'estimate');
+  assert.notEqual(reloaded.snapshot().meta.id, id);
+  assert.equal(reloaded.snapshot().meta.id, history.activeCycle.id);
+  assert(reloaded.snapshot().sessions.every(s => s.price === null && !s.locked));
+  assert.equal(reloaded.element('price-kind-0')['data-price-kind'], 'available');
+  await reloaded.element('btn-refresh-market-prices').handlers.click();
+  assert.equal(reloaded.snapshot().sessions[0].price, 100);
 });
 
 test('Admin preview: a legacy feed can still fill overlapping dates in a new cycle', async () => {
