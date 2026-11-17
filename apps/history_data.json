@@ -1,11 +1,11 @@
 {
   "activeCycle": {
-    "id": "2026-Q4-2026-10-30-2026-11-27",
+    "id": "2026-Q4-2026-10-20-2026-11-16",
     "ticker": "ARM",
     "quarter": 4,
     "year": 2026,
-    "startDate": "2026-10-30",
-    "endDate": "2026-11-27",
+    "startDate": "2026-10-20",
+    "endDate": "2026-11-16",
     "isFinalized": false,
     "avgPrice": null,
     "firstPrice": null,
@@ -15,146 +15,146 @@
     "sessions": [
       {
         "sessionNumber": 1,
-        "dateIso": "2026-10-30",
+        "dateIso": "2026-10-20",
         "price": null,
         "manualOverride": false,
         "locked": false
       },
       {
         "sessionNumber": 2,
-        "dateIso": "2026-11-02",
+        "dateIso": "2026-10-21",
         "price": null,
         "manualOverride": false,
         "locked": false
       },
       {
         "sessionNumber": 3,
-        "dateIso": "2026-11-03",
+        "dateIso": "2026-10-22",
         "price": null,
         "manualOverride": false,
         "locked": false
       },
       {
         "sessionNumber": 4,
-        "dateIso": "2026-11-04",
+        "dateIso": "2026-10-23",
         "price": null,
         "manualOverride": false,
         "locked": false
       },
       {
         "sessionNumber": 5,
-        "dateIso": "2026-11-05",
+        "dateIso": "2026-10-26",
         "price": null,
         "manualOverride": false,
         "locked": false
       },
       {
         "sessionNumber": 6,
-        "dateIso": "2026-11-06",
+        "dateIso": "2026-10-27",
         "price": null,
         "manualOverride": false,
         "locked": false
       },
       {
         "sessionNumber": 7,
-        "dateIso": "2026-11-09",
+        "dateIso": "2026-10-28",
         "price": null,
         "manualOverride": false,
         "locked": false
       },
       {
         "sessionNumber": 8,
-        "dateIso": "2026-11-10",
+        "dateIso": "2026-10-29",
         "price": null,
         "manualOverride": false,
         "locked": false
       },
       {
         "sessionNumber": 9,
-        "dateIso": "2026-11-11",
+        "dateIso": "2026-10-30",
         "price": null,
         "manualOverride": false,
         "locked": false
       },
       {
         "sessionNumber": 10,
-        "dateIso": "2026-11-12",
+        "dateIso": "2026-11-02",
         "price": null,
         "manualOverride": false,
         "locked": false
       },
       {
         "sessionNumber": 11,
-        "dateIso": "2026-11-13",
+        "dateIso": "2026-11-03",
         "price": null,
         "manualOverride": false,
         "locked": false
       },
       {
         "sessionNumber": 12,
-        "dateIso": "2026-11-16",
+        "dateIso": "2026-11-04",
         "price": null,
         "manualOverride": false,
         "locked": false
       },
       {
         "sessionNumber": 13,
-        "dateIso": "2026-11-17",
+        "dateIso": "2026-11-05",
         "price": null,
         "manualOverride": false,
         "locked": false
       },
       {
         "sessionNumber": 14,
-        "dateIso": "2026-11-18",
+        "dateIso": "2026-11-06",
         "price": null,
         "manualOverride": false,
         "locked": false
       },
       {
         "sessionNumber": 15,
-        "dateIso": "2026-11-19",
+        "dateIso": "2026-11-09",
         "price": null,
         "manualOverride": false,
         "locked": false
       },
       {
         "sessionNumber": 16,
-        "dateIso": "2026-11-20",
+        "dateIso": "2026-11-10",
         "price": null,
         "manualOverride": false,
         "locked": false
       },
       {
         "sessionNumber": 17,
-        "dateIso": "2026-11-24",
+        "dateIso": "2026-11-11",
         "price": null,
         "manualOverride": false,
         "locked": false
       },
       {
         "sessionNumber": 18,
-        "dateIso": "2026-11-25",
+        "dateIso": "2026-11-12",
         "price": null,
         "manualOverride": false,
         "locked": false
       },
       {
         "sessionNumber": 19,
-        "dateIso": "2026-11-26",
+        "dateIso": "2026-11-13",
         "price": null,
         "manualOverride": false,
         "locked": false
       },
       {
         "sessionNumber": 20,
-        "dateIso": "2026-11-27",
+        "dateIso": "2026-11-16",
         "price": null,
         "manualOverride": false,
         "locked": false
       }
     ],
-    "updatedAt": "2026-11-17T07:45:21.460Z"
+    "updatedAt": "2026-11-17T07:57:34.992Z"
   },
   "history": [
     {
