@@ -1,0 +1,11 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "app-stock-prices-cron",
+  "main": "src/index.js",
+  "compatibility_date": "2026-11-17",
+  "workers_dev": false,
+  "preview_urls": false,
+  "triggers": { "crons": ["13 0 * * 2-6"] },
+  "secrets": { "required": ["GITHUB_TOKEN"] },
+  "observability": { "enabled": true, "head_sampling_rate": 1 }
+}
