@@ -37,6 +37,9 @@ jobs:
       - name: Verify stock price handling
         run: node --test apps/scripts/*.test.mjs
 
+      - name: Verify Cron dispatcher and Pages packaging
+        run: node --test infra/cloudflare-stock-cron/test/*.test.mjs .github/scripts/*.test.mjs
+
       - name: Get closing prices for the Admin cycle
         continue-on-error: true
         working-directory: apps
@@ -60,10 +63,13 @@ jobs:
           git fetch origin main
           test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" || { echo "Main changed during this run. The next run will use the latest Admin cycle."; exit 1; }
 
-      - name: Package the repository for GitHub Pages
+      - name: Stage public website files for GitHub Pages
+        run: node .github/scripts/prepare-pages.mjs
+
+      - name: Package the website for GitHub Pages
         uses: actions/upload-pages-artifact@v5
         with:
-          path: '.'
+          path: '_site'
 
   deploy:
     needs: update
