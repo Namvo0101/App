@@ -42,6 +42,7 @@ jobs:
         working-directory: apps
         env:
           STOCK_API_KEY: ${{ secrets.STOCK_API_KEY }}
+          REFRESH_PREVIEW_CACHE: 'true'
         run: node scripts/update-stock-prices.mjs
 
       - name: Save only the price feed
