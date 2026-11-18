@@ -28,7 +28,7 @@ test('Dispatches only the fixed workflow/main and logs returned run details', as
     assert.equal(init.headers.Accept, 'application/vnd.github+json');
     assert.equal(init.headers['Content-Type'], 'application/json');
     assert.ok(init.headers['User-Agent']);
-    assert.equal(init.redirect, 'error');
+    assert.equal(init.redirect, 'manual');
     assert.ok(init.signal instanceof AbortSignal);
     assert.deepEqual(JSON.parse(init.body), { ref: 'main' });
     return Response.json({ workflow_run_id: 123, html_url: 'https://github.com/Namvo0101/App/actions/runs/123' });
@@ -60,7 +60,7 @@ test('Logs API run URL when GitHub returns it without an HTML URL', async () => 
   assert.match(result.run_url, /\/runs\/345$/);
 });
 
-for (const status of [401, 403, 404, 422, 429, 500]) {
+for (const status of [302, 401, 403, 404, 422, 429, 500]) {
   test(`HTTP ${status} marks invocation as failed without logging response body or token`, async () => {
     let calls = 0;
     const f = fixture(async () => { calls++; return new Response(`sensitive ${token}`, { status }); });
