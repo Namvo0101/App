@@ -60,7 +60,7 @@
         "dateIso": "2026-11-19",
         "price": 1,
         "manualOverride": true,
-        "locked": false
+        "locked": true
       },
       {
         "sessionNumber": 8,
@@ -154,7 +154,7 @@
         "locked": false
       }
     ],
-    "updatedAt": "2026-11-19T18:24:50.529Z"
+    "updatedAt": "2026-11-19T18:31:46.321Z"
   },
   "history": [
     {
