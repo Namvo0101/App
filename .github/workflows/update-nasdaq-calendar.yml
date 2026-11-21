@@ -1,0 +1,96 @@
+name: Update Nasdaq Calendar and Pages
+
+on:
+  workflow_dispatch:
+    inputs:
+      year:
+        description: Nasdaq calendar year
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+# Share the existing price/Pages lock through deployment, so the two workflows cannot publish out of order.
+concurrency:
+  group: stock-prices-and-pages
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Read the configured branch
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.ref_name }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          package-manager-cache: false
+
+      - name: Verify application and calendar handling
+        run: node --test apps/scripts/*.test.mjs infra/cloudflare-stock-cron/test/*.test.mjs .github/scripts/*.test.mjs
+
+      - name: Download and verify the requested Nasdaq calendar
+        env:
+          CALENDAR_YEAR: ${{ inputs.year }}
+        run: node apps/scripts/update-nasdaq-calendar.mjs
+
+      - name: Commit only the requested calendar
+        env:
+          CALENDAR_YEAR: ${{ inputs.year }}
+          CALENDAR_BRANCH: ${{ github.ref_name }}
+        run: |
+          calendar="apps/market-calendars/nasdaq-${CALENDAR_YEAR}.json"
+          if [ -n "$(git status --porcelain -- "$calendar")" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add -- "$calendar"
+            git commit -m "Update Nasdaq calendar ${CALENDAR_YEAR}"
+            git push origin "HEAD:refs/heads/${CALENDAR_BRANCH}" || { echo "Push rejected: branch changed or access denied. No force-push was attempted; rerun from the latest branch."; exit 1; }
+            echo "Calendar committed successfully." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Calendar unchanged; no commit created." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Check branch is current before publishing
+        if: github.ref_name == github.event.repository.default_branch
+        env:
+          CALENDAR_BRANCH: ${{ github.ref_name }}
+        run: |
+          git fetch origin "$CALENDAR_BRANCH"
+          test "$(git rev-parse HEAD)" = "$(git rev-parse FETCH_HEAD)" || { echo "Branch changed; calendar commit and Pages publication are separate. Rerun to publish the latest source."; exit 1; }
+
+      - name: Stage public website files
+        if: github.ref_name == github.event.repository.default_branch
+        run: node .github/scripts/prepare-pages.mjs
+
+      - name: Package the website for GitHub Pages
+        if: github.ref_name == github.event.repository.default_branch
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: '_site'
+
+  deploy:
+    if: github.ref_name == github.event.repository.default_branch
+    needs: update
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v6
+      - name: Publish updated website and calendar JSON
+        id: deployment
+        uses: actions/deploy-pages@v5
