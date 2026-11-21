@@ -14,9 +14,9 @@ function packageData(finalized = false) {
   return { activeCycle: cycle, history: [{ ...structuredClone(cycle), id: 'archived', avgPrice: 100 }] };
 }
 
-function selectNextCycle(page) {
+async function selectNextCycle(page) {
   page.element('target-date-input').value = anchor;
-  page.element('target-date-input').handlers.change({ target: { value: anchor } });
+  await page.element('target-date-input').handlers.change({ target: { value: anchor } });
 }
 
 for (const finalized of [false, true]) {
@@ -25,7 +25,7 @@ for (const finalized of [false, true]) {
       const history = packageData(finalized);
       const page = await createPage(filename, history, feed, {}, options);
       await page.init();
-      selectNextCycle(page);
+      await selectNextCycle(page);
       page.element('btn-apply-cycle').handlers.click();
       const state = page.snapshot();
       assert.equal(state.meta.year, 2027);
@@ -51,7 +51,7 @@ test('Admin Apply Cycle: delayed startup data cannot replace the newly applied c
   const gate = new Promise(resolve => { release = resolve; });
   page.data.beforeResponse = url => url.startsWith('./history_data.json') ? gate : undefined;
   const initializing = page.init();
-  selectNextCycle(page);
+  await selectNextCycle(page);
   page.element('btn-apply-cycle').handlers.click();
   const newId = page.snapshot().meta.id;
   page.element('input-price-0').handlers.input({ target: { value: '150' } });
@@ -76,7 +76,7 @@ test('Admin Apply Cycle: selecting a date during startup keeps the selected prev
   const gate = new Promise(resolve => { release = resolve; });
   page.data.beforeResponse = url => url.startsWith('./history_data.json') ? gate : undefined;
   const initializing = page.init();
-  selectNextCycle(page);
+  await selectNextCycle(page);
   release();
   await initializing;
   assert.equal(page.element('target-date-input').value, anchor);
@@ -95,7 +95,7 @@ test('Admin Apply Cycle: an offline startup fallback does not undo a new date se
   page.data.beforeResponse = url => url.startsWith('./history_data.json') ? gate : undefined;
   page.data.offline = true;
   const initializing = page.init();
-  selectNextCycle(page);
+  await selectNextCycle(page);
   release();
   await initializing;
   assert.equal(page.element('target-date-input').value, anchor);

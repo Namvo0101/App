@@ -20,10 +20,11 @@ function scenario() {
 async function newDraft(page, filename) {
   page.element('target-date-input').value = '2027-02-15';
   if (filename.startsWith('admin')) {
-    page.element('target-date-input').handlers.change({ target: { value: '2027-02-15' } });
+    await page.element('target-date-input').handlers.change({ target: { value: '2027-02-15' } });
     await page.element('btn-apply-cycle').handlers.click();
   } else {
-    page.run("handleDateChange('2027-02-15', false); executeLoadTask2();");
+    await page.run("handleDateChange('2027-02-15', false)");
+    page.run('executeLoadTask2()');
   }
   page.element('input-price-0').handlers.input({ target: { value: '777' } });
   page.element('btn-lock-row-0').handlers.click();
@@ -153,7 +154,7 @@ test('Admin selecting a new date without Apply cannot mix preview dates into the
   const { history, feed } = scenario();
   const page = await createPage('admin_cycle_manager.html', history, feed, {}, options);
   await page.init();
-  page.element('target-date-input').handlers.change({ target: { value: '2027-02-15' } });
+  await page.element('target-date-input').handlers.change({ target: { value: '2027-02-15' } });
   const output = JSON.parse(page.run('JSON.stringify(buildFullJsonPackage())'));
   assert.equal(output.activeCycle.id, history.activeCycle.id);
   assert.equal(output.activeCycle.startDate, history.activeCycle.startDate);

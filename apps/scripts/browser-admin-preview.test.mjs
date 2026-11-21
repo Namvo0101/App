@@ -20,9 +20,12 @@ async function scenario(legacy = false) {
   return { page, history, feed };
 }
 
-function apply(page, date = '2026-11-17') {
+async function select(page, date = '2026-11-17') {
   page.element('target-date-input').value = date;
-  page.element('target-date-input').handlers.change({ target: { value: date } });
+  await page.element('target-date-input').handlers.change({ target: { value: date } });
+}
+async function apply(page, date = '2026-11-17') {
+  await select(page, date);
   return page.element('btn-apply-cycle').handlers.click();
 }
 
@@ -81,10 +84,11 @@ test('Admin preview: a cached row for a session that has not closed is ignored',
 
 test('Admin preview: input during a pending Apply price request remains editable and is preserved', async () => {
   const { page } = await scenario();
+  await select(page);
   let release;
   const gate = new Promise(resolve => { release = resolve; });
   page.data.beforeResponse = url => url.startsWith('./market_prices.json') ? gate : undefined;
-  const pending = apply(page);
+  const pending = page.element('btn-apply-cycle').handlers.click();
   page.element('input-price-0').handlers.input({ target: { value: '999' } });
   release();
   await pending;
@@ -94,11 +98,12 @@ test('Admin preview: input during a pending Apply price request remains editable
 
 test('Admin preview: a queued Apply refresh preserves edits made while an older cycle request finishes', async () => {
   const { page } = await scenario();
+  await select(page);
   let release;
   const gate = new Promise(resolve => { release = resolve; });
   page.data.beforeResponse = url => url.startsWith('./market_prices.json') ? gate : undefined;
   const oldRefresh = page.run('refreshAdminMarketPrices()');
-  const pendingApply = apply(page);
+  const pendingApply = page.element('btn-apply-cycle').handlers.click();
   page.element('input-price-0').handlers.input({ target: { value: '999' } });
   release();
   await oldRefresh;

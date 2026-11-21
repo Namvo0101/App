@@ -4,11 +4,13 @@ import vm from 'node:vm';
 export async function createPage(filename, history, feed, saved = {}, options = {}) {
   const html = await readFile(new URL(`../${filename}`, import.meta.url), 'utf8');
   const helper = await readFile(new URL('../stock-price-sync.js', import.meta.url), 'utf8');
+  const calendar = await readFile(new URL('../market-calendar.js', import.meta.url), 'utf8');
+  const calendarAdmin = await readFile(new URL('../admin-nasdaq-calendar.js', import.meta.url), 'utf8');
   const inline = html.match(/  <script>([\s\S]*?)  <\/script>/)?.[1];
   if (!inline) throw new Error('Page inline script not found');
   const elements = new Map();
   const storage = new Map(Object.entries(saved));
-  const pageData = { history: structuredClone(history), feed: structuredClone(feed), offline: false, noFeed: false, requests: [] };
+  const pageData = { history: structuredClone(history), feed: structuredClone(feed), calendars: options.calendars || {}, offline: false, noFeed: false, requests: [], requestOptions: [] };
   const callbacks = {};
   const intervals = [];
   const PageDate = options.now ? class extends Date {
@@ -50,10 +52,16 @@ export async function createPage(filename, history, feed, saved = {}, options = 
       getItem: key => storage.get(key) ?? null,
       setItem: (key, value) => storage.set(key, value), removeItem: key => storage.delete(key)
     },
-    fetch: async url => {
+    fetch: async (url, requestOptions) => {
       pageData.requests.push(String(url));
+      pageData.requestOptions.push(requestOptions);
       await pageData.beforeResponse?.(String(url));
       if (pageData.offline) throw new Error('Offline test');
+      const calendarYear = /^\.\/market-calendars\/nasdaq-(\d{4})\.json$/.exec(String(url));
+      if (calendarYear) return pageData.calendars[calendarYear[1]]
+        ? { ok: true, json: async () => structuredClone(pageData.calendars[calendarYear[1]]) }
+        : { ok: false, status: 404 };
+      if (String(url).startsWith('https://api.github.com/')) return pageData.dispatchResponse || { ok: true, status: 204 };
       if (String(url).split('?')[0] === './history_data.json') return { ok: true, json: async () => structuredClone(pageData.history) };
       if (String(url).split('?')[0] === './market_prices.json') {
         if (pageData.feedOffline) throw new Error('Price feed offline');
@@ -65,13 +73,15 @@ export async function createPage(filename, history, feed, saved = {}, options = 
     lucide: { createIcons() {} },
     setTimeout: () => 0, clearTimeout() {}, setInterval: (callback, milliseconds) => { intervals.push({ callback, milliseconds }); return 0; }
   });
+  vm.runInContext(calendar, context);
+  vm.runInContext(calendarAdmin, context);
   if (!options.missingHelper) vm.runInContext(helper, context);
   if (options.legacyHelper) vm.runInContext('delete StockPriceSync.renderPriceBadges;', context);
   if (options.missingIcons) vm.runInContext('delete globalThis.lucide;', context);
   new vm.Script(inline, { filename });
   vm.runInContext(inline, context);
   // Price tables and history rendering use the application code, including initial load.
-  vm.runInContext('renderTask1UI = () => {};', context);
+  if (!options.renderCalendar) vm.runInContext('renderTask1UI = () => {};', context);
   const run = code => vm.runInContext(code, context);
   const snapshot = () => JSON.parse(run('JSON.stringify({ sessions: task2Sessions, finalized: isTask2Finalized, meta: activeCycleMeta })'));
   return { html, data: pageData, element, run, snapshot, storage, intervals, callbacks, init: callbacks.DOMContentLoaded };
