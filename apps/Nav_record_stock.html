@@ -127,6 +127,11 @@
       </div>
 
       <!-- Collapsible Task 1 Details (Default hidden) -->
+      <div class="mt-3 rounded-xl border border-indigo-200 bg-indigo-50 p-3 space-y-2">
+        <p id="calendar-source-status" class="text-sm font-semibold text-indigo-900" role="status" aria-live="polite"></p>
+        <button id="btn-recalculate-calendar" type="button" class="rounded-lg bg-white border border-indigo-200 px-3 py-2 text-sm text-indigo-800">Tính lại / Recalculate</button>
+        <details class="text-sm text-slate-700"><summary class="cursor-pointer">20 phiên và thay đổi / Sessions and changes</summary><p id="calendar-preview-sessions" class="mt-2 whitespace-pre-line break-words"></p></details>
+      </div>
       <div id="task1-collapsible-body" class="hidden mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-slate-100 space-y-3 sm:space-y-4">
         
         <!-- Controls: Quarter Pills & Today & Reset (Mobile Grid) -->
@@ -555,6 +560,7 @@
     </div>
   </div>
 
+  <script src="./market-calendar.js?v=20261121-1"></script>
   <script src="./stock-price-sync.js?v=20261117-master-source-1"></script>
   <script>
     // -------------------------------------------------------------
@@ -817,146 +823,35 @@
     // -------------------------------------------------------------
     // US Market Holidays (NYSE / NASDAQ)
     // -------------------------------------------------------------
-    function getNthDayOfWeek(year, monthIndex, targetDayOfWeek, n) {
-      let count = 0;
-      for (let day = 1; day <= 31; day++) {
-        const d = new Date(Date.UTC(year, monthIndex, day));
-        if (d.getUTCMonth() !== monthIndex) break;
-        if (d.getUTCDay() === targetDayOfWeek) {
-          count++;
-          if (count === n) return d;
-        }
+    // Shared Nasdaq calendar; JSON takes precedence independently for each year.
+    function getUSHolidaysForYear(year) { return MarketCalendar.fallbackHolidays(year); }
+    function calculateTask1(date) { return MarketCalendar.calculateCycle(formatDateKey(date)); }
+    const calendarSourceStatus = document.getElementById('calendar-source-status');
+    const calendarPreview = MarketCalendar.createPreviewController({
+      input: targetDateInput, button: btnApplyCycle, status: calendarSourceStatus,
+      getLanguage: () => currentLang,
+      onResult: result => {
+        task1Result = result;
+        renderTask1UI();
       }
-      return null;
+    });
+    function renderCalendarPreview() {
+      if (calendarPreview.isPending()) return;
+      calendarSourceStatus.textContent = MarketCalendar.sourceText(task1Result, currentLang);
+      const previousDates = task2Sessions.map(session => formatDateKey(session.date));
+      document.getElementById('calendar-preview-sessions').textContent = MarketCalendar.previewText(task1Result, previousDates, currentLang);
     }
-    function getLastDayOfWeek(year, monthIndex, targetDayOfWeek) {
-      let last = null;
-      for (let day = 1; day <= 31; day++) {
-        const d = new Date(Date.UTC(year, monthIndex, day));
-        if (d.getUTCMonth() !== monthIndex) break;
-        if (d.getUTCDay() === targetDayOfWeek) last = d;
-      }
-      return last;
-    }
-    function getEasterSunday(year) {
-      const a = year % 19, b = Math.floor(year / 100), c = year % 100;
-      const d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25);
-      const g = Math.floor((b - f + 1) / 3), h = (19 * a + b - d - g + 15) % 30;
-      const i = Math.floor(c / 4), k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7;
-      const m = Math.floor((a + 11 * h + 22 * l) / 451);
-      const month = Math.floor((h + l - 7 * m + 114) / 31) - 1;
-      const day = ((h + l - 7 * m + 114) % 31) + 1;
-      return new Date(Date.UTC(year, month, day));
-    }
-    function getGoodFriday(year) {
-      const easter = getEasterSunday(year);
-      const gf = new Date(easter.getTime());
-      gf.setUTCDate(gf.getUTCDate() - 2);
-      return gf;
-    }
-    function adjustObservedHoliday(d) {
-      const dow = d.getUTCDay();
-      if (dow === 6) {
-        const res = new Date(d.getTime());
-        res.setUTCDate(res.getUTCDate() - 1);
-        return res;
-      }
-      if (dow === 0) {
-        const res = new Date(d.getTime());
-        res.setUTCDate(res.getUTCDate() + 1);
-        return res;
-      }
-      return d;
-    }
-    function getUSHolidaysForYear(year) {
-      const holidays = {};
-      function add(d, nameEn, nameVi) {
-        if (!d) return;
-        holidays[formatDateKey(d)] = { en: nameEn, vi: nameVi };
-      }
-      add(adjustObservedHoliday(new Date(Date.UTC(year, 0, 1))), "New Year's Day", "Tết Dương lịch");
-      add(getNthDayOfWeek(year, 0, 1, 3), "Martin Luther King Jr. Day", "Ngày Martin Luther King Jr.");
-      add(getNthDayOfWeek(year, 1, 1, 3), "Presidents' Day", "Ngày Tổng thống Mỹ");
-      add(getGoodFriday(year), "Good Friday", "Thứ Sáu Tuần Thánh");
-      add(getLastDayOfWeek(year, 4, 1), "Memorial Day", "Ngày Tưởng niệm Chiến sĩ trận vong");
-      add(adjustObservedHoliday(new Date(Date.UTC(year, 5, 19))), "Juneteenth", "Ngày Giải phóng Nô lệ (Juneteenth)");
-      add(adjustObservedHoliday(new Date(Date.UTC(year, 6, 4))), "Independence Day", "Ngày Quốc khánh Mỹ (4/7)");
-      add(getNthDayOfWeek(year, 8, 1, 1), "Labor Day", "Ngày Quốc tế Lao động Mỹ");
-      add(getNthDayOfWeek(year, 10, 1, 4), "Thanksgiving Day", "Lễ Tạ ơn");
-      add(adjustObservedHoliday(new Date(Date.UTC(year, 11, 25))), "Christmas Day", "Lễ Giáng sinh");
-      return holidays;
-    }
-    function isUSMarketHoliday(d) {
-      const holidays = getUSHolidaysForYear(d.getUTCFullYear());
-      return holidays[formatDateKey(d)] || null;
-    }
-    function isTradingDay(d) {
-      const dow = d.getUTCDay();
-      if (dow === 0 || dow === 6) return false;
-      if (isUSMarketHoliday(d)) return false;
-      return true;
-    }
+    document.getElementById('btn-recalculate-calendar').addEventListener('click', () => handleDateChange(targetDateInput.value));
+    targetDateInput.addEventListener('input', () => {
+      calendarPreview.invalidate();
 
-    // -------------------------------------------------------------
-    // Core Rule: Strictly backward before the 15th anchor date
-    // -------------------------------------------------------------
-    function getPreviousTradingDayStrict(baseDate) {
-      const cur = new Date(baseDate.getTime());
-      // Luôn lùi ít nhất 1 ngày trước mốc (bỏ qua ngày 15)
-      cur.setUTCDate(cur.getUTCDate() - 1);
-      while (!isTradingDay(cur)) {
-        cur.setUTCDate(cur.getUTCDate() - 1);
-      }
-      return cur;
-    }
-
-    function calculateTask1(initialTargetDate) {
-      // Phiên 20 (End Date) luôn là phiên mở cửa liền kề TRƯỚC ngày mốc
-      const validEndTradingDay = getPreviousTradingDayStrict(initialTargetDate);
-      const tradingSessions = [];
-      const skippedHolidays = [];
-      let weekendDaysCount = 0;
-      let holidaysCount = 0;
-
-      const cursor = new Date(validEndTradingDay.getTime());
-      while (tradingSessions.length < 20) {
-        const dow = cursor.getUTCDay();
-        if (dow === 0 || dow === 6) {
-          weekendDaysCount++;
-        } else {
-          const hol = isUSMarketHoliday(cursor);
-          if (hol) {
-            holidaysCount++;
-            skippedHolidays.push({ date: new Date(cursor.getTime()), name: hol });
-          } else {
-            tradingSessions.unshift(new Date(cursor.getTime()));
-          }
-        }
-        cursor.setUTCDate(cursor.getUTCDate() - 1);
-      }
-
-      const startDate = tradingSessions[0];
-      const endDate = tradingSessions[tradingSessions.length - 1];
-      const year = endDate.getUTCFullYear();
-      const quarter = getQuarterFromDate(endDate);
-
-      return {
-        targetDate: initialTargetDate,
-        validEndTradingDay,
-        startDate,
-        endDate,
-        year,
-        quarter,
-        tradingSessions,
-        weekendDaysCount,
-        holidaysCount,
-        skippedHolidays
-      };
-    }
+      calendarSourceStatus.textContent = currentLang === 'vi' ? 'Ngày chốt đã đổi · Cần tính lại' : 'Cut-off changed · Recalculate to continue';
+    });
 
     function renderTask1UI() {
       if (!task1Result) return;
       const r = task1Result;
+      renderCalendarPreview();
       const quarterTitle = document.getElementById('cycle-quarter-title');
       if (quarterTitle) {
         quarterTitle.textContent = currentLang === 'vi' 
@@ -991,7 +886,12 @@
       if (skippedContainer && skippedList) {
         if (r.skippedHolidays.length > 0) {
           skippedContainer.classList.remove('hidden');
-          skippedList.innerHTML = r.skippedHolidays.map(h => `<li>${formatDateKey(h.date)}: ${h.name[currentLang] || h.name.en}</li>`).join('');
+          skippedList.innerHTML = '';
+          r.skippedHolidays.forEach(h => {
+            const item = document.createElement('li');
+            item.textContent = formatDateKey(h.date) + ': ' + (h.name[currentLang] || h.name.en);
+            skippedList.appendChild(item);
+          });
         } else {
           skippedContainer.classList.add('hidden');
         }
@@ -1882,6 +1782,7 @@
       currentTicker = masterCycle.ticker || 'ARM';
       if (inputStockTicker) inputStockTicker.value = currentTicker;
 
+      calendarPreview.invalidate();
       task1Result = {
         targetDate: endDate,
         validEndTradingDay: endDate,
@@ -2238,11 +2139,11 @@
     }
 
     function exportPdfForTask2() {
-      if (!task1Result || !task2Sessions || task2Sessions.length === 0) return;
+      if (!activeCycleMeta || !task2Sessions || task2Sessions.length === 0) return;
       const stats = calculateTask2Stats();
-      const startKey = formatDateKey(task1Result.startDate).replace(/-/g, '/');
-      const endKey = formatDateKey(task1Result.endDate).replace(/-/g, '/');
-      const q = task1Result.quarter;
+      const startKey = activeCycleMeta.startDate.replace(/-/g, '/');
+      const endKey = activeCycleMeta.endDate.replace(/-/g, '/');
+      const q = activeCycleMeta.quarter;
 
       const title = currentLang === 'vi' 
         ? `Báo cáo Dữ liệu Quý ${q} (${startKey} - ${endKey})` 
@@ -2290,21 +2191,20 @@
     // Main App Event Handlers
     // -------------------------------------------------------------
     function handleDateChange(isoDateStr, triggerSave = true) {
-      if (!isoDateStr) return;
-      const d = parseISODate(isoDateStr);
-      task1Result = calculateTask1(d);
-      renderTask1UI();
-      if (triggerSave) saveStateToLocalStorage();
+      if (!isoDateStr) { calendarPreview.invalidate(); return Promise.resolve(null); }
+
+      return calendarPreview.calculate(isoDateStr).then(result => {
+        if (result && triggerSave) saveStateToLocalStorage();
+        return result;
+      });
     }
 
-    targetDateInput.addEventListener('change', (e) => {
-      handleDateChange(e.target.value);
-    });
+    targetDateInput.addEventListener('change', (e) => handleDateChange(e.target.value));
 
     quarterBtns.forEach(btn => {
       btn.addEventListener('click', (e) => {
         const q = parseInt(e.currentTarget.getAttribute('data-quarter'), 10);
-        const y = task1Result ? task1Result.year : new Date().getUTCFullYear();
+        const y = task1Result ? task1Result.year : Number(MarketCalendar.newYorkDate().slice(0, 4));
         const midDate = getQuarterMidDate(y, q);
         const dateKey = formatDateKey(midDate);
         targetDateInput.value = dateKey;
@@ -2315,7 +2215,7 @@
     if (btnToday) {
       btnToday.addEventListener('click', () => {
         const today = new Date();
-        const dateKey = formatDateKey(today);
+        const dateKey = MarketCalendar.newYorkDate(today);
         targetDateInput.value = dateKey;
         handleDateChange(dateKey);
       });
@@ -2323,7 +2223,7 @@
 
     if (btnResetDefault) {
       btnResetDefault.addEventListener('click', () => {
-        const y = task1Result ? task1Result.year : new Date().getUTCFullYear();
+        const y = task1Result ? task1Result.year : Number(MarketCalendar.newYorkDate().slice(0, 4));
         const q = task1Result ? task1Result.quarter : 4;
         const midDate = getQuarterMidDate(y, q);
         const dateKey = formatDateKey(midDate);
@@ -2343,9 +2243,9 @@
         currentTicker = e.target.value.toUpperCase();
         if (task1Result) {
           updateTask2Title(
-            task1Result.quarter, 
-            formatDateKey(task1Result.startDate), 
-            formatDateKey(task1Result.endDate)
+            activeCycleMeta?.quarter ?? task1Result.quarter,
+            activeCycleMeta?.startDate ?? formatDateKey(task1Result.startDate),
+            activeCycleMeta?.endDate ?? formatDateKey(task1Result.endDate)
           );
         }
         saveStateToLocalStorage();
@@ -2353,7 +2253,8 @@
     }
 
     function executeLoadTask2() {
-      if (!task1Result) return;
+      if (!calendarPreview.canApply(task1Result)) return;
+      calendarPreview.invalidate();
       const sessions = task1Result.tradingSessions;
       task2Sessions = sessions.map((d, index) => ({
         sessionNumber: index + 1,
@@ -2392,12 +2293,12 @@
     }
 
     function archiveCurrentActiveCycleToHistory() {
-      if (!task2Sessions || task2Sessions.length === 0 || !task1Result) return;
+      if (!task2Sessions || task2Sessions.length === 0 || !activeCycleMeta) return;
 
       const stats = calculateTask2Stats();
-      const startKey = formatDateKey(task1Result.startDate);
-      const endKey = formatDateKey(task1Result.endDate);
-      const recordKey = `${task1Result.year}-Q${task1Result.quarter}-${startKey}-${endKey}`;
+      const startKey = activeCycleMeta.startDate;
+      const endKey = activeCycleMeta.endDate;
+      const recordKey = `${activeCycleMeta.year}-Q${activeCycleMeta.quarter}-${startKey}-${endKey}`;
 
       const serializedSessions = task2Sessions.map(s => ({
         sessionNumber: s.sessionNumber,
@@ -2409,8 +2310,8 @@
       const record = {
         id: recordKey,
         ticker: currentTicker || 'ARM',
-        quarter: task1Result.quarter,
-        year: task1Result.year,
+        quarter: activeCycleMeta.quarter,
+        year: activeCycleMeta.year,
         startDate: startKey,
         endDate: endKey,
         avgPrice: stats.avg,
@@ -2516,7 +2417,7 @@
     }
 
     btnApplyCycle.addEventListener('click', () => {
-      if (!task1Result) return;
+      if (!calendarPreview.canApply(task1Result)) return;
       const targetQuarter = task1Result.quarter;
       const targetYear = task1Result.year;
 
@@ -2569,12 +2470,12 @@
     });
 
     btnSaveHistory.addEventListener('click', () => {
-      if (!task1Result || !task2Sessions || task2Sessions.length === 0) return;
+      if (!activeCycleMeta || !task2Sessions || task2Sessions.length === 0) return;
 
       const stats = calculateTask2Stats();
-      const startKey = formatDateKey(task1Result.startDate);
-      const endKey = formatDateKey(task1Result.endDate);
-      const recordKey = `${task1Result.year}-Q${task1Result.quarter}-${startKey}-${endKey}`;
+      const startKey = activeCycleMeta.startDate;
+      const endKey = activeCycleMeta.endDate;
+      const recordKey = `${activeCycleMeta.year}-Q${activeCycleMeta.quarter}-${startKey}-${endKey}`;
 
       const serializedSessions = task2Sessions.map(s => ({
         sessionNumber: s.sessionNumber,
@@ -2586,8 +2487,8 @@
       const newRecord = {
         id: recordKey,
         ticker: currentTicker || 'ARM',
-        quarter: task1Result.quarter,
-        year: task1Result.year,
+        quarter: activeCycleMeta.quarter,
+        year: activeCycleMeta.year,
         startDate: startKey,
         endDate: endKey,
         avgPrice: stats.avg,
@@ -2687,9 +2588,9 @@
 
       if (task1Result && !task2Panel.classList.contains('hidden')) {
         updateTask2Title(
-          task1Result.quarter, 
-          formatDateKey(task1Result.startDate), 
-          formatDateKey(task1Result.endDate)
+          activeCycleMeta?.quarter ?? task1Result.quarter,
+          activeCycleMeta?.startDate ?? formatDateKey(task1Result.startDate),
+          activeCycleMeta?.endDate ?? formatDateKey(task1Result.endDate)
         );
         calculateTask2Stats();
         renderTask2Table();
@@ -2706,7 +2607,7 @@
     // Initializer
     // -------------------------------------------------------------
     window.addEventListener('DOMContentLoaded', async () => {
-      const now = new Date();
+      const now = parseISODate(MarketCalendar.newYorkDate());
       const currentYear = now.getUTCFullYear();
       const currentQuarter = getQuarterFromDate(now);
       const initialDate = getQuarterMidDate(currentYear, currentQuarter);
