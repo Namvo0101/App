@@ -61,7 +61,18 @@ export async function createPage(filename, history, feed, saved = {}, options = 
       if (calendarYear) return pageData.calendars[calendarYear[1]]
         ? { ok: true, json: async () => structuredClone(pageData.calendars[calendarYear[1]]) }
         : { ok: false, status: 404 };
-      if (String(url).startsWith('https://api.github.com/')) return pageData.dispatchResponse || { ok: true, status: 204 };
+      if (String(url).startsWith('https://api.github.com/')) {
+        if (requestOptions?.method === 'POST') {
+          pageData.lastDispatch = JSON.parse(requestOptions.body);
+          return pageData.dispatchResponse || { ok: true, status: 204 };
+        }
+        if (pageData.actionsOffline) throw new Error('Actions offline');
+        if (pageData.actionsResponse) return pageData.actionsResponse;
+        const response = /\/jobs\?/.test(String(url)) ? { jobs: pageData.actionJobs || [] }
+          : /\/workflows\/.*\/runs\?/.test(String(url)) ? { workflow_runs: pageData.actionRuns || [] }
+          : pageData.actionRun || { id: Number(String(url).split('/').at(-1)), head_branch: pageData.lastDispatch?.ref || 'main', event: 'workflow_dispatch', path: '.github/workflows/update-nasdaq-calendar.yml', status: 'queued', conclusion: null };
+        return { ok: true, status: 200, json: async () => structuredClone(response) };
+      }
       if (String(url).split('?')[0] === './history_data.json') return { ok: true, json: async () => structuredClone(pageData.history) };
       if (String(url).split('?')[0] === './market_prices.json') {
         if (pageData.feedOffline) throw new Error('Price feed offline');

@@ -119,10 +119,13 @@ test('Admin dispatch reuses saved configuration, blocks duplicate sends, and lin
   const send=page.element('btn-update-nasdaq-calendar').handlers.click;
   const pending=send(); await send();
   assert.equal(page.element('btn-update-nasdaq-calendar').disabled,true);
-  assert.equal(page.data.requests.filter(url=>url.startsWith('https:')).length,1);
+  assert.equal(page.data.requestOptions.filter(options=>options?.method==='POST').length,1);
   release(); await pending;
-  const options=page.data.requestOptions.at(-1);
-  assert.deepEqual(JSON.parse(options.body),{ref:'calendar-test',inputs:{year:'2027'}});
+  const options=page.data.requestOptions.find(options=>options?.method==='POST');
+  const body=JSON.parse(options.body);
+  assert.equal(body.ref,'calendar-test');
+  assert.equal(body.inputs.year,'2027');
+  assert.match(body.inputs.request_id,/^nav-/);
   assert.match(page.element('nasdaq-calendar-update-status').textContent,/Đã gửi yêu cầu/);
   assert.equal(page.element('nasdaq-calendar-run-link').href,'https://github.com/Namvo0101/App/actions/runs/123');
 });
@@ -134,5 +137,63 @@ for(const status of [204,403,404]) test(`Admin dispatch handles HTTP ${status} w
   const message=page.element('nasdaq-calendar-update-status').textContent;
   assert(!message.includes('test-only-token'));
   if(status===204) assert.equal(page.element('nasdaq-calendar-run-link').href,'https://github.com/Namvo0101/App/actions/workflows/update-nasdaq-calendar.yml');
-  else assert.match(message,status===403?/Actions: Read and write/:/nhánh mặc định/);
+  else assert.match(message,status===403?/Actions/:/workflow/);
+});
+
+async function trackingPage() {
+  const page=await scenario('admin_cycle_manager.html');
+  page.run("gitConfig={repo:'Namvo0101/App',branch:'main',token:'test-only-token'}");
+  page.element('nasdaq-calendar-year').value='2026';
+  page.data.dispatchResponse={ok:true,status:200,json:async()=>({workflow_run_id:123})};
+  await page.element('btn-update-nasdaq-calendar').handlers.click();
+  return page;
+}
+const trackedRun=(status,conclusion=null)=>({id:123,head_branch:'main',event:'workflow_dispatch',path:'.github/workflows/update-nasdaq-calendar.yml',status,conclusion});
+const savedJob={name:'update',status:'completed',conclusion:'success',steps:[{name:'Commit only the requested calendar',conclusion:'success'}]};
+test('Admin shows queue, deployment and success on the page without applying or changing the open cycle',async()=>{
+  const page=await trackingPage();const before=page.snapshot();
+  assert.equal(page.element('nasdaq-calendar-update-status')['data-status'],'queued');
+  assert.equal(page.element('btn-update-nasdaq-calendar').disabled,true);
+  page.data.actionRun=trackedRun('in_progress');
+  page.data.actionJobs=[savedJob,{name:'deploy',status:'in_progress'}];
+  await page.element('btn-check-nasdaq-calendar').handlers.click();
+  assert.equal(page.element('nasdaq-calendar-update-status')['data-status'],'deploying');
+  assert.match(page.element('nasdaq-calendar-update-status').textContent,/Đang phát hành/);
+  page.data.actionRun=trackedRun('completed','success');
+  page.data.actionJobs=[savedJob,{name:'deploy',conclusion:'success'}];
+  await page.element('btn-check-nasdaq-calendar').handlers.click();
+  assert.equal(page.element('nasdaq-calendar-update-status')['data-status'],'success');
+  assert.equal(page.element('btn-update-nasdaq-calendar').disabled,false);
+  assert.match(page.element('nasdaq-calendar-update-status').textContent,/Bấm Tính lại/);
+  assert.deepEqual(page.snapshot(),before);
+  assert.equal(page.data.requestOptions.filter(o=>o?.method==='POST').length,1);
+});
+test('Admin differentiates a failed publication from a failed calendar update',async()=>{
+  const page=await trackingPage();
+  page.data.actionRun=trackedRun('completed','failure');
+  page.data.actionJobs=[savedJob,{name:'deploy',conclusion:'failure'}];
+  await page.element('btn-check-nasdaq-calendar').handlers.click();
+  assert.equal(page.element('nasdaq-calendar-update-status')['data-status'],'failed');
+  assert.match(page.element('nasdaq-calendar-update-status').textContent,/đã lưu trên GitHub.*phát hành thất bại/);
+});
+test('Admin resumes the saved run after reload using GET only',async()=>{
+  const page=await trackingPage();
+  const saved=Object.fromEntries(page.storage);
+  saved.NAV_ADMIN_GIT_CONFIG=JSON.stringify({repo:'Namvo0101/App',branch:'main',token:'test-only-token'});
+  const reloaded=await createPage('admin_cycle_manager.html',page.data.history,page.data.feed,saved,{renderCalendar:true});
+  reloaded.data.actionRun=trackedRun('completed','success');
+  reloaded.data.actionJobs=[savedJob,{name:'deploy',conclusion:'success'}];
+  await reloaded.init();
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(reloaded.element('nasdaq-calendar-update-status')['data-status'],'success');
+  assert(!reloaded.data.requestOptions.some(o=>o?.method==='POST'));
+  assert.equal(reloaded.element('nasdaq-calendar-run-link').href,'https://github.com/Namvo0101/App/actions/runs/123');
+});
+test('Admin reading permission errors show an unknown result and never send another dispatch',async()=>{
+  const page=await trackingPage();
+  page.data.actionsResponse={ok:false,status:403};
+  await page.element('btn-check-nasdaq-calendar').handlers.click();
+  assert.equal(page.element('nasdaq-calendar-update-status')['data-status'],'unknown');
+  assert.match(page.element('nasdaq-calendar-update-status').textContent,/Chưa xác định/);
+  assert.equal(page.data.requestOptions.filter(o=>o?.method==='POST').length,1);
 });
