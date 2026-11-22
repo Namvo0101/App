@@ -12,6 +12,8 @@ test('Pages contains website, original JSON and root pages, excluding deployment
       'index.html': 'home', 'Time_transfer.html': 'transfer', 'CNAME': 'example.com',
       'apps/Nav_record_stock.html': 'user', 'apps/admin_cycle_manager.html': 'admin',
       'apps/other-page.html': 'other', 'apps/stock-price-sync.js': 'sync',
+      'apps/market-calendar.js': 'shared calendar', 'apps/admin-nasdaq-calendar.js': 'dispatch',
+      'apps/market-calendars/nasdaq-2026.json': '{"year":2026,"closedDates":["2026-11-26"]}',
       'apps/history_data.json': '{"committed":true}', 'apps/market_prices.json': '{"latest":"2026-11-16"}',
       'assets/logo.svg': '<svg/>', 'apps/.env': 'must-not-publish',
       'apps/scripts/update-stock-prices.mjs': 'backend', 'apps/node_modules/example/index.js': 'dependency',
@@ -30,8 +32,8 @@ test('Pages contains website, original JSON and root pages, excluding deployment
     const out = path.join(root, '_site');
     await preparePages(root, out);
     assert.deepEqual((await readdir(out)).sort(), ['.nojekyll', 'CNAME', 'Time_transfer.html', 'apps', 'assets', 'index.html'].sort());
-    assert.deepEqual((await readdir(path.join(out, 'apps'))).sort(), ['Nav_record_stock.html', 'admin_cycle_manager.html', 'history_data.json', 'market_prices.json', 'other-page.html', 'stock-price-sync.js'].sort());
-    for (const file of ['apps/history_data.json', 'apps/market_prices.json', 'apps/stock-price-sync.js', 'index.html']) {
+    assert.deepEqual((await readdir(path.join(out, 'apps'))).sort(), ['Nav_record_stock.html', 'admin_cycle_manager.html', 'admin-nasdaq-calendar.js', 'history_data.json', 'market-calendar.js', 'market-calendars', 'market_prices.json', 'other-page.html', 'stock-price-sync.js'].sort());
+    for (const file of ['apps/history_data.json', 'apps/market_prices.json', 'apps/stock-price-sync.js', 'apps/market-calendar.js', 'apps/admin-nasdaq-calendar.js', 'apps/market-calendars/nasdaq-2026.json', 'index.html']) {
       assert.equal(await readFile(path.join(out, file), 'utf8'), files[file]);
     }
     if (linked) assert.ok(!(await readdir(path.join(out, 'apps'))).includes('leak.txt'));
