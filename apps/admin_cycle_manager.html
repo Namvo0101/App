@@ -180,8 +180,9 @@
           <button id="btn-update-nasdaq-calendar" type="button" class="rounded-lg bg-indigo-600 text-white px-3 py-2 text-sm disabled:opacity-50">Cập nhật lịch Nasdaq lên GitHub</button>
         </div>
         <p id="nasdaq-calendar-update-status" class="text-sm text-slate-700" role="status" aria-live="polite"></p>
+        <button id="btn-check-nasdaq-calendar" type="button" class="hidden rounded-lg border border-slate-300 px-3 py-2 text-sm text-indigo-700 disabled:opacity-50">Kiểm tra trạng thái</button>
         <a id="nasdaq-calendar-run-link" class="hidden text-sm text-indigo-700 underline" target="_blank" rel="noopener noreferrer">Xem GitHub Actions</a>
-        <p class="text-sm text-slate-600">Đợi workflow cập nhật và phát hành website thành công, rồi bấm Tính lại để dùng lịch mới.</p>
+        <p class="text-sm text-slate-600">Trạng thái tự cập nhật mỗi 5 giây khi trang đang mở. Sau khi báo thành công, bấm Tính lại để dùng lịch mới.</p>
       </div>
       <div id="task1-collapsible-body" class="hidden mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-slate-100 space-y-3 sm:space-y-4">
         
@@ -555,7 +556,7 @@
   </div>
 
   <script src="./market-calendar.js?v=20261121-1"></script>
-  <script src="./admin-nasdaq-calendar.js?v=20261121-1"></script>
+  <script src="./admin-nasdaq-calendar.js?v=20261122-status-1"></script>
   <script src="./stock-price-sync.js?v=20261117-master-source-1"></script>
   <script>
     // State
@@ -2248,36 +2249,26 @@
     // Git direct push trigger
     btnPushGit.addEventListener('click', commitJsonDirectToGitHub);
 
-    let nasdaqDispatchPending = false;
-    document.getElementById('btn-update-nasdaq-calendar').addEventListener('click', async () => {
-      if (nasdaqDispatchPending) return;
-      const button = document.getElementById('btn-update-nasdaq-calendar');
-      const status = document.getElementById('nasdaq-calendar-update-status');
-      const link = document.getElementById('nasdaq-calendar-run-link');
-      nasdaqDispatchPending = true;
-      button.disabled = true;
-      link.classList.add('hidden');
-      status.textContent = 'Đang gửi yêu cầu cập nhật lịch…';
-      try {
-        const result = await NasdaqCalendarAdmin.dispatch({ config: gitConfig, year: document.getElementById('nasdaq-calendar-year').value });
-        status.textContent = 'Đã gửi yêu cầu. Chờ workflow cập nhật lịch và phát hành website thành công, sau đó bấm Tính lại.';
-        link.href = result.url;
-        link.classList.remove('hidden');
-      } catch (error) {
-        const messages = {
-          YEAR: 'Năm lịch không hợp lệ. Nhập năm từ 1998 đến 9998.',
-          CONFIG: 'Thiếu cấu hình GitHub. Kiểm tra repository, nhánh và token trong phần cài đặt Git.',
-          HTTP_401: 'Token GitHub không hợp lệ hoặc đã hết hạn.',
-          HTTP_403: 'GitHub từ chối truy cập. Kiểm tra quyền Actions: Read and write của token.',
-          HTTP_404: 'Không tìm thấy repository hoặc workflow. Kiểm tra quyền truy cập và bảo đảm workflow đã có trên nhánh mặc định.',
-          HTTP_422: 'GitHub không chấp nhận năm hoặc nhánh đã chọn. Kiểm tra cấu hình workflow.'
-        };
-        status.textContent = messages[error.message] || 'Không gửi được yêu cầu. Kiểm tra kết nối và trạng thái GitHub Actions trước khi thử lại.';
-      } finally {
-        nasdaqDispatchPending = false;
-        button.disabled = false;
+    const nasdaqWorkflowTracker = NasdaqCalendarAdmin.createTracker({
+      getConfig: () => gitConfig,
+      onChange: state => {
+        const status = document.getElementById('nasdaq-calendar-update-status');
+        const link = document.getElementById('nasdaq-calendar-run-link');
+        const checkButton = document.getElementById('btn-check-nasdaq-calendar');
+        status.textContent = state.text;
+        status.setAttribute('data-status', state.phase);
+        status.className = 'text-sm ' + (state.phase === 'success' ? 'text-emerald-700' : ['failed', 'cancelled', 'error'].includes(state.phase) ? 'text-red-700' : ['unknown', 'timeout', 'saved_only', 'retrying'].includes(state.phase) ? 'text-amber-700' : 'text-indigo-700');
+        document.getElementById('btn-update-nasdaq-calendar').disabled = !!state.busy;
+        document.getElementById('nasdaq-calendar-year').disabled = !!state.busy;
+        if (state.busy && state.request) document.getElementById('nasdaq-calendar-year').value = state.request.year;
+        checkButton.disabled = state.phase === 'sending';
+        checkButton.classList[state.request ? 'remove' : 'add']('hidden');
+        link.classList[state.url ? 'remove' : 'add']('hidden');
+        if (state.url) link.href = state.url;
       }
     });
+    document.getElementById('btn-update-nasdaq-calendar').addEventListener('click', () => nasdaqWorkflowTracker.start(document.getElementById('nasdaq-calendar-year').value));
+    document.getElementById('btn-check-nasdaq-calendar').addEventListener('click', () => nasdaqWorkflowTracker.resume());
 
     // Git config modal
     btnOpenGitSettings.addEventListener('click', () => modalGitConfig.classList.remove('hidden'));
@@ -2295,9 +2286,11 @@
     });
 
     btnClearGitToken.addEventListener('click', () => {
+      nasdaqWorkflowTracker.stop();
       gitConfig.token = '';
       if (gitInputToken) gitInputToken.value = '';
       localStorage.setItem('NAV_ADMIN_GIT_CONFIG', JSON.stringify(gitConfig));
+      nasdaqWorkflowTracker.resume();
       showToast(currentLang === 'vi' ? "Đã xóa Token!" : "Credentials cleared!");
     });
 
@@ -2389,6 +2382,7 @@
     window.addEventListener('DOMContentLoaded', async () => {
       loadAdminState();
       document.getElementById('nasdaq-calendar-year').value = MarketCalendar.newYorkDate().slice(0, 4);
+      nasdaqWorkflowTracker.restore();
 
       const now = parseISODate(MarketCalendar.newYorkDate());
       const currentYear = now.getUTCFullYear();
