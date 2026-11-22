@@ -1,4 +1,5 @@
 name: Update Nasdaq Calendar and Pages
+run-name: Nasdaq ${{ inputs.year }} [${{ inputs.request_id || 'manual' }}]
 
 on:
   workflow_dispatch:
@@ -6,6 +7,10 @@ on:
       year:
         description: Nasdaq calendar year
         required: true
+        type: string
+      request_id:
+        description: Optional Admin request identifier for status tracking
+        required: false
         type: string
 
 permissions:
